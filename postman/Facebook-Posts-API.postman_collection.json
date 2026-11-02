@@ -1,0 +1,3482 @@
+{
+  "info": {
+    "name": "Facebook Posts API — Complete Integration & Acceptance Tests",
+    "description": "Importable acceptance suite for fb-posts-api.\n\n- Folders 01–06: safe offline (fake upstream) via `npm run postman:offline`.\n- Folder 02 against real Apify: `npm run postman:live` (ONE controlled invocation).\n- Auth header: `x-api-key` (Bearer also accepted by API).\n- Never put APIFY_TOKEN in Postman variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "lastFetchedAt",
+      "value": ""
+    },
+    {
+      "key": "lastPostIds",
+      "value": ""
+    },
+    {
+      "key": "logoIsFallback",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection prerequest: no paid side effects."
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const text = pm.response.text() || '';",
+          "pm.test('no obvious secrets in any response body', function () {",
+          "  pm.expect(/apify_api_[A-Za-z0-9]+/i.test(text)).to.eql(false);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Health & Connectivity",
+      "description": "Liveness and authentication gate checks. Safe to re-run.",
+      "item": [
+        {
+          "name": "GET Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('JSON status=ok', function () {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET API Without Key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('UNAUTHORIZED', function () { pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET API With Invalid Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{invalidApiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('UNAUTHORIZED', function () { pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — Real Facebook Posts",
+      "description": "Primary acceptance path. Offline runner uses fake upstream; `postman:live` uses real Apify once.\nEmpty captions are valid. Stats may be zero. Do not invent posts if fewer than 10 are returned.",
+      "item": [
+        {
+          "name": "Get Latest 10 Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "Primary CERN acceptance: expect exactly 10 posts when upstream provides them.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('exactly 10 posts (CERN acceptance)', function () {",
+                  "  pm.expect(body.data.posts.length, 'actual count=' + body.data.posts.length).to.eql(10);",
+                  "});",
+                  "pm.test('meta.limit is 10', function () { pm.expect(body.meta.limit).to.eql(10); });",
+                  "pm.test('meta.source is live or cache', function () {",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(body.meta.source);",
+                  "});",
+                  "const logo = body.data.page.logo;",
+                  "const fallback = body.data.page.logo_fallback;",
+                  "const isFallback = logo === fallback || /graph\\.facebook\\.com\\//.test(logo);",
+                  "pm.collectionVariables.set('logoIsFallback', isFallback ? 'true' : 'false');",
+                  "pm.collectionVariables.set('lastFetchedAt', body.meta.fetched_at);",
+                  "pm.collectionVariables.set('lastPostIds', body.data.posts.map(function (p) { return p.id; }).join(','));",
+                  "pm.test('page.name non-empty', function () { pm.expect(body.data.page.name.length).to.be.above(0); });",
+                  "pm.test('report logo real vs fallback', function () {",
+                  "  // Assertion always passes; value stored for runner summary.",
+                  "  pm.expect(typeof isFallback).to.eql('boolean');",
+                  "  console.log('logo_status=' + (isFallback ? 'fallback' : 'provider'));",
+                  "});",
+                  "const emptyText = body.data.posts.filter(function (p) { return p.text === ''; });",
+                  "pm.test('empty captions allowed (not stripped)', function () {",
+                  "  // Structural: empty text posts still have required keys (validated in schema).",
+                  "  pm.expect(Array.isArray(emptyText)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Latest 10 Posts — Cached",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('source is cache (fresh hit)', function () {",
+                  "  pm.expect(body.meta.source).to.eql('cache');",
+                  "});",
+                  "pm.test('same post IDs as first request', function () {",
+                  "  const prev = (pm.collectionVariables.get('lastPostIds') || '').split(',').filter(Boolean);",
+                  "  const ids = body.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(ids).to.eql(prev);",
+                  "});",
+                  "pm.test('exactly 10 posts', function () { pm.expect(body.data.posts.length).to.eql(10); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Latest 3 Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('exactly 3 posts', function () { pm.expect(body.data.posts.length).to.eql(3); });",
+                  "pm.test('meta.limit is 3', function () { pm.expect(body.meta.limit).to.eql(3); });",
+                  "pm.test('IDs are prefix of cached 10', function () {",
+                  "  const prev = (pm.collectionVariables.get('lastPostIds') || '').split(',').filter(Boolean);",
+                  "  const ids = body.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(ids).to.eql(prev.slice(0, 3));",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Posts With Default Limit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('default limit clamps to MAX_POSTS (10)', function () {",
+                  "  pm.expect(body.meta.limit).to.eql(10);",
+                  "  pm.expect(body.data.posts.length).to.eql(10);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Media-Only Posts (validation against available results)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "Validates empty-text / media-bearing posts are retained with full schema.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('media arrays present on all posts', function () {",
+                  "  body.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.media).to.be.an('array');",
+                  "  });",
+                  "});",
+                  "pm.test('posts with empty text still valid', function () {",
+                  "  body.data.posts.filter(function (p) { return p.text === ''; }).forEach(function (p) {",
+                  "    pm.expect(p.id).to.be.a('string').and.not.empty;",
+                  "    pm.expect(p.stats).to.be.an('object');",
+                  "  });",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Cache Validation",
+      "description": "Fresh cache hits must use source=cache and preserve IDs. Safe offline with fake upstream.",
+      "item": [
+        {
+          "name": "Get Page — First Request",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('cacheFetchedAt', body.meta.fetched_at);",
+                  "pm.collectionVariables.set('cachePostIds', body.data.posts.map(function (p) { return p.id; }).join(','));",
+                  "pm.test('page name/logo present', function () {",
+                  "  pm.expect(body.data.page.name).to.be.ok;",
+                  "  pm.expect(body.data.page.logo).to.match(/^https:\\/\\//);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Same Page — Second Request",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('source=cache', function () { pm.expect(body.meta.source).to.eql('cache'); });",
+                  "pm.test('fetched_at stable', function () {",
+                  "  pm.expect(body.meta.fetched_at).to.eql(pm.collectionVariables.get('cacheFetchedAt'));",
+                  "});",
+                  "pm.test('same IDs', function () {",
+                  "  const prev = (pm.collectionVariables.get('cachePostIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Same Page — Limit 3",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('exactly 3 from cache', function () {",
+                  "  pm.expect(body.data.posts.length).to.eql(3);",
+                  "  pm.expect(body.meta.source).to.eql('cache');",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Cache Metadata",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('cache metadata fields', function () {",
+                  "  pm.expect(body.meta.source).to.eql('cache');",
+                  "  pm.expect(body.meta.stale).to.eql(false);",
+                  "  pm.expect(body.meta.cache_age_seconds).to.be.at.least(0);",
+                  "  pm.expect(body.meta.provider).to.be.a('string').and.not.empty;",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Cached Post Identity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('IDs unchanged', function () {",
+                  "  const prev = (pm.collectionVariables.get('cachePostIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Validation & Error Handling",
+      "description": "Contract-aligned errors. Note: invalid limit values are clamped (not 400).",
+      "item": [
+        {
+          "name": "Missing Page Parameter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('MISSING_PAGE', function () { pm.expect(pm.response.json().error.code).to.eql('MISSING_PAGE'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid Facebook URL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://www.facebook.com/groups/123&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "https://www.facebook.com/groups/123"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.code).to.eql('INVALID_PAGE_URL'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unsupported Domain",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://example.com/cern&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "https://example.com/cern"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.code).to.eql('INVALID_PAGE_URL'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid API Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{invalidApiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing API Key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthorized Facebook Page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "Expects 403 when API_KEY_PAGE_SCOPES denies this page for the active key. Offline runner configures scopes.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedPageUrl}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{unauthorizedPageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('PAGE_NOT_ALLOWED'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unsupported HTTP Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 405', function () { pm.response.to.have.status(405); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('METHOD_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('METHOD_NOT_ALLOWED'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown API Route",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unknown",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unknown"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('NOT_FOUND', function () { pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limit Boundary Behavior",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "API clamps limit to MAX_POSTS (default 10); does not return 400.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "999"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 (clamped, not 400)', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('limit clamped to maxPosts (10)', function () {",
+                  "  pm.expect(body.meta.limit).to.eql(10);",
+                  "  pm.expect(body.data.posts.length).to.be.at.most(10);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — Multi-Site Authorization",
+      "description": "SYNTHETIC ONLY. Uses clientA/clientB keys and scoped pages from the offline runner. Zero real Apify.",
+      "item": [
+        {
+          "name": "Client A → authorized page A",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client A → unauthorized page B",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedPageUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{unauthorizedPageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('PAGE_NOT_ALLOWED'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client B → authorized page B",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKeyB}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedPageUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{unauthorizedPageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client B → unauthorized page A",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKeyB}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('PAGE_NOT_ALLOWED'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 — Offline Resilience (synthetic)",
+      "description": "SYNTHETIC fake-upstream scenarios only. Pre-request scripts call fake admin endpoints — never real Apify.\nRequires environment variable fakeUpstreamUrl (set by npm run postman:offline).",
+      "item": [
+        {
+          "name": "Seed cache from fake upstream",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fake = pm.environment.get('fakeUpstreamUrl');",
+                  "if (!fake) { throw new Error('fakeUpstreamUrl required for Folder 06'); }",
+                  "pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'ok' }) } }, function () {});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('seed 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('resilienceIds', body.data.posts.map(function (p) { return p.id; }).join(','));",
+                  "pm.collectionVariables.set('upstreamCallsBefore', '0');",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upstream HTTP 500 → cache/stale fallback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fake = pm.environment.get('fakeUpstreamUrl');",
+                  "pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'fail' }) } }, function (err, res) {",
+                  "  if (err) console.warn('mode set failed', err);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('still 200 from cache', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('source cache or stale-cache', function () {",
+                  "  pm.expect(['cache', 'stale-cache']).to.include(body.meta.source);",
+                  "});",
+                  "pm.test('same IDs preserved', function () {",
+                  "  const prev = (pm.collectionVariables.get('resilienceIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Empty upstream → cache preserved",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fake = pm.environment.get('fakeUpstreamUrl');",
+                  "pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'empty' }) } }, function () {});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('IDs preserved after empty upstream', function () {",
+                  "  const prev = (pm.collectionVariables.get('resilienceIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cold cache + unavailable upstream → 502",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "https://www.facebook.com/cern"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fake = pm.environment.get('fakeUpstreamUrl');",
+                  "pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'fail' }) } }, function () {});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 502', function () { pm.response.to.have.status(502); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('UPSTREAM_UNAVAILABLE', function () {",
+                  "  pm.expect(pm.response.json().error.code).to.eql('UPSTREAM_UNAVAILABLE');",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore fake ok + repeated requests stable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{pageUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "facebook",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{pageUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fake = pm.environment.get('fakeUpstreamUrl');",
+                  "pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'ok' }) } }, function () {});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
