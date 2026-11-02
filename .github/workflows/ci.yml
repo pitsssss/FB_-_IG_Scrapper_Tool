@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: test (Node ${{ matrix.node-version }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [22, 24]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Show versions
+        run: node -v && npm -v
+
+      - name: Unit tests
+        run: npm test
+
+      - name: End-to-end tests
+        run: npm run e2e
+
+      # No install step: this package has zero runtime dependencies.
+      # No APIFY_TOKEN / production secrets are required; e2e uses fake upstream.

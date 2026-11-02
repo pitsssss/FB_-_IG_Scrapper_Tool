@@ -1,3 +1,4 @@
+# Single-replica only: filesystem Apify quota in CACHE_DIR is not multi-replica safe.
 services:
   api:
     build: .
@@ -9,6 +10,8 @@ services:
       PORT: "3000"
     volumes:
       - api_data:/data
+    # Do not publish host ports here; Caddy terminates TLS. Secrets come from env_file at runtime.
+    # Keep a single api replica: filesystem quota is not multi-replica safe.
     expose:
       - "3000"
     healthcheck:

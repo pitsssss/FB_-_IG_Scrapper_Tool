@@ -591,21 +591,65 @@ async function main() {
   const mainHealth = await fetchJson(baseUrl, '/health');
   check('warmer: main API still healthy after warmer instances stopped', mainHealth.status === 200, `status=${mainHealth.status}`);
 
+  // ---- 12. per-client page scopes ----
+  console.log('\n== 12. page scopes ==');
+  await fetch(`${upstreamBase}/__reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  await setMode(upstreamBase, 'ok');
+  const scopeDir = await mkdtemp(join(tmpdir(), 'fb-e2e-scope-'));
+  extraDirs.push(scopeDir);
+  const scopePort = await freePort();
+  usedPorts.push(scopePort);
+  const scopeUrl = `http://127.0.0.1:${scopePort}`;
+  const scopeKeyA = randomBytes(16).toString('hex');
+  const scopeKeyB = randomBytes(16).toString('hex');
+  const scopeChild = spawnApi({
+    ...commonEnv,
+    PORT: String(scopePort),
+    CACHE_DIR: scopeDir,
+    API_KEYS: `website1:${scopeKeyA},website2:${scopeKeyB}`,
+    API_KEY_PAGE_SCOPES: JSON.stringify({
+      website1: ['https://www.facebook.com/pagea'],
+      website2: ['https://www.facebook.com/pageb'],
+    }),
+    APIFY_DAILY_RUN_LIMIT: '50',
+    UPSTREAM_RETRIES: '0',
+    FRESH_TTL_SECONDS: '3600',
+  });
+  await waitHealth(scopeUrl);
+  const scopeBefore = await getStats(upstreamBase);
+  const sa = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}`, { key: scopeKeyA });
+  const sab = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pageb')}`, { key: scopeKeyA });
+  const sb = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pageb')}`, { key: scopeKeyB });
+  const sba = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}`, { key: scopeKeyB });
+  const scopeAfterDeny = await getStats(upstreamBase);
+  check('scopes: A/pageA 200', sa.status === 200, `status=${sa.status}`);
+  check('scopes: A/pageB 403', sab.status === 403 && sab.body?.error?.code === 'PAGE_NOT_ALLOWED', `status=${sab.status}`);
+  check('scopes: B/pageB 200', sb.status === 200, `status=${sb.status}`);
+  check('scopes: B/pageA 403', sba.status === 403, `status=${sba.status}`);
+  check(
+    'scopes: unauthorized requests add no upstream calls beyond authorized',
+    scopeAfterDeny.calls - scopeBefore.calls === 2,
+    `upstreamDelta=${scopeAfterDeny.calls - scopeBefore.calls}`,
+  );
+  const saCache = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}`, { key: scopeKeyA });
+  check('scopes: authorized repeat is cache', saCache.status === 200 && saCache.body?.meta?.source === 'cache', `source=${saCache.body?.meta?.source}`);
+  await stopChild(scopeChild);
+
   // ---- 9. security ----
   console.log('\n== 9. security ==');
-  check('API key never in API logs', !apiLog.includes(apiKey), `logBytes=${apiLog.length}`);
+  check('API key never in API logs', !apiLog.includes(apiKey) && !apiLog.includes(scopeKeyA) && !apiLog.includes(scopeKeyB), `logBytes=${apiLog.length}`);
   check('dummy token never in API logs', !apiLog.includes(FAKE_TOKEN), 'checked api stdout/stderr');
 
   // sample a few response bodies for "dummy"
   const bodies = [
-    ...[baseLive, live3, stale, back, slow, persisted, q1, qCached, warmed, preserved].map((r) => r?.text || JSON.stringify(r?.body || '')),
+    ...[baseLive, live3, stale, back, slow, persisted, q1, qCached, warmed, preserved, sa, sb].map((r) => r?.text || JSON.stringify(r?.body || '')),
     noOriginText,
   ];
   const dummyInBody = bodies.some((t) => t && t.includes(FAKE_TOKEN));
   check('dummy token never in HTTP bodies', !dummyInBody, `bodiesChecked=${bodies.length}`);
 
   // Also ensure key not in bodies
-  const keyInBody = bodies.some((t) => t && t.includes(apiKey));
+  const keyInBody = bodies.some((t) => t && (t.includes(apiKey) || t.includes(scopeKeyA) || t.includes(scopeKeyB)));
   check('API key never in HTTP bodies', !keyInBody, `bodiesChecked=${bodies.length}`);
 
   console.log(`\n${passed} passed, ${failed} failed`);
