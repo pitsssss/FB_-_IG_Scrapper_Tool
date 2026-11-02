@@ -1,0 +1,13 @@
+{
+  "name": "fb-posts-api",
+  "version": "1.0.0",
+  "description": "Facebook page posts API with provider fallback, persistent cache and stable response format",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "start:prod": "node src/index.js",
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,99 @@
+import http from 'node:http';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { createService } from './service.js';
+import { parsePageRef } from './pageRef.js';
+import { ServiceError } from './errors.js';
+
+const sha = (s) => createHash('sha256').update(s).digest();
+const errBody = (code, message) => ({ success: false, error: { code, message } });
+
+export function createApp(config, service = createService(config)) {
+  if (!config.apiKeys.length) {
+    throw new Error('API_KEYS is required (e.g. API_KEYS=site1:KEY1,site2:KEY2)');
+  }
+  const keys = config.apiKeys.map((k) => ({ name: k.name, hash: sha(k.key) }));
+  const windows = new Map();
+
+  function authenticate(req) {
+    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
+    const supplied = req.headers['x-api-key'] || (bearer && bearer[1]);
+    if (!supplied || typeof supplied !== 'string') return null;
+    const given = sha(supplied);
+    let name = null;
+    for (const k of keys) if (timingSafeEqual(given, k.hash) && !name) name = k.name;
+    return name;
+  }
+
+  function rateLimited(name) {
+    if (!config.rateLimitPerMin) return 0;
+    const now = Date.now();
+    let w = windows.get(name);
+    if (!w || now >= w.resetAt) {
+      w = { count: 0, resetAt: now + 60_000 };
+      windows.set(name, w);
+    }
+    w.count += 1;
+    return w.count > config.rateLimitPerMin ? Math.ceil((w.resetAt - now) / 1000) : 0;
+  }
+
+  function applyCors(req, res) {
+    const origin = req.headers.origin;
+    if (!origin || !config.allowedOrigins.length) return;
+    if (config.allowedOrigins.includes('*') || config.allowedOrigins.includes(origin)) {
+      res.setHeader('access-control-allow-origin', config.allowedOrigins.includes('*') ? '*' : origin);
+      res.setHeader('vary', 'Origin');
+      res.setHeader('access-control-allow-headers', 'x-api-key, authorization, content-type');
+      res.setHeader('access-control-allow-methods', 'GET, OPTIONS');
+      res.setHeader('access-control-max-age', '86400');
+    }
+  }
+
+  function send(res, status, body, headers = {}) {
+    const payload = JSON.stringify(body);
+    res.writeHead(status, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+      ...headers,
+    });
+    res.end(payload);
+  }
+
+  async function handle(req, res) {
+    applyCors(req, res);
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+    const url = new URL(req.url, 'http://localhost');
+    if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok' });
+    if (url.pathname !== '/api/v1/facebook/posts') return send(res, 404, errBody('NOT_FOUND', 'Route not found'));
+    if (req.method !== 'GET') return send(res, 405, errBody('METHOD_NOT_ALLOWED', 'Use GET'), { allow: 'GET, OPTIONS' });
+
+    const client = authenticate(req);
+    if (!client) return send(res, 401, errBody('UNAUTHORIZED', 'Missing or invalid API key'));
+
+    const wait = rateLimited(client);
+    if (wait) return send(res, 429, errBody('RATE_LIMITED', 'Too many requests'), { 'retry-after': String(wait) });
+
+    const pageParam = url.searchParams.get('page');
+    if (!pageParam) return send(res, 400, errBody('MISSING_PAGE', 'Query parameter "page" (Facebook page URL) is required'));
+    const ref = parsePageRef(pageParam);
+    if (!ref) return send(res, 400, errBody('INVALID_PAGE_URL', 'Not a valid Facebook page URL'));
+    if (config.allowedPages.length && !config.allowedPages.includes(ref.key)) {
+      return send(res, 403, errBody('PAGE_NOT_ALLOWED', 'This page is not allowed on this server'));
+    }
+
+    const parsed = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
+    const limit = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), config.maxPosts) : config.maxPosts;
+
+    const result = await service.getPosts(ref, limit);
+    return send(res, 200, result, { 'cache-control': 'private, max-age=60' });
+  }
+
+  return http.createServer((req, res) => {
+    handle(req, res).catch((err) => {
+      if (err instanceof ServiceError) return send(res, err.status, errBody(err.code, err.message));
+      console.error('[server] unexpected error:', err);
+      return send(res, 500, errBody('INTERNAL_ERROR', 'Unexpected server error'));
+    });
+  });
+}
