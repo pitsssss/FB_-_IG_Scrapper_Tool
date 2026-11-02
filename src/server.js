@@ -15,13 +15,24 @@ export function createApp(config, service = createService(config)) {
   const windows = new Map();
 
   function authenticate(req) {
+    // Credentials are accepted ONLY from headers — never from query strings.
     const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
-    const supplied = req.headers['x-api-key'] || (bearer && bearer[1]);
+    const headerKey = req.headers['x-api-key'];
+    const supplied = (typeof headerKey === 'string' && headerKey) || (bearer && bearer[1]) || null;
     if (!supplied || typeof supplied !== 'string') return null;
     const given = sha(supplied);
     let name = null;
-    for (const k of keys) if (timingSafeEqual(given, k.hash) && !name) name = k.name;
+    for (const k of keys) {
+      if (given.length === k.hash.length && timingSafeEqual(given, k.hash) && !name) name = k.name;
+    }
     return name;
+  }
+
+  function pageAllowedForClient(clientName, pageKey) {
+    if (config.allowedPages.length && !config.allowedPages.includes(pageKey)) return false;
+    if (!config.pageScopes) return true;
+    const scope = config.pageScopes.get(clientName);
+    return Boolean(scope && scope.has(pageKey));
   }
 
   function rateLimited(name) {
@@ -76,9 +87,11 @@ export function createApp(config, service = createService(config)) {
 
     const pageParam = url.searchParams.get('page');
     if (!pageParam) return send(res, 400, errBody('MISSING_PAGE', 'Query parameter "page" (Facebook page URL) is required'));
+    if (pageParam.length > 500) return send(res, 400, errBody('INVALID_PAGE_URL', 'Not a valid Facebook page URL'));
     const ref = parsePageRef(pageParam);
     if (!ref) return send(res, 400, errBody('INVALID_PAGE_URL', 'Not a valid Facebook page URL'));
-    if (config.allowedPages.length && !config.allowedPages.includes(ref.key)) {
+    // Global allowlist + optional per-client scopes (before cache/upstream).
+    if (!pageAllowedForClient(client, ref.key)) {
       return send(res, 403, errBody('PAGE_NOT_ALLOWED', 'This page is not allowed on this server'));
     }
 

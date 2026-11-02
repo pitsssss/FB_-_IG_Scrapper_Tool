@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node --env-file=.env src/index.js",
     "start:prod": "node src/index.js",
-    "test": "node --test --test-concurrency=1 test/api.test.js test/fixture.test.js test/page-identity.test.js test/apify-quota.test.js test/cache-warmer.test.js",
+    "test": "node --test --test-concurrency=1 test/api.test.js test/fixture.test.js test/page-identity.test.js test/apify-quota.test.js test/cache-warmer.test.js test/page-scopes.test.js",
     "capture": "node --env-file=.env scripts/capture-fixture.js",
     "smoke": "node scripts/smoke.js",
     "e2e": "node scripts/e2e-local.js",

@@ -29,6 +29,9 @@ export function parsePageRef(input) {
   } catch {
     return null;
   }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  // Reject embedded credentials (https://user:pass@host/...).
+  if (u.username || u.password) return null;
   if (!HOSTS.has(u.hostname.toLowerCase())) return null;
 
   const seg = u.pathname.split('/').filter(Boolean).map(safeDecode);

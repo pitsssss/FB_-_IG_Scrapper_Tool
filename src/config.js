@@ -1,3 +1,5 @@
+import { parsePageRef } from './pageRef.js';
+
 const toInt = (v, d) => {
   const n = Number.parseInt(v ?? '', 10);
   return Number.isFinite(n) && n >= 0 ? n : d;
@@ -6,6 +8,83 @@ const toList = (v) => String(v ?? '').split(',').map((s) => s.trim()).filter(Boo
 
 const DEFAULT_APIFY_INPUT = '{"startUrls":[{"url":"{{PAGE_URL}}"}],"resultsLimit":"{{LIMIT}}"}';
 export const WARM_CONCURRENCY_MAX = 8;
+
+/**
+ * Parse API_KEYS. Rejects duplicate names and duplicate secret values.
+ * Note: page authorization uses parsePageRef() canonical keys (slug OR numeric id).
+ * A slug and a numeric id for the "same" Facebook page are NOT treated as equivalent
+ * unless both appear explicitly in a client's scope list.
+ */
+export function parseApiKeys(raw) {
+  const apiKeys = toList(raw).map((entry) => {
+    const i = entry.indexOf(':');
+    if (i <= 0 || i === entry.length - 1) {
+      throw new Error('API_KEYS entries must be name:secret (non-empty name and secret)');
+    }
+    return { name: entry.slice(0, i), key: entry.slice(i + 1) };
+  });
+  const names = new Set();
+  const secrets = new Set();
+  for (const k of apiKeys) {
+    if (names.has(k.name)) throw new Error(`API_KEYS duplicate client name "${k.name}"`);
+    if (secrets.has(k.key)) throw new Error('API_KEYS duplicate secret values are not allowed');
+    names.add(k.name);
+    secrets.add(k.key);
+  }
+  return apiKeys;
+}
+
+/**
+ * Optional per-client page scopes. Absent/empty => backward-compatible unscoped mode.
+ * When present, every configured API key name must have an explicit array entry.
+ */
+export function parseApiKeyPageScopes(raw, apiKeys) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  let obj;
+  try {
+    obj = JSON.parse(String(raw));
+  } catch {
+    throw new Error('API_KEY_PAGE_SCOPES must be valid JSON object');
+  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    throw new Error('API_KEY_PAGE_SCOPES must be a JSON object of clientName -> page URL array');
+  }
+
+  const keyNames = new Set(apiKeys.map((k) => k.name));
+  for (const name of keyNames) {
+    if (!Object.prototype.hasOwnProperty.call(obj, name)) {
+      throw new Error(`API_KEY_PAGE_SCOPES missing entry for API key "${name}"`);
+    }
+  }
+  for (const name of Object.keys(obj)) {
+    if (!keyNames.has(name)) {
+      throw new Error(`API_KEY_PAGE_SCOPES unknown API key name "${name}"`);
+    }
+  }
+
+  const scopes = new Map();
+  for (const [name, urls] of Object.entries(obj)) {
+    if (!Array.isArray(urls)) {
+      throw new Error(`API_KEY_PAGE_SCOPES["${name}"] must be an array of Facebook page URLs`);
+    }
+    const keys = new Set();
+    for (const url of urls) {
+      if (typeof url !== 'string' || !url.trim()) {
+        throw new Error(`API_KEY_PAGE_SCOPES["${name}"] contains an invalid entry`);
+      }
+      if (url.includes('*')) {
+        throw new Error('API_KEY_PAGE_SCOPES does not support wildcards');
+      }
+      const ref = parsePageRef(url.trim());
+      if (!ref) {
+        throw new Error(`API_KEY_PAGE_SCOPES["${name}"] has unsupported page URL`);
+      }
+      keys.add(ref.key);
+    }
+    scopes.set(name, keys);
+  }
+  return scopes;
+}
 
 /** Non-negative integer; empty/undefined -> default. Invalid -> throw. */
 function requireNonNegInt(raw, name, defaultValue) {
@@ -34,10 +113,8 @@ function requireOptionalPositiveDecimal(raw, name) {
 }
 
 export function loadConfig(env = process.env) {
-  const apiKeys = toList(env.API_KEYS).map((entry) => {
-    const i = entry.indexOf(':');
-    return i > 0 ? { name: entry.slice(0, i), key: entry.slice(i + 1) } : { name: 'default', key: entry };
-  });
+  const apiKeys = parseApiKeys(env.API_KEYS);
+  const pageScopes = parseApiKeyPageScopes(env.API_KEY_PAGE_SCOPES, apiKeys);
 
   let tokens = {};
   if (env.GRAPH_PAGE_TOKENS) {
@@ -82,6 +159,7 @@ export function loadConfig(env = process.env) {
     port: toInt(env.PORT, 3000),
     host: env.HOST || '0.0.0.0',
     apiKeys,
+    pageScopes,
     allowedPages: toList(env.ALLOWED_PAGES).map((s) => s.toLowerCase()),
     allowedOrigins: toList(env.ALLOWED_ORIGINS),
     rateLimitPerMin: toInt(env.RATE_LIMIT_PER_MIN, 120),
