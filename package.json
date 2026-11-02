@@ -4,7 +4,9 @@
   "description": "Facebook page posts API with provider fallback, persistent cache and stable response format",
   "type": "module",
   "private": true,
-  "engines": { "node": ">=20.6" },
+  "engines": {
+    "node": ">=20.6"
+  },
   "scripts": {
     "start": "node --env-file=.env src/index.js",
     "start:prod": "node src/index.js",
@@ -12,6 +14,13 @@
     "capture": "node --env-file=.env scripts/capture-fixture.js",
     "smoke": "node scripts/smoke.js",
     "e2e": "node scripts/e2e-local.js",
-    "quota:status": "node --env-file=.env scripts/quota-status.js"
+    "quota:status": "node --env-file=.env scripts/quota-status.js",
+    "postman:offline": "node scripts/postman-runner.js offline",
+    "postman:live": "node scripts/postman-runner.js live",
+    "postman:serve": "node scripts/postman-runner.js serve",
+    "postman:collection": "node scripts/generate-postman-collection.mjs"
+  },
+  "devDependencies": {
+    "newman": "6.2.1"
   }
 }
