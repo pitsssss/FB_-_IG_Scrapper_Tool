@@ -83,7 +83,7 @@ function send(res, status, body) {
   res.end(payload);
 }
 
-export function startFakeUpstream({ port = 0, fixturePath = null } = {}) {
+export function startFakeUpstream({ port = 0, host = '127.0.0.1', fixturePath = null } = {}) {
   const items = loadFixtureItems(fixturePath);
   let mode = 'ok';
   let calls = 0;
@@ -149,9 +149,9 @@ export function startFakeUpstream({ port = 0, fixturePath = null } = {}) {
   });
 
   const ready = new Promise((resolve, reject) => {
-    server.listen(port, '127.0.0.1', () => {
+    server.listen(port, host, () => {
       const addr = server.address();
-      resolve({ port: addr.port });
+      resolve({ port: addr.port, host });
     });
     server.on('error', reject);
   });
@@ -171,9 +171,15 @@ export function startFakeUpstream({ port = 0, fixturePath = null } = {}) {
 
 async function mainCli() {
   const portArg = Number.parseInt(process.argv[2] || '0', 10);
-  const fake = startFakeUpstream({ port: Number.isFinite(portArg) ? portArg : 0 });
-  const { port } = await fake.ready;
-  console.log(`fake-upstream listening on http://127.0.0.1:${port}`);
+  // CLI defaults to 0.0.0.0 so Docker Compose / smoke containers can reach the fake.
+  // Programmatic e2e callers still default to 127.0.0.1 via startFakeUpstream().
+  const hostArg = process.argv[3] || '0.0.0.0';
+  const fake = startFakeUpstream({
+    port: Number.isFinite(portArg) ? portArg : 0,
+    host: hostArg,
+  });
+  const { port, host } = await fake.ready;
+  console.log(`fake-upstream listening on http://${host}:${port}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

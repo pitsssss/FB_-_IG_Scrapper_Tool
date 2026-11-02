@@ -33,3 +33,27 @@ jobs:
 
       # No install step: this package has zero runtime dependencies.
       # No APIFY_TOKEN / production secrets are required; e2e uses fake upstream.
+
+  docker-smoke:
+    name: docker build + smoke (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Make smoke script executable
+        run: chmod +x scripts/docker-smoke.sh
+
+      - name: Docker build, health, auth, volume persistence
+        env:
+          IMAGE_TAG: fb-posts-api:ci-${{ github.sha }}
+          API_PORT: "18080"
+        run: ./scripts/docker-smoke.sh
+
+      # Uses only synthetic API_KEYS / dummy APIFY_TOKEN and the local fake upstream.
+      # No deployment and no real Apify network calls.

@@ -85,11 +85,18 @@ If disk writes fail, the process may still serve from memory until restart; thos
 ## Optional: Railway notes
 
 - Railway injects `PORT` — bind `HOST=0.0.0.0`.
-- Attach a volume and set `CACHE_DIR` to the **mounted path**.
-- Volume-backed services may incur redeploy downtime; plan accordingly.
+- Attach a volume (e.g. mount path `/data`) and set `CACHE_DIR=/data/cache`.
+- This image runs as non-root `USER node` (uid 1000). Railway volumes are typically
+  **root-owned** at runtime; without a writable mount the cache/quota cannot persist.
+  Set `RAILWAY_RUN_UID=0` so the process can write the attached volume, **or** use an
+  equivalent platform-supported ownership fix. Prefer documenting this over baking a
+  permanent root-only app image. Re-check current Railway volume docs at deploy time:
+  https://docs.railway.com/volumes
+- Volume-backed services may incur brief redeploy downtime; plan accordingly.
 - Do not enable multiple replicas with filesystem-only Apify quota.
 - A green `/health` check is not proof of upstream or volume durability.
-- Verify current Railway volume/path docs at deploy time (platform behavior changes).
+- Safe first staging profile: single replica, volume attached, `WARM_PAGES` empty,
+  `APIFY_DAILY_RUN_LIMIT=0` (cache-only) until a controlled live Apify budget is approved.
 
 ## Still NOT proven by this repository alone
 
