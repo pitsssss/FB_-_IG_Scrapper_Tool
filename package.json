@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node --env-file=.env src/index.js",
     "start:prod": "node src/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "capture": "node --env-file=.env scripts/capture-fixture.js"
   }
 }

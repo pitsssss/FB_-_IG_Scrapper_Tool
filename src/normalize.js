@@ -86,9 +86,17 @@ export function normalizeItems(rawItems, ref, limit = 10) {
   };
 
   const page = {
-    id: firstOf((it) => pick(it.pageId !== undefined ? String(it.pageId) : null, it.page?.id)) || ref.id || null,
+    id: firstOf((it) => pick(
+      it.pageId !== undefined && it.pageId !== null ? String(it.pageId) : null,
+      it.page?.id,
+      it.user?.id !== undefined && it.user?.id !== null ? String(it.user.id) : null,
+      it.facebookId !== undefined && it.facebookId !== null ? String(it.facebookId) : null,
+      it.facebook_id !== undefined && it.facebook_id !== null ? String(it.facebook_id) : null,
+    )) || ref.id || null,
     name:
-      firstOf((it) => pick(it.pageName, it.page?.name, it.pageInfo?.name, it.profileName, it.user?.name, it.author?.name))
+      firstOf((it) => pick(
+        it.user?.name, it.author?.name, it.page?.name, it.pageInfo?.name, it.profileName, it.pageName,
+      ))
       || ref.slug || ref.id,
     logo:
       firstOf((it) => pick(
