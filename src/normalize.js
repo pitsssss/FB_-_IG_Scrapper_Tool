@@ -68,6 +68,78 @@ function extractMedia(item) {
 
 const logoFallbackOf = (ref) => `https://graph.facebook.com/${encodeURIComponent(ref.id || ref.slug)}/picture?type=large`;
 
+function pageIdCandidates(item) {
+  const raw = [item.facebookId, item.pageId, item.page?.id];
+  const out = [];
+  for (const v of raw) {
+    if (v === undefined || v === null) continue;
+    const s = String(v).trim();
+    if (s) out.push(s);
+  }
+  return out;
+}
+
+function isPageAuthored(item) {
+  const candidates = pageIdCandidates(item);
+  if (!candidates.length) return true;
+  const uid = item.user?.id;
+  if (uid === undefined || uid === null) return false;
+  return candidates.includes(String(uid));
+}
+
+/** Most frequent non-empty value; ties -> first seen. */
+function majorityVote(values) {
+  const counts = new Map();
+  for (const v of values) {
+    const s = str(v);
+    if (!s) continue;
+    counts.set(s, (counts.get(s) || 0) + 1);
+  }
+  let best = null;
+  let bestCount = 0;
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+function collectPageIdentity(items, ref) {
+  const authored = items.filter(isPageAuthored);
+
+  const name =
+    majorityVote(authored.map((it) => it.user?.name))
+    || majorityVote(items.flatMap((it) => [it.pageName, it.page?.name, it.pageInfo?.name, it.profileName]))
+    || majorityVote(items.flatMap((it) => [it.user?.name, it.author?.name]))
+    || ref.slug || ref.id;
+
+  const logo =
+    majorityVote(authored.flatMap((it) => [it.user?.profilePic, it.user?.profilePicture]))
+    || majorityVote(items.flatMap((it) => [
+      it.pageLogo, it.pageProfilePic, it.pageProfilePicture,
+      it.page?.profilePic, it.page?.profilePicture, it.page?.logo,
+      it.profilePic, it.profilePicture,
+      it.author?.profilePic, it.author?.profilePicture,
+      it.user?.profilePic, it.user?.profilePicture,
+    ]))
+    || logoFallbackOf(ref);
+
+  const id =
+    majorityVote(authored.flatMap((it) => pageIdCandidates(it)))
+    || majorityVote(items.flatMap((it) => pageIdCandidates(it)))
+    || (ref.id || null);
+
+  return {
+    id: id || null,
+    name,
+    logo,
+    logo_fallback: logoFallbackOf(ref),
+    url: ref.url,
+  };
+}
+
 /**
  * Converts the raw items of any provider into the stable response shape.
  * Every post carries the same `page` object ({ id, name, logo, logo_fallback, url }).
@@ -77,36 +149,7 @@ export function normalizeItems(rawItems, ref, limit = 10) {
     (x) => x && typeof x === 'object' && !x.error && !x.errorDescription,
   );
 
-  const firstOf = (fn) => {
-    for (const it of items) {
-      const v = fn(it);
-      if (v) return v;
-    }
-    return null;
-  };
-
-  const page = {
-    id: firstOf((it) => pick(
-      it.pageId !== undefined && it.pageId !== null ? String(it.pageId) : null,
-      it.page?.id,
-      it.user?.id !== undefined && it.user?.id !== null ? String(it.user.id) : null,
-      it.facebookId !== undefined && it.facebookId !== null ? String(it.facebookId) : null,
-      it.facebook_id !== undefined && it.facebook_id !== null ? String(it.facebook_id) : null,
-    )) || ref.id || null,
-    name:
-      firstOf((it) => pick(
-        it.user?.name, it.author?.name, it.page?.name, it.pageInfo?.name, it.profileName, it.pageName,
-      ))
-      || ref.slug || ref.id,
-    logo:
-      firstOf((it) => pick(
-        it.pageLogo, it.pageProfilePic, it.pageProfilePicture, it.page?.profilePic, it.page?.profilePicture,
-        it.page?.logo, it.user?.profilePic, it.user?.profilePicture, it.profilePic, it.profilePicture,
-        it.author?.profilePic, it.author?.profilePicture,
-      )) || logoFallbackOf(ref),
-    logo_fallback: logoFallbackOf(ref),
-    url: ref.url,
-  };
+  const page = collectPageIdentity(items, ref);
 
   const seen = new Set();
   const posts = [];
