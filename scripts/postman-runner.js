@@ -6,7 +6,14 @@
  *   live    — ONE controlled real Apify invocation (requires APIFY_TOKEN in .env)
  *   serve   — long-running local API + ignored Postman environment for Desktop
  *
- * Usage: node scripts/postman-runner.js <offline|live|serve> [--live]
+ * Usage:
+ *   node scripts/postman-runner.js offline
+ *   node scripts/postman-runner.js live
+ *   node scripts/postman-runner.js serve
+ *   node scripts/postman-runner.js serve --live
+ *   node scripts/postman-runner.js serve --live --daily-limit=3
+ *
+ * `postman:live` and `postman:serve` share `.postman-local/live-cache` (posts + quota).
  */
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -17,6 +24,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { startFakeUpstream } from './fake-upstream.js';
+import {
+  parseServeFlags,
+  resolveMaxChargeUsd,
+  resolveSharedCacheDir,
+} from './postman-shared.js';
 
 const require = createRequire(import.meta.url);
 const newman = require('newman');
@@ -25,6 +37,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const collectionPath = join(root, 'postman', 'Facebook-Posts-API.postman_collection.json');
 const localDir = join(root, '.postman-local');
+const sharedCacheDir = resolveSharedCacheDir(root);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const PAGE_CERN = 'https://www.facebook.com/cern';
@@ -311,10 +324,10 @@ async function runLive() {
   }
 
   await mkdir(localDir, { recursive: true });
-  const liveCache = join(localDir, 'live-cache');
+  const liveCache = sharedCacheDir;
   await mkdir(liveCache, { recursive: true });
 
-  // Fail closed if this live cache already consumed today's quota.
+  // Fail closed if this shared live cache already consumed today's quota.
   const quotaPath = join(liveCache, 'apify-quota.json');
   try {
     const raw = await readFile(quotaPath, 'utf8');
@@ -323,7 +336,9 @@ async function runLive() {
     if (q && q.utcDate === today && Number(q.consumed) >= 1) {
       fail(
         `Live quota already consumed today in ${quotaPath} (consumed=${q.consumed}). ` +
-          'Refusing to reset quota or make another paid call. Delete .postman-local/live-cache only if you intentionally authorize another run.',
+          'Refusing to reset quota or make another paid call. ' +
+          'Cached pages remain available via: npm run postman:serve ' +
+          '(or raise the TOTAL daily budget with: npm run postman:serve -- --live --daily-limit=N).',
       );
       return 3;
     }
@@ -336,10 +351,7 @@ async function runLive() {
 
   const key = `live${randomKey(16)}`;
   const apiPort = await freePort();
-  const maxCharge =
-    dotenv.APIFY_MAX_CHARGE_USD_PER_RUN && String(dotenv.APIFY_MAX_CHARGE_USD_PER_RUN).trim()
-      ? String(dotenv.APIFY_MAX_CHARGE_USD_PER_RUN).trim()
-      : '0.15';
+  const maxCharge = resolveMaxChargeUsd(dotenv);
 
   const child = spawnApi({
     HOST: '127.0.0.1',
@@ -536,16 +548,48 @@ async function runLive() {
   return 1;
 }
 
+async function readQuotaConsumed(quotaPath) {
+  try {
+    const q = JSON.parse(await readFile(quotaPath, 'utf8'));
+    const today = new Date().toISOString().slice(0, 10);
+    if (!q || q.utcDate !== today) return 0;
+    return Number.isInteger(q.consumed) ? q.consumed : 0;
+  } catch (e) {
+    if (e && e.code === 'ENOENT') return 0;
+    throw e;
+  }
+}
+
 async function runServe() {
-  const live = process.argv.includes('--live');
-  log(`== postman:serve (${live ? 'LIVE one-shot quota' : 'cache-only default'}) ==`);
+  let flags;
+  try {
+    flags = parseServeFlags(process.argv);
+  } catch (e) {
+    fail(e.message || String(e));
+    return 2;
+  }
+
+  const { live, dailyLimit } = flags;
+  log(
+    `== postman:serve (${live ? `LIVE daily-limit=${dailyLimit} (TOTAL UTC-day invocations)` : 'cache-only'}) ==`,
+  );
   await mkdir(localDir, { recursive: true });
 
   const dotenv = await readDotEnv();
   const key = `gui${randomKey(16)}`;
   const apiPort = await freePort();
-  const cacheDir = join(localDir, live ? 'serve-live-cache' : 'serve-cache');
+  // Shared with postman:live — preserves CERN (and other) captures + quota.
+  const cacheDir = sharedCacheDir;
   await mkdir(cacheDir, { recursive: true });
+  const quotaPath = join(cacheDir, 'apify-quota.json');
+
+  let alreadyConsumed = 0;
+  try {
+    alreadyConsumed = await readQuotaConsumed(quotaPath);
+  } catch (e) {
+    fail(`Shared quota file unreadable (${quotaPath}): ${e.message}`);
+    return 3;
+  }
 
   const env = {
     HOST: '127.0.0.1',
@@ -566,20 +610,50 @@ async function runServe() {
       fail('APIFY_TOKEN required for postman:serve --live');
       return 2;
     }
+    if (alreadyConsumed >= dailyLimit) {
+      fail(
+        `Shared quota already at ${alreadyConsumed}/${dailyLimit} for today. ` +
+          'Cached pages still work with: npm run postman:serve. ' +
+          'To allow more TOTAL invocations today (not extra free calls): ' +
+          `npm run postman:serve -- --live --daily-limit=${Math.min(alreadyConsumed + 1, 10)} ` +
+          '(does not reset prior consumption).',
+      );
+      return 3;
+    }
     env.APIFY_TOKEN = token;
-    env.APIFY_DAILY_RUN_LIMIT = '1';
-    env.APIFY_MAX_CHARGE_USD_PER_RUN =
-      dotenv.APIFY_MAX_CHARGE_USD_PER_RUN?.trim() || '0.15';
+    env.APIFY_DAILY_RUN_LIMIT = String(dailyLimit);
+    env.APIFY_MAX_CHARGE_USD_PER_RUN = resolveMaxChargeUsd(dotenv);
     env.APIFY_BASE_URL = dotenv.APIFY_BASE_URL || 'https://api.apify.com';
+    env.APIFY_ACTOR = dotenv.APIFY_ACTOR || 'apify~facebook-posts-scraper';
+    if (dotenv.APIFY_INPUT && String(dotenv.APIFY_INPUT).trim()) {
+      env.APIFY_INPUT = dotenv.APIFY_INPUT;
+    }
+    log(
+      `Shared cache: ${cacheDir} | quota so far today: ${alreadyConsumed}/${dailyLimit} ` +
+        `(--daily-limit is TOTAL daily invocations, not additional calls, not USD).`,
+    );
+    log('No Apify call on startup — only an explicit Postman Send to an uncached page can scrape.');
   } else {
     env.APIFY_TOKEN = dotenv.APIFY_TOKEN || '';
     env.APIFY_DAILY_RUN_LIMIT = '0';
-    log('Cache-only mode (APIFY_DAILY_RUN_LIMIT=0). Use --live for one controlled Apify call.');
+    log(`Shared cache (read/serve): ${cacheDir}`);
+    log(
+      'Cache-only mode (APIFY_DAILY_RUN_LIMIT=0). Previously captured pages (e.g. CERN) are served from disk; new pages will not scrape.',
+    );
+    log('Controlled live: npm run postman:serve -- --live [--daily-limit=3]');
   }
 
   const child = spawnApi(env);
   const baseUrl = `http://127.0.0.1:${apiPort}`;
   await waitHealth(baseUrl);
+
+  // Confirm warmer did not fire (no automatic scrape).
+  const bootLog = child.__log();
+  if (/cache warmer: \d+ page/.test(bootLog)) {
+    fail('Unexpected cache warmer activity at startup');
+    await cleanup();
+    return 1;
+  }
 
   const envPath = join(localDir, 'Facebook-Posts-Local.generated.postman_environment.json');
   const envDoc = {
@@ -600,11 +674,14 @@ async function runServe() {
   await writeFile(envPath, `${JSON.stringify(envDoc, null, 2)}\n`, 'utf8');
 
   log(`Listening: ${baseUrl}`);
+  log(`CACHE_DIR: ${cacheDir}`);
   log(`Import environment (gitignored): ${envPath}`);
   log('Import collection: postman/Facebook-Posts-API.postman_collection.json');
-  log('Select the generated environment, open Folder 02 → Get Latest 10 Posts, press Send.');
+  log('Select the generated environment, open Folder 02 → Get Latest 10 Posts.');
+  log('Change only pageUrl / limit in the environment, then press Send.');
+  log('meta.source=cache|stale-cache means no new Apify call; meta.source=live means a scrape ran.');
   log('WARNING: Importing a populated environment into a synced Postman workspace may upload variable values.');
-  log('The generated API key is in the environment file only — it is not printed here.');
+  log('The generated API key is in the environment file only — it is not printed here. Never put APIFY_TOKEN in Postman.');
   log('Press Ctrl+C to stop.');
 
   const shutdown = async () => {
@@ -621,7 +698,14 @@ async function runServe() {
 async function main() {
   const mode = (process.argv[2] || '').toLowerCase();
   if (!['offline', 'live', 'serve'].includes(mode)) {
-    console.error('Usage: node scripts/postman-runner.js <offline|live|serve> [--live]');
+    console.error(
+      'Usage:\n' +
+        '  node scripts/postman-runner.js offline\n' +
+        '  node scripts/postman-runner.js live\n' +
+        '  node scripts/postman-runner.js serve\n' +
+        '  node scripts/postman-runner.js serve --live\n' +
+        '  node scripts/postman-runner.js serve --live --daily-limit=3',
+    );
     process.exit(2);
   }
 

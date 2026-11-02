@@ -14,20 +14,74 @@ Automated runners (from repo root):
 ```bash
 npm run postman:offline   # fake upstream, zero Apify cost
 npm run postman:live      # ONE controlled real Apify call (needs APIFY_TOKEN in .env)
-npm run postman:serve     # local API for Postman Desktop (cache-only by default)
-npm run postman:serve -- --live   # serve with daily limit 1 + USD cap
+npm run postman:serve     # Desktop API — cache-only (recommended default)
+npm run postman:serve -- --live
+npm run postman:serve -- --live --daily-limit=3
 ```
 
 Generating JSON files does **not** import them into Postman Desktop or a cloud workspace. You import once manually (or use Newman).
 
+## Shared local cache (important)
+
+`postman:live` and `postman:serve` both use:
+
+```text
+.postman-local/live-cache
+```
+
+That directory holds:
+
+- Normalized page cache files (including a previously captured CERN response, if present)
+- `apify-quota.json` (UTC-day Apify invocation counter)
+
+Quota is **never reset** by starting serve. Raising `--daily-limit` only raises the **total** allowed invocations for the day; prior consumption still counts.
+
+## Recommended Desktop commands
+
+### Cache-only (safe, no new Apify)
+
+```bash
+npm run postman:serve
+```
+
+- `APIFY_DAILY_RUN_LIMIT=0`
+- Serves pages already in `.postman-local/live-cache` (e.g. CERN after a successful `postman:live`)
+- New / uncached `pageUrl` values return the normal error envelope (`502 UPSTREAM_UNAVAILABLE`) — no scrape
+
+### Controlled live (optional)
+
+```bash
+npm run postman:serve -- --live
+```
+
+Default live budget: **1 total** Apify invocation for the UTC day in the shared cache.
+
+Allow a higher **total** daily budget (example: 3):
+
+```bash
+npm run postman:serve -- --live --daily-limit=3
+```
+
+Meaning of `--daily-limit=3`:
+
+- It is the **maximum Apify invocations for today** in `.postman-local/live-cache`
+- It is **not** “3 extra calls on top of what you already used”
+- It is **not** a USD spending limit (USD is capped separately via `APIFY_MAX_CHARGE_USD_PER_RUN`, default `0.15`, or a lower value already set in `.env`)
+- If you already consumed 1 today, `--daily-limit=3` permits **2 more** scrapes (3 total)
+- Valid range: `1`–`10`
+- Requires `--live`
+- `UPSTREAM_RETRIES=0`, `WARM_PAGES` empty — **no scrape on startup**; only an explicit Postman **Send** to an uncached page can call Apify
+
+When today’s shared quota is already at the configured limit, serve refuses to start in live mode and tells you to use cache-only or raise the **total** `--daily-limit`.
+
 ## Authentication
 
-The API accepts credentials **only** via headers:
+Headers only:
 
-- `x-api-key: <secret>` (used by this collection), or
+- `x-api-key: <secret>` (collection default), or
 - `Authorization: Bearer <secret>`
 
-Never put `APIFY_TOKEN` in Postman. Never put production API keys in a synced Postman workspace unless you accept that workspace members can read them.
+**Never** put `APIFY_TOKEN` in Postman. Never put production API keys in a **synced** Postman workspace unless you accept that workspace members can read them.
 
 ## Collection folders
 
@@ -40,43 +94,51 @@ Never put `APIFY_TOKEN` in Postman. Never put production API keys in a synced Po
 
 ## Minimum Desktop workflow
 
-1. Start a local API that matches Postman variables:
+1. Start the API (cache-only recommended):
 
    ```bash
    npm run postman:serve
    ```
 
-   Note the printed `Listening:` URL and the **gitignored** environment path under `.postman-local/`.
+   Note `Listening:`, `CACHE_DIR:`, and the gitignored environment path under `.postman-local/`.
 
-2. In Postman Desktop: **Import** → select  
+2. In Postman Desktop: **Import** →  
    - `postman/Facebook-Posts-API.postman_collection.json`  
-   - the generated `.postman-local/Facebook-Posts-Local.generated.postman_environment.json`
+   - `.postman-local/Facebook-Posts-Local.generated.postman_environment.json`
 
 3. Select environment **Facebook Posts API — Local Generated**.
 
 4. Open **02 — Real Facebook Posts → Get Latest 10 Posts**.
 
-5. Optionally change only `pageUrl` (e.g. another public page). Leave `apiKey` as generated.
+5. Set environment variables as needed (no collection rebuild):
 
-6. Press **Send**.
+   - `pageUrl` — public Facebook page URL (default `https://www.facebook.com/cern`)
+   - `limit` — default `10`
 
-Default `pageUrl` is `https://www.facebook.com/cern`, `limit` is `10`.
+6. Press **Send**. Authentication uses the generated `apiKey` automatically.
 
-### Cache-only vs live serve
+### How to tell live vs cached
 
-- `npm run postman:serve` sets `APIFY_DAILY_RUN_LIMIT=0` (serves cache / refuses new upstream).  
-- `npm run postman:serve -- --live` allows **one** Apify run with `APIFY_MAX_CHARGE_USD_PER_RUN=0.15` (unless already set lower in `.env`).
+| `meta.source` | Meaning |
+|---------------|---------|
+| `live` | This response came from a fresh upstream scrape (counts toward daily Apify quota) |
+| `cache` | Fresh disk/memory hit — **no** new Apify call |
+| `stale-cache` | Served from cache while refresh rules apply — still not a failed wipe |
+
+### Quota exhausted
+
+- Cached pages keep working (`source=cache` / `stale-cache`)
+- Uncached pages return `{ "success": false, "error": { "code": "…", "message": "…" } }` (typically `502 UPSTREAM_UNAVAILABLE` when the daily budget blocks Apify)
+- No extra Apify attempts are consumed when the reservation fails closed
 
 ## Safe vs paid
 
 | Action | Cost |
 |--------|------|
-| `postman:offline`, folders 01–06 via Newman | None (fake upstream) |
-| Folder 03–04 against a warm local cache | None |
-| `postman:live` or first cold live GET | **Paid** Apify (capped) |
-| Changing `pageUrl` to a new uncached page while live is enabled | May bill |
-
-`meta.source` is `live` | `cache` | `stale-cache`. Fake offline runs still show `live` when the fake upstream answered — that is synthetic, not Apify.
+| `postman:offline` | None (fake upstream) |
+| `postman:serve` (cache-only) + cached `pageUrl` | None |
+| `postman:live` / `postman:serve -- --live` + **uncached** `pageUrl` | Paid Apify (capped) |
+| Changing `pageUrl` alone | Only bills if that page is not already cached **and** live mode has remaining daily budget |
 
 ## Regenerating the collection
 
@@ -86,6 +148,6 @@ npm run postman:collection
 
 ## Security notes
 
-- Committed environment template keeps `apiKey` empty.  
-- Generated GUI environments live under `.postman-local/` (gitignored).  
-- Importing a populated environment into a **synced** Postman workspace can upload those values — prefer local/untracked environments for secrets.
+- Committed environment template keeps `apiKey` empty  
+- Generated GUI environments live under `.postman-local/` (gitignored)  
+- Importing a populated environment into a **synced** Postman cloud workspace can upload secret variable values — prefer local/untracked environments for keys  
