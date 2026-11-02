@@ -1,5 +1,6 @@
 import { ProviderError, isRetryableStatus } from '../errors.js';
 import { normalizeItems } from '../normalize.js';
+import { createApifyQuota } from '../apifyQuota.js';
 
 export function fillTemplate(node, vars) {
   if (typeof node === 'string') {
@@ -13,11 +14,35 @@ export function fillTemplate(node, vars) {
   return node;
 }
 
-export function createApifyProvider(config) {
+export function buildApifyRunUrl(cfg) {
+  const u = new URL(
+    `${cfg.baseUrl}/v2/acts/${encodeURIComponent(cfg.actor)}/run-sync-get-dataset-items`,
+  );
+  u.searchParams.set('format', 'json');
+  u.searchParams.set('clean', 'true');
+  if (cfg.maxChargeUsdPerRun != null) {
+    u.searchParams.set('maxTotalChargeUsd', String(cfg.maxChargeUsdPerRun));
+  }
+  return u.toString();
+}
+
+export function createApifyProvider(config, { quota } = {}) {
   const cfg = config.apify;
+  const quotaManager = quota || createApifyQuota({
+    stateDir: config.cacheDir,
+    dailyLimit: cfg.dailyRunLimit,
+  });
 
   async function fetchRaw(ref, limit) {
-    const url = `${cfg.baseUrl}/v2/acts/${encodeURIComponent(cfg.actor)}/run-sync-get-dataset-items?format=json&clean=true`;
+    const reservation = await quotaManager.reserve();
+    if (!reservation.ok) {
+      throw new ProviderError('apify daily run budget exhausted', {
+        retryable: false,
+        status: 429,
+      });
+    }
+
+    const url = buildApifyRunUrl(cfg);
     const input = fillTemplate(cfg.input, { pageUrl: ref.url, limit });
 
     let res;
@@ -54,6 +79,7 @@ export function createApifyProvider(config) {
   return {
     name: 'apify',
     supports: () => Boolean(cfg.token),
+    quota: quotaManager,
     fetchRaw,
     async fetch(ref, limit) {
       return normalizeItems(await fetchRaw(ref, limit), ref, limit);

@@ -5,6 +5,33 @@ const toInt = (v, d) => {
 const toList = (v) => String(v ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
 const DEFAULT_APIFY_INPUT = '{"startUrls":[{"url":"{{PAGE_URL}}"}],"resultsLimit":"{{LIMIT}}"}';
+export const WARM_CONCURRENCY_MAX = 8;
+
+/** Non-negative integer; empty/undefined -> default. Invalid -> throw. */
+function requireNonNegInt(raw, name, defaultValue) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return defaultValue;
+  const s = String(raw).trim();
+  if (!/^\d+$/.test(s)) throw new Error(`${name} must be a non-negative integer`);
+  return Number.parseInt(s, 10);
+}
+
+/** Positive integer >= 1; empty -> default. */
+function requirePositiveInt(raw, name, defaultValue, max) {
+  const n = requireNonNegInt(raw, name, defaultValue);
+  if (n < 1) throw new Error(`${name} must be a positive integer`);
+  if (max !== undefined && n > max) throw new Error(`${name} must be <= ${max}`);
+  return n;
+}
+
+/** Optional finite positive decimal; empty -> null. */
+function requireOptionalPositiveDecimal(raw, name) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const s = String(raw).trim();
+  if (!/^\d+(\.\d+)?$/.test(s)) throw new Error(`${name} must be a finite positive decimal`);
+  const n = Number(s);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${name} must be a finite positive decimal`);
+  return n;
+}
 
 export function loadConfig(env = process.env) {
   const apiKeys = toList(env.API_KEYS).map((entry) => {
@@ -31,6 +58,26 @@ export function loadConfig(env = process.env) {
     throw new Error('APIFY_INPUT must be valid JSON');
   }
 
+  // 12 is an example operational invocation limit, not a guaranteed financial budget.
+  const dailyRunLimit = requireNonNegInt(env.APIFY_DAILY_RUN_LIMIT, 'APIFY_DAILY_RUN_LIMIT', 12);
+  const maxChargeUsdPerRun = requireOptionalPositiveDecimal(
+    env.APIFY_MAX_CHARGE_USD_PER_RUN,
+    'APIFY_MAX_CHARGE_USD_PER_RUN',
+  );
+
+  const warmIntervalSeconds = requireNonNegInt(env.WARM_INTERVAL_SECONDS, 'WARM_INTERVAL_SECONDS', 3600);
+  const warmStartupDelaySeconds = requireNonNegInt(
+    env.WARM_STARTUP_DELAY_SECONDS,
+    'WARM_STARTUP_DELAY_SECONDS',
+    10,
+  );
+  const warmConcurrency = requirePositiveInt(
+    env.WARM_CONCURRENCY,
+    'WARM_CONCURRENCY',
+    1,
+    WARM_CONCURRENCY_MAX,
+  );
+
   return {
     port: toInt(env.PORT, 3000),
     host: env.HOST || '0.0.0.0',
@@ -45,12 +92,18 @@ export function loadConfig(env = process.env) {
     providers: toList(env.PROVIDERS || 'graph,apify').map((s) => s.toLowerCase()),
     retries: toInt(env.UPSTREAM_RETRIES, 2),
     backoffMs: toInt(env.RETRY_BACKOFF_MS, 2000),
+    warmPagesRaw: env.WARM_PAGES || '',
+    warmIntervalMs: warmIntervalSeconds * 1000,
+    warmStartupDelayMs: warmStartupDelaySeconds * 1000,
+    warmConcurrency,
     apify: {
       token: env.APIFY_TOKEN || '',
       actor: (env.APIFY_ACTOR || 'apify~facebook-posts-scraper').replace('/', '~'),
       baseUrl: (env.APIFY_BASE_URL || 'https://api.apify.com').replace(/\/+$/, ''),
       input: apifyInput,
       timeoutMs: toInt(env.APIFY_TIMEOUT_MS, 150000),
+      dailyRunLimit,
+      maxChargeUsdPerRun,
     },
     graph: {
       tokens: graphTokens,
