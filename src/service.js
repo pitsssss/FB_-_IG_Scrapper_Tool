@@ -104,5 +104,25 @@ export function createService(config, providers = buildProviders(config)) {
     return respond(fresh, 'live', limit);
   }
 
-  return { getPosts };
+  /**
+   * Internal cache warming entrypoint (not HTTP). Skips fresh entries and cooldown;
+   * reuses single-flight refresh; never clears existing cache on failure.
+   */
+  async function warm(ref) {
+    const entry = await cache.get(ref.key);
+    if (entry && Date.now() - entry.fetchedAt < config.freshTtlMs) {
+      return { key: ref.key, outcome: 'skipped-fresh' };
+    }
+    if (coolingDown(ref.key)) {
+      return { key: ref.key, outcome: 'skipped-cooldown' };
+    }
+    try {
+      await refresh(ref);
+      return { key: ref.key, outcome: 'refreshed' };
+    } catch (err) {
+      return { key: ref.key, outcome: 'failed', error: err?.message || String(err) };
+    }
+  }
+
+  return { getPosts, warm };
 }

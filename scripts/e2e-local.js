@@ -164,6 +164,9 @@ async function main() {
     ALLOWED_PAGES: '',
     RATE_LIMIT_PER_MIN: '1000',
     GRAPH_PAGE_TOKENS: '',
+    // High limit so original scenarios are unaffected; dedicated quota scenarios use isolated dirs.
+    APIFY_DAILY_RUN_LIMIT: '1000',
+    WARM_PAGES: '',
   };
 
   let api = spawnApi(commonEnv);
@@ -397,6 +400,197 @@ async function main() {
   );
   await stopChild(corsChild);
 
+  // ---- 10. quota persistence / exhaustion ----
+  console.log('\n== 10. apify quota ==');
+  await setMode(upstreamBase, 'ok');
+  await fetch(`${upstreamBase}/__reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  const quotaDir = await mkdtemp(join(tmpdir(), 'fb-e2e-quota-'));
+  extraDirs.push(quotaDir);
+  const quotaPort = await freePort();
+  usedPorts.push(quotaPort);
+  const quotaUrl = `http://127.0.0.1:${quotaPort}`;
+  let quotaChild = spawnApi({
+    ...commonEnv,
+    PORT: String(quotaPort),
+    CACHE_DIR: quotaDir,
+    APIFY_DAILY_RUN_LIMIT: '2',
+    UPSTREAM_RETRIES: '0',
+    RETRY_COOLDOWN_SECONDS: '0',
+    FRESH_TTL_SECONDS: '3600',
+    APIFY_MAX_CHARGE_USD_PER_RUN: '0.15',
+  });
+  await waitHealth(quotaUrl);
+
+  const q1 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage1')}`, { key: apiKey });
+  const q2 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage2')}`, { key: apiKey });
+  check('quota: first two invocations succeed', q1.status === 200 && q2.status === 200, `s1=${q1.status} s2=${q2.status}`);
+  const qIds = (q1.body?.data?.posts || []).map((p) => p.id).join(',');
+
+  const lastRes = await fetch(`${upstreamBase}/__last`);
+  const lastBody = await lastRes.json();
+  check(
+    'quota: maxTotalChargeUsd present on outbound URL',
+    typeof lastBody.url === 'string' && lastBody.url.includes('maxTotalChargeUsd=0.15'),
+    `url=${lastBody.url}`,
+  );
+
+  const statsBeforeThird = await getStats(upstreamBase);
+  const q3 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage3')}`, { key: apiKey });
+  const statsAfterThird = await getStats(upstreamBase);
+  let q3Err = false;
+  try { assertErrorShape(q3.body); q3Err = true; } catch (e) { fail('quota third shape', e.message); }
+  check(
+    'quota: third no-cache denied without upstream call',
+    q3.status === 502 && q3Err && statsAfterThird.calls === statsBeforeThird.calls,
+    `status=${q3.status} callsDelta=${statsAfterThird.calls - statsBeforeThird.calls}`,
+  );
+
+  // Cached page still served after exhaustion
+  const qCached = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage1')}`, { key: apiKey });
+  check(
+    'quota: cached page still 200 after exhaustion',
+    qCached.status === 200 && (qCached.body?.data?.posts || []).map((p) => p.id).join(',') === qIds,
+    `status=${qCached.status} source=${qCached.body?.meta?.source}`,
+  );
+
+  // Restart preserves consumed count
+  await stopChild(quotaChild);
+  const statsBeforeRestart = await getStats(upstreamBase);
+  quotaChild = spawnApi({
+    ...commonEnv,
+    PORT: String(quotaPort),
+    CACHE_DIR: quotaDir,
+    APIFY_DAILY_RUN_LIMIT: '2',
+    UPSTREAM_RETRIES: '0',
+    RETRY_COOLDOWN_SECONDS: '0',
+    FRESH_TTL_SECONDS: '3600',
+  });
+  await waitHealth(quotaUrl);
+  const qAfterRestart = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage4')}`, { key: apiKey });
+  const statsAfterRestart = await getStats(upstreamBase);
+  check(
+    'quota: restart preserves consumption (no new upstream)',
+    qAfterRestart.status === 502 && statsAfterRestart.calls === statsBeforeRestart.calls,
+    `status=${qAfterRestart.status} callsDelta=${statsAfterRestart.calls - statsBeforeRestart.calls}`,
+  );
+
+  // Retries respect quota: limit 1, retries=1 -> only 1 outbound (second attempt blocked by quota)
+  await stopChild(quotaChild);
+  await fetch(`${upstreamBase}/__reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  await setMode(upstreamBase, 'fail');
+  const retryDir = await mkdtemp(join(tmpdir(), 'fb-e2e-qretry-'));
+  extraDirs.push(retryDir);
+  const retryPort = await freePort();
+  usedPorts.push(retryPort);
+  const retryUrl = `http://127.0.0.1:${retryPort}`;
+  const retryChild = spawnApi({
+    ...commonEnv,
+    PORT: String(retryPort),
+    CACHE_DIR: retryDir,
+    APIFY_DAILY_RUN_LIMIT: '1',
+    UPSTREAM_RETRIES: '1',
+    RETRY_BACKOFF_MS: '50',
+    RETRY_COOLDOWN_SECONDS: '0',
+  });
+  await waitHealth(retryUrl);
+  const beforeRetry = await getStats(upstreamBase);
+  const retryRes = await fetchJson(retryUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qretry')}`, { key: apiKey, timeoutMs: 30_000 });
+  const afterRetry = await getStats(upstreamBase);
+  check(
+    'quota: retries do not exceed daily limit',
+    retryRes.status === 502 && afterRetry.calls - beforeRetry.calls === 1,
+    `status=${retryRes.status} upstreamDelta=${afterRetry.calls - beforeRetry.calls}`,
+  );
+  await stopChild(retryChild);
+  await setMode(upstreamBase, 'ok');
+
+  // ---- 11. cache warmer ----
+  console.log('\n== 11. cache warmer ==');
+  await fetch(`${upstreamBase}/__reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  const warmDir = await mkdtemp(join(tmpdir(), 'fb-e2e-warm-'));
+  extraDirs.push(warmDir);
+  const warmPort = await freePort();
+  usedPorts.push(warmPort);
+  const warmUrl = `http://127.0.0.1:${warmPort}`;
+  const warmPage = 'https://www.facebook.com/e2ewarm';
+  const warmChild = spawnApi({
+    ...commonEnv,
+    PORT: String(warmPort),
+    CACHE_DIR: warmDir,
+    APIFY_DAILY_RUN_LIMIT: '50',
+    FRESH_TTL_SECONDS: '3600',
+    RETRY_COOLDOWN_SECONDS: '0',
+    UPSTREAM_RETRIES: '0',
+    WARM_PAGES: warmPage,
+    WARM_STARTUP_DELAY_SECONDS: '1',
+    WARM_INTERVAL_SECONDS: '0',
+    WARM_CONCURRENCY: '1',
+  });
+  await waitHealth(warmUrl);
+
+  // Wait until warmer has populated cache (poll GET until 200 cache/live)
+  let warmed = null;
+  const warmDeadline = Date.now() + 10_000;
+  while (Date.now() < warmDeadline) {
+    const r = await fetchJson(warmUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(warmPage)}`, { key: apiKey });
+    if (r.status === 200 && (r.body?.data?.posts || []).length) {
+      warmed = r;
+      break;
+    }
+    await sleep(200);
+  }
+  check(
+    'warmer: startup warms page for public GET',
+    warmed?.status === 200 && ['live', 'cache'].includes(warmed?.body?.meta?.source),
+    `status=${warmed?.status} source=${warmed?.body?.meta?.source} count=${warmed?.body?.meta?.count}`,
+  );
+  const warmIds = (warmed?.body?.data?.posts || []).map((p) => p.id).join(',');
+  const statsAfterWarm = await getStats(upstreamBase);
+
+  // Fresh: public GET + no extra upstream from a second GET
+  const warmHit = await fetchJson(warmUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(warmPage)}`, { key: apiKey });
+  const statsAfterHit = await getStats(upstreamBase);
+  check(
+    'warmer: fresh cache GET does not call upstream again',
+    warmHit.status === 200 && warmHit.body?.meta?.source === 'cache' && statsAfterHit.calls === statsAfterWarm.calls,
+    `source=${warmHit.body?.meta?.source} callsDelta=${statsAfterHit.calls - statsAfterWarm.calls}`,
+  );
+
+  // Single-flight: parallel GETs for a NEW page while warmer is stopped — use main API path
+  // Failure preservation: set upstream fail, force stale warm via short TTL instance
+  await stopChild(warmChild);
+  await setMode(upstreamBase, 'fail');
+  const warmFailPort = await freePort();
+  usedPorts.push(warmFailPort);
+  const warmFailUrl = `http://127.0.0.1:${warmFailPort}`;
+  const warmFailChild = spawnApi({
+    ...commonEnv,
+    PORT: String(warmFailPort),
+    CACHE_DIR: warmDir, // same cache with warmIds
+    APIFY_DAILY_RUN_LIMIT: '50',
+    FRESH_TTL_SECONDS: '0',
+    RETRY_COOLDOWN_SECONDS: '0',
+    UPSTREAM_RETRIES: '0',
+    WARM_PAGES: warmPage,
+    WARM_STARTUP_DELAY_SECONDS: '1',
+    WARM_INTERVAL_SECONDS: '0',
+  });
+  await waitHealth(warmFailUrl);
+  await sleep(1500); // allow failed warm attempt
+  const preserved = await fetchJson(warmFailUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(warmPage)}`, { key: apiKey });
+  check(
+    'warmer: cache preserved after upstream failure',
+    preserved.status === 200
+      && (preserved.body?.data?.posts || []).map((p) => p.id).join(',') === warmIds,
+    `status=${preserved.status} source=${preserved.body?.meta?.source}`,
+  );
+  await stopChild(warmFailChild);
+  await setMode(upstreamBase, 'ok');
+
+  // Scheduler cleanup already covered by stopChild; health of main API still ok
+  const mainHealth = await fetchJson(baseUrl, '/health');
+  check('warmer: main API still healthy after warmer instances stopped', mainHealth.status === 200, `status=${mainHealth.status}`);
+
   // ---- 9. security ----
   console.log('\n== 9. security ==');
   check('API key never in API logs', !apiLog.includes(apiKey), `logBytes=${apiLog.length}`);
@@ -404,7 +598,7 @@ async function main() {
 
   // sample a few response bodies for "dummy"
   const bodies = [
-    ...[baseLive, live3, stale, back, slow, persisted].map((r) => r?.text || JSON.stringify(r?.body || '')),
+    ...[baseLive, live3, stale, back, slow, persisted, q1, qCached, warmed, preserved].map((r) => r?.text || JSON.stringify(r?.body || '')),
     noOriginText,
   ];
   const dummyInBody = bodies.some((t) => t && t.includes(FAKE_TOKEN));

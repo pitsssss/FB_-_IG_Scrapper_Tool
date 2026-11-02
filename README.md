@@ -72,7 +72,61 @@ const { data } = await r.json();
 ```
 ملاحظة: أول طلب لصفحة جديدة ممكن ياخد 20–60 ثانية (تشغيل الـ scraper)، اعمل timeout طويل أو سخّن الكاش بطلب مسبق.
 
+## Apify usage protection (daily invocation budget)
+
+This API tracks **outbound Apify run-sync attempts made by this process**, not your whole Apify account spend.
+
+| Setting | Meaning |
+| --- | --- |
+| `APIFY_DAILY_RUN_LIMIT` | Max Apify HTTP invocations per **UTC day** (default `12`). `0` = cache-only (no Apify calls). |
+| `APIFY_MAX_CHARGE_USD_PER_RUN` | Optional Apify query param `maxTotalChargeUsd` for **one** Actor run. Empty = omit. |
+
+Important distinctions:
+- The daily limit counts **attempts** (including failures, timeouts, and retries). Cache hits and Graph calls do **not** count.
+- `maxTotalChargeUsd` caps a single Actor run; it is **not** a measured account-wide daily USD budget.
+- Other Apify usage outside this service is not tracked.
+- Consumption resets at the **first reservation on a new UTC date**. Changing the configured limit does **not** reset today's count.
+- Quota state lives in `CACHE_DIR/apify-quota.json` (atomic replace). If the file is corrupt or unwritable, Apify calls are **blocked** (fail closed) while existing post cache files are left intact.
+- **Production must run a single API replica/worker** with this filesystem quota. Multi-replica safety needs a shared transactional store (not implemented here).
+
+Inspect without mutating: `npm run quota:status`.
+
+## Automatic cache warming
+
+| Setting | Meaning |
+| --- | --- |
+| `WARM_PAGES` | Comma-separated Facebook page URLs. Empty disables the warmer. |
+| `WARM_INTERVAL_SECONDS` | Period between cycles. `0` = startup warm only. |
+| `WARM_CONCURRENCY` | Parallel warm refreshes (1–8). |
+| `WARM_STARTUP_DELAY_SECONDS` | Delay after listen before the first cycle. |
+
+Behavior:
+- The HTTP server becomes healthy immediately; warming runs in the background.
+- Fresh cache (`FRESH_TTL_SECONDS`) → **no** upstream call.
+- Stale/missing cache → existing refresh path (single-flight, cooldown, Apify quota, never overwrite good cache with empty/failed results).
+- Invalid `WARM_PAGES` URLs or pages outside `ALLOWED_PAGES` fail **startup** with a clear error.
+- Warming does **not** go through public auth, CORS, or API rate limits.
+- SIGINT/SIGTERM stop the warmer cleanly.
+
+### Illustrative example (not a cost/freshness SLA)
+
+Three pages, 6h fresh TTL, daily run limit 12, warm every hour:
+
+```env
+FRESH_TTL_SECONDS=21600
+APIFY_DAILY_RUN_LIMIT=12
+WARM_PAGES=https://www.facebook.com/pageA,https://www.facebook.com/pageB,https://www.facebook.com/pageC
+WARM_INTERVAL_SECONDS=3600
+WARM_CONCURRENCY=1
+WARM_STARTUP_DELAY_SECONDS=10
+```
+
+With a 6h TTL, hourly warming usually hits **skipped-fresh** and does not spend Apify attempts. Attempts are used when cache is missing/stale, or after upstream/quota failures according to cooldown. Persist `CACHE_DIR` on a volume so both posts cache and `apify-quota.json` survive restarts.
+
+When Apify is unavailable or the daily quota is exhausted: cached pages keep serving (`cache` / `stale-cache`); pages with no cache return the existing `UPSTREAM_UNAVAILABLE` error envelope.
+
 ## ملاحظات مهمة
 - روابط الصور واللوغو من CDN فيسبوك بتنتهي صلاحيتها بعد أيام؛ استعمل `onerror` بالـ `<img>` وارجع لـ `page.logo_fallback`.
 - `ALLOWED_PAGES` بيحدد الصفحات المسموحة (بيحمي رصيدك من إساءة الاستخدام).
 - الـ scraping لصفحات عامة بيخالف شروط استخدام فيسبوك من ناحية تقنية؛ للصفحات اللي بتملكها استعمل Graph API.
+- Run **one** API container/replica while using the filesystem Apify quota.

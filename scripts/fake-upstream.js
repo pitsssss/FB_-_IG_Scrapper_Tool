@@ -87,6 +87,7 @@ export function startFakeUpstream({ port = 0, fixturePath = null } = {}) {
   const items = loadFixtureItems(fixturePath);
   let mode = 'ok';
   let calls = 0;
+  let lastUrl = '';
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', 'http://127.0.0.1');
@@ -103,10 +104,14 @@ export function startFakeUpstream({ port = 0, fixturePath = null } = {}) {
       if (req.method === 'GET' && url.pathname === '/__stats') {
         return send(res, 200, { calls });
       }
+      if (req.method === 'GET' && url.pathname === '/__last') {
+        return send(res, 200, { url: lastUrl });
+      }
       if (req.method === 'POST' && url.pathname === '/__reset') {
         await readJson(req).catch(() => ({}));
         mode = 'ok';
         calls = 0;
+        lastUrl = '';
         return send(res, 200, { mode, calls });
       }
 
@@ -117,6 +122,7 @@ export function startFakeUpstream({ port = 0, fixturePath = null } = {}) {
           return send(res, 401, { error: 'unauthorized' });
         }
 
+        lastUrl = req.url || '';
         calls += 1;
         let body = {};
         try { body = await readJson(req); }
