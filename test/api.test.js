@@ -7,6 +7,7 @@ import path from 'node:path';
 import { loadConfig } from '../src/config.js';
 import { createApp } from '../src/server.js';
 import { parsePageRef } from '../src/pageRef.js';
+import { assertResponseShape, assertErrorShape } from './schema.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let mode = 'ok';
@@ -79,7 +80,7 @@ test('auth, validation, live fetch, then cache hit', async () => {
 
     const a = await get('page=https://www.facebook.com/cern');
     assert.equal(a.status, 200);
-    assert.equal(a.body.success, true);
+    assertResponseShape(a.body);
     assert.equal(a.body.meta.source, 'live');
     assert.equal(a.body.data.posts.length, 10);
     assert.equal(a.body.data.posts[0].id, 'p0');                 // newest first, pinned old post pushed down
@@ -89,6 +90,7 @@ test('auth, validation, live fetch, then cache hit', async () => {
       assert.ok(p.created_at && p.image && p.url);
     }
     const b = await get('page=https://www.facebook.com/cern&limit=3');
+    assertResponseShape(b.body);
     assert.equal(b.body.meta.source, 'cache');
     assert.equal(b.body.data.posts.length, 3);
   } finally { server.close(); }
@@ -103,12 +105,14 @@ test('upstream failure or empty result falls back to cached posts (never empty)'
     mode = 'fail';
     const r = await get('page=https://www.facebook.com/cern');
     assert.equal(r.status, 200);
+    assertResponseShape(r.body);
     assert.equal(r.body.meta.source, 'stale-cache');
     assert.equal(r.body.data.posts.length, 10);
     await sleep(100);
     mode = 'empty';
     const r2 = await get('page=https://www.facebook.com/cern');
     assert.equal(r2.status, 200);
+    assertResponseShape(r2.body);
     assert.equal(r2.body.data.posts.length, 10);
     await sleep(100);
     mode = 'ok';
@@ -124,7 +128,7 @@ test('no cache + upstream down => clean JSON error, not a crash', async () => {
   try {
     const r = await get('page=https://www.facebook.com/somepage');
     assert.equal(r.status, 502);
-    assert.equal(r.body.success, false);
+    assertErrorShape(r.body);
     assert.equal(r.body.error.code, 'UPSTREAM_UNAVAILABLE');
   } finally { server.close(); mode = 'ok'; }
 });

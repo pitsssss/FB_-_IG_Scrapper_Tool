@@ -8,7 +8,9 @@
   "scripts": {
     "start": "node --env-file=.env src/index.js",
     "start:prod": "node src/index.js",
-    "test": "node --test",
-    "capture": "node --env-file=.env scripts/capture-fixture.js"
+    "test": "node --test test/api.test.js test/fixture.test.js test/page-identity.test.js",
+    "capture": "node --env-file=.env scripts/capture-fixture.js",
+    "smoke": "node scripts/smoke.js",
+    "e2e": "node scripts/e2e-local.js"
   }
 }

@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeItems } from '../src/normalize.js';
+import { assertPageShape, assertPostShape } from './schema.js';
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
@@ -45,23 +46,17 @@ describe('apify fixtures', () => {
 
       assert.ok(posts.length >= 1, 'at least 1 post');
       assert.ok(posts.length <= 10, 'at most 10 posts');
+      assertPageShape(page);
 
       const ids = new Set();
       for (const post of posts) {
-        assert.ok(typeof post.id === 'string' && post.id.length > 0, 'non-empty id');
+        assertPostShape(post);
         assert.equal(typeof post.url, 'string');
         assert.ok(post.url.length > 0, 'url string');
         assert.ok(isIsoDate(post.created_at), `created_at valid ISO, got ${post.created_at}`);
-        assert.equal(typeof post.text, 'string');
-        assert.ok(Number.isInteger(post.stats.likes) && post.stats.likes >= 0);
-        assert.ok(Number.isInteger(post.stats.comments) && post.stats.comments >= 0);
-        assert.ok(Number.isInteger(post.stats.shares) && post.stats.shares >= 0);
         assert.ok(!ids.has(post.id), `duplicate id ${post.id}`);
         ids.add(post.id);
       }
-
-      assert.ok(typeof page.name === 'string' && page.name.trim().length > 0, 'page.name non-empty');
-      assert.match(page.logo, /^https:\/\//i, 'page.logo is https URL');
 
       const dated = posts.filter((p) => p.created_at);
       for (let i = 1; i < dated.length; i++) {
