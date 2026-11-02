@@ -1,0 +1,13 @@
+---
+description: Permanent rules for fb-posts-api
+alwaysApply: true
+---
+
+* Node >= 20.6, ES modules, ZERO runtime dependencies (devDependencies only if truly necessary, and ask first).
+* The public response shape ({success, data:{page, posts[]}, meta}) and the error shape ({success:false, error:{code,message}}) are a stable contract: never change field names/types; any change requires updating README, test/schema.js, docs/openapi.json (if present) and tests.
+* Never log or return secrets (API keys, tokens, upstream URLs containing tokens). Errors returned to clients must be generic.
+* Never overwrite a good cache entry with an empty or failed result.
+* Every behavior change needs tests. Run `npm test` before finishing every task; if it fails, fix and re-run; after 3 failed attempts stop and report the exact failure.
+* Make small commits with conventional messages after each completed task and push them to origin/main when the task is complete and tests pass. Never use force push. Never commit .env or any file containing real keys/tokens.
+* Do not modify files outside the scope of the task. Keep the code style consistent with existing files.
+* Finish every task with a report that contains: what changed, the exact verification commands you ran with their real output (trimmed), and a list of anything UNVERIFIED. Never claim something works unless you ran it.
