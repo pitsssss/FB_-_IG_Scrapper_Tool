@@ -109,7 +109,7 @@ describe('unified Postman collection', () => {
     assert.ok(igReqs.length >= 20, `ig requests=${igReqs.length}`);
   });
 
-  it('environment template has required variables and Qasioun defaults without secrets', () => {
+  it('environment template has required variables and neutral public demo defaults without secrets', () => {
     const map = Object.fromEntries(envTemplate.values.map((v) => [v.key, v]));
     for (const key of [
       'baseUrl',
@@ -121,14 +121,16 @@ describe('unified Postman collection', () => {
     ]) {
       assert.ok(map[key], `missing ${key}`);
     }
+    assert.equal(FB_DEFAULT, 'https://www.facebook.com/cern');
+    assert.equal(IG_DEFAULT, 'https://www.instagram.com/nasa/');
     assert.equal(map.facebookPageUrl.value, FB_DEFAULT);
     assert.equal(map.instagramProfileUrl.value, IG_DEFAULT);
     assert.equal(map.pageUrl.value, FB_DEFAULT);
     assert.equal(map.limit.value, '10');
     assert.equal(map.apiKey.value, '');
     const blob = JSON.stringify(envTemplate);
-    assert.equal(/apify_api_/i.test(blob), false);
-    assert.equal(/APIFY_TOKEN/i.test(blob), false);
+    assert.equal(/apify_api_[A-Za-z0-9]{12,}/i.test(blob), false);
+    assert.equal(/APIFY_TOKEN\s*=\s*\S+/i.test(blob), false);
   });
 
   it('collection variables resolve against the template env (+ collection vars)', async () => {

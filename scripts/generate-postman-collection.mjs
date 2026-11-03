@@ -24,8 +24,9 @@ const isDirectRun =
   Boolean(process.argv[1]) && resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1]);
 
 export const COLLECTION_NAME = 'Social Media Posts API — Facebook & Instagram';
+/** Neutral public demo defaults for the shareable Postman template (not customer accounts). */
 export const FB_DEFAULT = 'https://www.facebook.com/cern';
-export const IG_DEFAULT = 'https://www.instagram.com/nasa';
+export const IG_DEFAULT = 'https://www.instagram.com/nasa/';
 export const FB_UNAUTHORIZED_DEFAULT = 'https://www.facebook.com/nasa';
 export const IG_UNAUTHORIZED_DEFAULT = 'https://www.instagram.com/natgeo/';
 
@@ -239,7 +240,7 @@ function buildFacebookRealPosts() {
   return folder(
     'FB — 02 Real Posts',
     'CAUTION: cold cache + live Apify token may trigger ONE paid Facebook scrape.\n' +
-      'Prefer cache-only serve for Desktop. Default account: {{facebookPageUrl}} (Qasioun Journey).\n' +
+      'Prefer cache-only serve for Desktop. Default account: {{facebookPageUrl}} (public demo page).\n' +
       'Offline runner uses fake upstream — safe.',
     [
       getReq('Get Latest 10 Facebook Posts', {
@@ -337,8 +338,8 @@ function buildInstagramRealPosts() {
   return folder(
     'IG — 02 Real Posts',
     'CAUTION: cold cache may trigger ONE paid Instagram Post Scraper run.\n' +
-      'Default account: {{instagramProfileUrl}} (Qasioun Journey).\n' +
-      'Qasioun Instagram live scrape is NOT assumed verified — cache-only may return 502 if uncached.\n' +
+      'Default account: {{instagramProfileUrl}} (public demo profile).\n' +
+      'Cache-only mode returns 502 when the profile is uncached — do not assume a warm cache.\n' +
       'Do not assert real profile photo or carousel children without verification.\n' +
       'Offline runner uses fake upstream — safe.',
     [
@@ -986,7 +987,7 @@ const collection = {
       '- Offline Resilience subfolders require fakeUpstreamUrl (npm run postman:offline).\n' +
       '- Prefer `npm run postman:serve` (cache-only) for Desktop inspection.\n' +
       '- Real Posts may cost Apify credits if cache is cold — do not Run Collection blindly.\n' +
-      '- Default env accounts: Qasioun Journey Facebook + Instagram.\n' +
+      '- Default env accounts: public demo Facebook page + Instagram profile (CERN / NASA).\n' +
       '- Never put APIFY_TOKEN in Postman.',
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
   },
@@ -1023,7 +1024,7 @@ pm.test('no obvious secrets in any response body', function () {
       '02 — Instagram',
       'Instagram profile posts API. Default profile: {{instagramProfileUrl}}.\n' +
         'Endpoint: GET /api/v1/instagram/posts\n' +
-        'Qasioun Instagram live acceptance is NOT assumed — cache-only may 502 until explicitly scraped.',
+        'Cache-only Desktop may return 502 until the profile is present in local cache.',
       [
         buildHealthAuth('IG', 'instagramProfileUrl'),
         buildInstagramRealPosts(),

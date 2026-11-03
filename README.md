@@ -156,7 +156,7 @@ Expected: `{ "status": "ok" }`
 Replace `YOUR_API_KEY` and ensure the page/profile is allowed by your scopes/allowlists:
 
 ```bash
-curl -s "http://127.0.0.1:3000/api/v1/facebook/posts?page=https%3A%2F%2Fwww.facebook.com%2Fqasiounjourney1&limit=10" ^
+curl -s "http://127.0.0.1:3000/api/v1/facebook/posts?page=https%3A%2F%2Fwww.facebook.com%2Fcern&limit=10" ^
   -H "x-api-key: YOUR_API_KEY"
 ```
 
@@ -199,17 +199,17 @@ x-api-key: YOUR_API_KEY
 | `limit` | no | Same clamping rules as Facebook. |
 
 ```http
-GET /api/v1/instagram/posts?page=https://www.instagram.com/nasa&limit=10 HTTP/1.1
+GET /api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10 HTTP/1.1
 Host: 127.0.0.1:3000
 x-api-key: YOUR_API_KEY
 ```
 
-Default public examples used in local Postman environments:
+Illustrative public demo URLs used in the shareable Postman template (not guaranteed warm caches):
 
 - Facebook: `https://www.facebook.com/cern`
-- Instagram: `https://www.instagram.com/nasa`
+- Instagram: `https://www.instagram.com/nasa/`
 
-Port may differ when using `postman:serve` (generated `baseUrl`).
+Replace with your own authorized page/profile URLs (`YOUR_FACEBOOK_PAGE_URL` / `YOUR_INSTAGRAM_PROFILE_URL`). Port may differ when using `postman:serve` (generated `baseUrl`).
 
 ### Common HTTP statuses
 
@@ -346,7 +346,7 @@ Configured via `PROVIDERS` (default `graph,apify`). For each name:
 | --- | --- | --- |
 | Facebook Apify | `APIFY_TOKEN` | Used in controlled local live/Postman runs |
 | Meta Graph | `GRAPH_PAGE_TOKENS` | Optional; requires pages you manage—do not assume live-tested for every deploy |
-| Instagram posts Apify | same `APIFY_TOKEN` | Controlled NASA Instagram live acceptance has been used in development; Qasioun Instagram live is **not** assumed |
+| Instagram posts Apify | same `APIFY_TOKEN` | Covered by controlled provider integration testing against a public demo profile; other profiles are not assumed warm |
 | Instagram profile Actor | same token + shared quota | Optional; **disabled** unless `INSTAGRAM_PROFILE_ENRICHMENT=1`; not treated as live-verified here |
 
 Unavailable providers are skipped; if all fail and no cache exists → `502`. Good caches are never replaced with empty/failed results.
@@ -408,7 +408,7 @@ npm run postman:serve
 4. Open `01 — Facebook` → `FB — 02 Real Posts` → **Get Latest 10 Facebook Posts**.  
 5. Open `02 — Instagram` → `IG — 02 Real Posts` → **Get Latest 10 Instagram Posts**.
 
-Pre-filled variables: `facebookPageUrl` / `pageUrl` → Qasioun Facebook; `instagramProfileUrl` → Qasioun Instagram; `limit=10`; `baseUrl` and `apiKey` filled by serve.
+Pre-filled variables: `facebookPageUrl` / `pageUrl` → public demo Facebook page (CERN); `instagramProfileUrl` → public demo Instagram profile (NASA); `limit=10`; `baseUrl` and `apiKey` filled by serve. Optional private overrides: `POSTMAN_FACEBOOK_PAGE_URL`, `POSTMAN_INSTAGRAM_PROFILE_URL` (runtime only).
 
 Do **not** commit or sync the generated environment to a shared Postman cloud workspace.
 
@@ -489,7 +489,7 @@ Recommended pattern (server-to-server):
 
 ```js
 const url = new URL(`${API_BASE}/api/v1/facebook/posts`);
-url.searchParams.set('page', 'https://www.facebook.com/cern');
+url.searchParams.set('page', process.env.YOUR_FACEBOOK_PAGE_URL || 'https://www.facebook.com/cern');
 url.searchParams.set('limit', '10');
 
 const res = await fetch(url, {
@@ -527,7 +527,7 @@ Handle empty captions, stale-cache, and media URL expiry in your UI. Link out to
 12. Durable `CACHE_DIR` is required for cache/quota survival.  
 13. Filesystem quota is single-replica.  
 14. Offline/synthetic tests ≠ continuous live monitoring.  
-15. **Qasioun Instagram** live scrape/cache is not assumed verified (defaults are preconfigured for convenience).
+15. Public demo defaults are illustrative; a cold cache plus cache-only mode returns `502` until an intentional live seed exists.
 
 ## Troubleshooting
 

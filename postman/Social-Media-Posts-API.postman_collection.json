@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Social Media Posts API — Facebook & Instagram",
-    "description": "Unified Facebook & Instagram Posts API acceptance suite.\n\nTop-level folders:\n1. 01 — Facebook\n2. 02 — Instagram\n\nSafety:\n- Offline Resilience subfolders require fakeUpstreamUrl (npm run postman:offline).\n- Prefer `npm run postman:serve` (cache-only) for Desktop inspection.\n- Real Posts may cost Apify credits if cache is cold — do not Run Collection blindly.\n- Default env accounts: Qasioun Journey Facebook + Instagram.\n- Never put APIFY_TOKEN in Postman.",
+    "description": "Unified Facebook & Instagram Posts API acceptance suite.\n\nTop-level folders:\n1. 01 — Facebook\n2. 02 — Instagram\n\nSafety:\n- Offline Resilience subfolders require fakeUpstreamUrl (npm run postman:offline).\n- Prefer `npm run postman:serve` (cache-only) for Desktop inspection.\n- Real Posts may cost Apify credits if cache is cold — do not Run Collection blindly.\n- Default env accounts: public demo Facebook page + Instagram profile (CERN / NASA).\n- Never put APIFY_TOKEN in Postman.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -223,7 +223,7 @@
         },
         {
           "name": "FB — 02 Real Posts",
-          "description": "CAUTION: cold cache + live Apify token may trigger ONE paid Facebook scrape.\nPrefer cache-only serve for Desktop. Default account: {{facebookPageUrl}} (Qasioun Journey).\nOffline runner uses fake upstream — safe.",
+          "description": "CAUTION: cold cache + live Apify token may trigger ONE paid Facebook scrape.\nPrefer cache-only serve for Desktop. Default account: {{facebookPageUrl}} (public demo page).\nOffline runner uses fake upstream — safe.",
           "item": [
             {
               "name": "Get Latest 10 Facebook Posts",
@@ -3245,7 +3245,7 @@
     },
     {
       "name": "02 — Instagram",
-      "description": "Instagram profile posts API. Default profile: {{instagramProfileUrl}}.\nEndpoint: GET /api/v1/instagram/posts\nQasioun Instagram live acceptance is NOT assumed — cache-only may 502 until explicitly scraped.",
+      "description": "Instagram profile posts API. Default profile: {{instagramProfileUrl}}.\nEndpoint: GET /api/v1/instagram/posts\nCache-only Desktop may return 502 until the profile is present in local cache.",
       "item": [
         {
           "name": "IG — 01 Health & Authentication",
@@ -3420,7 +3420,7 @@
         },
         {
           "name": "IG — 02 Real Posts",
-          "description": "CAUTION: cold cache may trigger ONE paid Instagram Post Scraper run.\nDefault account: {{instagramProfileUrl}} (Qasioun Journey).\nQasioun Instagram live scrape is NOT assumed verified — cache-only may return 502 if uncached.\nDo not assert real profile photo or carousel children without verification.\nOffline runner uses fake upstream — safe.",
+          "description": "CAUTION: cold cache may trigger ONE paid Instagram Post Scraper run.\nDefault account: {{instagramProfileUrl}} (public demo profile).\nCache-only mode returns 502 when the profile is uncached — do not assume a warm cache.\nDo not assert real profile photo or carousel children without verification.\nOffline runner uses fake upstream — safe.",
           "item": [
             {
               "name": "Get Latest 10 Instagram Posts",
