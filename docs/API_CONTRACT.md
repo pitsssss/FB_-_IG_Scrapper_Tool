@@ -57,6 +57,7 @@ Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID
 - Controlled dry-run / paid profile validation: `npm run postman:instagram:profile` (default dry-run). Paid path requires `--execute-paid --confirm-cost` and never calls the Post Scraper.
 - Sidecar/`basicData`: live NASA capture had `Sidecar` type **without** `childPosts`/`images` → cover `displayUrl` only (incomplete carousel). Complete carousels map `childPosts` in order when present. Do **not** enable `detailedData` without explicit approval.
 - Controlled live posts: `npm run postman:instagram:live` (shared `.postman-local/live-cache`).
+- Unified Postman Collection: `postman/Social-Media-Posts-API.postman_collection.json` (folders `01 — Facebook` / `02 — Instagram`). Desktop: `npm run postman:serve` then import the collection + `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`. Default env accounts are Qasioun Journey; Qasioun Instagram live acceptance is **not** assumed until an explicit paid seed.
 
 ## Success response shape
 
