@@ -1,0 +1,236 @@
+{
+  "_meta": {
+    "source": "Derived from one controlled live Apify instagram-post-scraper run (basicData) for nasa.",
+    "note": "CDN URLs scrubbed. Captions truncated. Not a full raw dump. Do not treat as live proof.",
+    "actor": "apify/instagram-post-scraper",
+    "dataDetailLevel": "basicData",
+    "skipPinnedPosts": true,
+    "capturedUtcDate": "2026-11-03",
+    "limitations": "basicData did not include ownerProfilePicUrl or childPosts for Sidecar; logo uses documented fallback."
+  },
+  "items": [
+    {
+      "caption": "Calm on the outside, chaotic on the inside. 😵‍💫\n\nAt the center of this serene scene, stars bulge out at an unusual angle. Astronomers think this is because th…",
+      "commentsCount": 541,
+      "dimensionsHeight": 1440,
+      "dimensionsWidth": 1440,
+      "displayUrl": "https://cdn.example.invalid/ig/a484d1d3a737.bin",
+      "id": "4021644945136250077",
+      "isPinned": false,
+      "likesCount": 159474,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "DfPwMUfl2zd",
+      "timestamp": "2026-11-02T16:37:45.000Z",
+      "type": "Image",
+      "url": "https://www.instagram.com/p/DfPwMUfl2zd/"
+    },
+    {
+      "caption": "Our Sun knows how to get in the spirit! 🎃\n \nYears ago, our Solar Dynamics Observatory caught our Sun looking like a jack-o’-lantern, with active regions shaped…",
+      "commentsCount": 4336,
+      "dimensionsHeight": 1000,
+      "dimensionsWidth": 1000,
+      "displayUrl": "https://cdn.example.invalid/ig/62b5a9ceff16.bin",
+      "id": "4019572332096057149",
+      "isPinned": false,
+      "likesCount": 1666388,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "DfIY71Lku89",
+      "timestamp": "2026-10-30T19:59:43.000Z",
+      "type": "Sidecar",
+      "url": "https://www.instagram.com/p/DfIY71Lku89/"
+    },
+    {
+      "caption": "We mourn the passing of Patrick Stewart, who inspired countless individuals at NASA (and beyond) to boldly go where no one has gone before.",
+      "commentsCount": 1364,
+      "dimensionsHeight": 1080,
+      "dimensionsWidth": 1440,
+      "displayUrl": "https://cdn.example.invalid/ig/2e7af42218fb.bin",
+      "id": "4019402550738901907",
+      "isPinned": false,
+      "likesCount": 581023,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "DfHyVL-F1uT",
+      "timestamp": "2026-10-30T14:22:29.000Z",
+      "type": "Image",
+      "url": "https://www.instagram.com/p/DfHyVL-F1uT/"
+    },
+    {
+      "caption": "More power loading. 🔋\n\nToday, NASA astronaut Anil Menon and CSA (Canadian Space Agency) astronaut Joshua Kutryk conducted a spacewalk to install the 7th of 8 n…",
+      "coauthorProducers": [
+        {
+          "username": "iss",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.82787-19/524387219_18515253022013390_8734863048221656878_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=1&ig_cache_key=GJODQR-Ot01HhsdBAC4H8L6pdzh5bmNDAQAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4zNjAuQzMifQ%3D%3D&_nc_ohc=Kdql_FMM_PYQ7kNvwFWT-v3&_nc_oc=Ado_-GUiFWvA8UqMQcv7jqL6BsGjIWOCFrrgTfW3H9L-YkynnLfY6Feo_A0ZuVlw2us&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_gid=0OLI5Ne8_RvNZTyL6xaY-Q&_nc_ss=70689&oh=00_AQQWeK5E2d2U4TqnE2OjqYFWO2hfy_tiR3HiPzq1xuvicA&oe=6AEFA795",
+          "id": "17841400401684895"
+        },
+        {
+          "username": "nasa",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.2885-19/29090066_159271188110124_1152068159029641216_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=1&ig_cache_key=GBLhuwEsG5c225AAAAAAAADj9-wPbkULAAAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=3NFtqXD_s1wQ7kNvwG5I6ud&_nc_oc=AdrUsmpog8_m7Vn4nfnd-UJlAyW_j7RTW9FXFTMzAVP2bn6oFMNYDfhkMU5pFKJKQdE&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_ss=70689&oh=00_AQQR3QvwoL5i6kZxu7ubIUD7mLX1E_kdyv3TnoLFnKEGMg&oe=6AEF8329",
+          "id": "17841401474538262"
+        }
+      ],
+      "commentsCount": 148,
+      "dimensionsHeight": 1280,
+      "dimensionsWidth": 720,
+      "displayUrl": "https://cdn.example.invalid/ig/bd7a545ff72a.bin",
+      "id": "4018862241843028636",
+      "isPinned": false,
+      "likesCount": 14224,
+      "ownerId": "673882723",
+      "ownerUsername": "nasajohnson",
+      "shortCode": "DfF3eqGSKKc",
+      "timestamp": "2026-10-29T20:35:35.000Z",
+      "type": "Video",
+      "url": "https://www.instagram.com/p/DfF3eqGSKKc/",
+      "videoUrl": "https://cdn.example.invalid/ig/241a2ffb58b6.bin"
+    },
+    {
+      "caption": "Welcome to the Oval Office, Artemis III Crew! 🇺🇸🚀",
+      "coauthorProducers": [
+        {
+          "username": "nasa",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.2885-19/29090066_159271188110124_1152068159029641216_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=1&ig_cache_key=GBLhuwEsG5c225AAAAAAAADj9-wPbkULAAAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=3NFtqXD_s1wQ7kNvwG5I6ud&_nc_oc=AdrUsmpog8_m7Vn4nfnd-UJlAyW_j7RTW9FXFTMzAVP2bn6oFMNYDfhkMU5pFKJKQdE&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_ss=70689&oh=00_AQQR3QvwoL5i6kZxu7ubIUD7mLX1E_kdyv3TnoLFnKEGMg&oe=6AEF8329",
+          "id": "17841401474538262"
+        },
+        {
+          "username": "nasaadmin",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.82787-19/601447735_17843472855663003_3861542852440345349_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=1&ig_cache_key=GDdd2SObAR9Fi2Q-AAXLp9TD9JY1bmNDAQAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=yXWS_8eNyFIQ7kNvwFX30f1&_nc_oc=AdrIgtj8665KioXLK6CKsQJd_US4WQ4SKFkEvqVOkcc1wYmMlxKcPURVS_p81f1Pg4Y&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_gid=0OLI5Ne8_RvNZTyL6xaY-Q&_nc_ss=70689&oh=00_AQRFu8rexwgFNxmsTQO6ZCruLvv_qAkBGbFDSwT_pRu3mw&oe=6AEF9E94",
+          "id": "17841479890064043"
+        }
+      ],
+      "commentsCount": 5060,
+      "dimensionsHeight": 1365,
+      "dimensionsWidth": 2048,
+      "displayUrl": "https://cdn.example.invalid/ig/fe6cbb97960f.bin",
+      "id": "4018120244338617968",
+      "isPinned": false,
+      "likesCount": 147057,
+      "ownerId": "72012334051",
+      "ownerUsername": "whitehouse",
+      "shortCode": "DfDOxLEm-5w",
+      "timestamp": "2026-10-28T19:54:41.000Z",
+      "type": "Sidecar",
+      "url": "https://www.instagram.com/p/DfDOxLEm-5w/"
+    },
+    {
+      "caption": "Fire burn and cauldron bubble 🫧\n\nThe @NASAWebb telescope spotted stars brewing in this cosmic site of toil and trouble. This region, named N159, is 161,000 lig…",
+      "commentsCount": 706,
+      "dimensionsHeight": 1365,
+      "dimensionsWidth": 1365,
+      "displayUrl": "https://cdn.example.invalid/ig/30866d34a7ea.bin",
+      "id": "4017953995096374853",
+      "isPinned": false,
+      "likesCount": 189394,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "DfCo97ZlL5F",
+      "timestamp": "2026-10-28T14:24:30.000Z",
+      "type": "Image",
+      "url": "https://www.instagram.com/p/DfCo97ZlL5F/"
+    },
+    {
+      "caption": "Wow, so edgy 😎\n\n@NASAHubble caught this edge-on spiral galaxy, located roughly 37 million light-years away in the constellation Columba (the Dove). Hubble stud…",
+      "commentsCount": 661,
+      "dimensionsHeight": 1396,
+      "dimensionsWidth": 1439,
+      "displayUrl": "https://cdn.example.invalid/ig/e33467333c86.bin",
+      "id": "4017307697947295168",
+      "isPinned": false,
+      "likesCount": 216169,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "DfAWBERlz3A",
+      "timestamp": "2026-10-27T17:00:23.000Z",
+      "type": "Image",
+      "url": "https://www.instagram.com/p/DfAWBERlz3A/"
+    },
+    {
+      "caption": "A close-knit family of stars ✨\n\nThis photo taken by @NASAHubble features the globular star cluster Liller 1. Globular star clusters are dense collections of sta…",
+      "commentsCount": 1073,
+      "dimensionsHeight": 1440,
+      "dimensionsWidth": 1440,
+      "displayUrl": "https://cdn.example.invalid/ig/401f2b6db35b.bin",
+      "id": "4016549113173049618",
+      "isPinned": false,
+      "likesCount": 331150,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "De9piNJlwES",
+      "timestamp": "2026-10-26T15:53:14.000Z",
+      "type": "Image",
+      "url": "https://www.instagram.com/p/De9piNJlwES/"
+    },
+    {
+      "caption": "Have you put up your Halloween decor? The night sky will add the finishing touch. 🌕\n \nOctober’s full moon, named the Hunter’s Moon, will rise on the night of O…",
+      "commentsCount": 1539,
+      "dimensionsHeight": 1600,
+      "dimensionsWidth": 1280,
+      "displayUrl": "https://cdn.example.invalid/ig/309643576208.bin",
+      "id": "4015484437320385553",
+      "isPinned": false,
+      "likesCount": 780621,
+      "ownerFullName": "NASA",
+      "ownerId": "528817151",
+      "ownerUsername": "nasa",
+      "shortCode": "De53dIfl0QR",
+      "timestamp": "2026-10-25T22:30:00.000Z",
+      "type": "Image",
+      "url": "https://www.instagram.com/p/De53dIfl0QR/"
+    },
+    {
+      "caption": "This is how @nasa does game day. Roll Tide! 🚀🏈",
+      "coauthorProducers": [
+        {
+          "username": "univofalabama",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.2885-19/131437854_403510010866209_8747594753463415027_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=109&ig_cache_key=GB6V1Qchatx_-W4BAPPwQd8Us2V5bkULAAAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=RUzEfHrATiYQ7kNvwHi0jjV&_nc_oc=Adrdaf5BzSqe8hXDSNryNv1ikzb8Kx34DOEusFpDoJoKhAk0qk618nH2T7mnyupKM4Q&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_ss=70689&oh=00_AQRlT7N1cF6jSMC3AoNvTX-6HzU3-576zKMd3iHdgb4dig&oe=6AEF8727",
+          "id": "17841402124811839"
+        },
+        {
+          "username": "nasa",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.2885-19/29090066_159271188110124_1152068159029641216_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=1&ig_cache_key=GBLhuwEsG5c225AAAAAAAADj9-wPbkULAAAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=3NFtqXD_s1wQ7kNvwG5I6ud&_nc_oc=AdrUsmpog8_m7Vn4nfnd-UJlAyW_j7RTW9FXFTMzAVP2bn6oFMNYDfhkMU5pFKJKQdE&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_ss=70689&oh=00_AQQR3QvwoL5i6kZxu7ubIUD7mLX1E_kdyv3TnoLFnKEGMg&oe=6AEF8329",
+          "id": "17841401474538262"
+        },
+        {
+          "username": "alabamafbl",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.2885-19/412351457_388761240176236_8075991643457937896_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=109&ig_cache_key=GOH7kxhshp_Hk2EBAOhhVX2crxNwbkULAAAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=wSQ4FXBzjtcQ7kNvwGWMyFH&_nc_oc=AdqYORpAK7mVA3KjJAjU5H497BX547vmy2pP-ZcrNj89EeEAfNuc8Ls8g-1XJ_Ut7uw&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_ss=70689&oh=00_AQRvERSDMKnE0D38_y6zcO2upzMIOD6zhztHGI8BoV395g&oe=6AEF91F1",
+          "id": "17841400660247204"
+        },
+        {
+          "username": "ua_athletics",
+          "is_verified": true,
+          "profile_pic_url": "https://scontent.cdninstagram.com/v/t51.2885-19/123024331_1265514787145106_7617873359532285650_n.jpg?stp=dst-jpg_s150x150_tt6&_nc_cat=104&ig_cache_key=GMszVQeShVif_n4EANJe1ZJ1H7hpbkULAAAB1501500j-ccb7-5&ccb=7-5&_nc_sid=669407&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=WKVoPJNvVtsQ7kNvwHWLSFj&_nc_oc=AdocaO4wR11YONAZA2EBTQmsPm85kYpkQ1Ja3mgLDohKU18k_KeVm0WZBDIs2nVGKGc&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_ss=70689&oh=00_AQQFORdFKGg-mZ9lwiv8m_z0_apiUMTomTD0L-8EPCS-yw&oe=6AEF78DE",
+          "id": "17841401685046393"
+        }
+      ],
+      "commentsCount": 250,
+      "dimensionsHeight": 2160,
+      "dimensionsWidth": 1215,
+      "displayUrl": "https://cdn.example.invalid/ig/f943053a14f8.bin",
+      "id": "4015904814218911265",
+      "isPinned": false,
+      "likesCount": 55943,
+      "ownerId": "79712351002",
+      "ownerUsername": "nasaadmin",
+      "shortCode": "De7XCa_TJ4h",
+      "timestamp": "2026-10-25T18:35:11.000Z",
+      "type": "Video",
+      "url": "https://www.instagram.com/p/De7XCa_TJ4h/",
+      "videoUrl": "https://cdn.example.invalid/ig/2423db6b531d.bin"
+    }
+  ]
+}
