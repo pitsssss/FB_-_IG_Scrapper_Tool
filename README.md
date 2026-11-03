@@ -148,3 +148,4 @@ When Apify is unavailable or the daily quota is exhausted: cached pages keep ser
 - الـ scraping لصفحات عامة قد يخالف شروط المنصات؛ للصفحات اللي بتملكها استعمل Graph API حيث ينطبق.
 - Run **one** API container/replica while using the filesystem Apify quota (Facebook + Instagram share it).
 - Offline tests use synthetic + sanitized fixtures; paid Instagram proof is via `npm run postman:instagram:live` only.
+- **Postman (unified):** import `postman/Social-Media-Posts-API.postman_collection.json` + the environment from `npm run postman:serve` (`.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`). Defaults: Qasioun Facebook + Instagram URLs. Details: `postman/README.md`.

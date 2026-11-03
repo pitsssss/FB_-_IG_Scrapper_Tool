@@ -101,6 +101,17 @@ If disk writes fail, the process may still serve from memory until restart; thos
 - Safe first staging profile: single replica, volume attached, `WARM_PAGES` empty,
   `APIFY_DAILY_RUN_LIMIT=0` (cache-only) until a controlled live Apify budget is approved.
 
+## Postman handover (local QA)
+
+- [ ] Import **one** collection: `postman/Social-Media-Posts-API.postman_collection.json`
+- [ ] Use `npm run postman:serve` → import `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`
+- [ ] Confirm defaults: Qasioun Facebook + Instagram URLs, `limit=10`, generated `apiKey`
+- [ ] Prefer cache-only serve; never “Run Collection” in live mode
+- [ ] Do not claim Qasioun Instagram cache/live until verified
+- [ ] Share only the collection + empty-key template with other engineers (never generated env / `.env`)
+
+See `postman/README.md`.
+
 ## Still NOT proven by this repository alone
 
 - Live Apify spend / actor reliability in production beyond controlled local acceptance
@@ -108,6 +119,8 @@ If disk writes fail, the process may still serve from memory until restart; thos
 - Optional `INSTAGRAM_PROFILE_ENRICHMENT` against **real** Apify profile Actor (offline/synthetic only so far)
 - Instagram **carousel child expansion** under `basicData` (Sidecar without `childPosts` in live capture)
 - Exact Apify USD billed amount for Instagram post/profile runs (only `maxTotalChargeUsd` request cap verified)
+- **Qasioun Instagram** live scrape / cache (NASA Instagram live acceptance is separate)
 - Live hosting/CDN/TLS configuration
 - Multi-region failover
 - Long-term disk integrity under platform outages
+- Postman Desktop GUI import (Newman/offline automation covers the suite; GUI is manual)

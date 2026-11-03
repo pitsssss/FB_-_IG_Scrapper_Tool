@@ -1,183 +1,120 @@
-# Postman — Facebook & Instagram Posts API
+# Postman — Social Media Posts API (Facebook & Instagram)
 
-Importable Postman Collection v2.1 and local environment template for fb-posts-api.
+One unified Collection v2.1 covering **both** platforms, plus a safe environment template.
 
-## What this is
+## Files to import
 
 | File | Purpose |
 |------|---------|
-| `Facebook-Posts-API.postman_collection.json` | Full suite (folders 01–06 Facebook + 07 Instagram offline) |
-| `Facebook-Posts-Local.postman_environment.json` | **Template** — empty `apiKey`; includes `instagramProfileUrl` |
+| `Social-Media-Posts-API.postman_collection.json` | **The** collection (exactly two top folders: Facebook + Instagram) |
+| `Social-Media-Posts-Local.postman_environment.json` | Shareable **template** — empty `apiKey`; Qasioun URLs pre-filled |
+| `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json` | Created by `npm run postman:serve` — real `baseUrl` + local `apiKey` (gitignored) |
 
-Automated runners (from repo root):
-
-```bash
-npm run postman:offline          # fake upstream, zero Apify cost (folders 01–07)
-npm run postman:live             # ONE controlled Facebook Apify call (CERN)
-npm run postman:instagram:live   # at most ONE Instagram Apify call (nasa); then cache-only
-npm run postman:serve            # Desktop API — cache-only (FB + IG from shared live-cache)
-npm run postman:serve -- --live
-npm run postman:serve -- --live --daily-limit=3
-```
-
-Generating JSON files does **not** import them into Postman Desktop or a cloud workspace. You import once manually (or use Newman).
-
-## Shared local cache (important)
-
-`postman:live` and `postman:serve` both use:
-
-```text
-.postman-local/live-cache
-```
-
-That directory holds:
-
-- Normalized page cache files (including a previously captured CERN response, if present)
-- `apify-quota.json` (UTC-day Apify invocation counter)
-
-Quota is **never reset** by starting serve. Raising `--daily-limit` only raises the **total** allowed invocations for the day; prior consumption still counts.
-
-## Recommended Desktop commands
-
-### Cache-only (safe, no new Apify)
-
-```bash
-npm run postman:serve
-```
-
-- `APIFY_DAILY_RUN_LIMIT=0`
-- Serves pages already in `.postman-local/live-cache` (e.g. CERN after a successful `postman:live`)
-- New / uncached `pageUrl` values return the normal error envelope (`502 UPSTREAM_UNAVAILABLE`) — no scrape
-
-### Controlled live (optional)
-
-```bash
-npm run postman:serve -- --live
-```
-
-Default live budget: **1 total** Apify invocation for the UTC day in the shared cache.
-
-Allow a higher **total** daily budget (example: 3):
-
-```bash
-npm run postman:serve -- --live --daily-limit=3
-```
-
-Meaning of `--daily-limit=3`:
-
-- It is the **maximum Apify invocations for today** in `.postman-local/live-cache`
-- It is **not** “3 extra calls on top of what you already used”
-- It is **not** a USD spending limit (USD is capped separately via `APIFY_MAX_CHARGE_USD_PER_RUN`, default `0.15`, or a lower value already set in `.env`)
-- If you already consumed 1 today, `--daily-limit=3` permits **2 more** scrapes (3 total)
-- Valid range: `1`–`10`
-- Requires `--live`
-- `UPSTREAM_RETRIES=0`, `WARM_PAGES` empty — **no scrape on startup**; only an explicit Postman **Send** to an uncached page can call Apify
-
-When today’s shared quota is already at the configured limit, serve refuses to start in live mode and tells you to use cache-only or raise the **total** `--daily-limit`.
-
-## Authentication
-
-Headers only:
-
-- `x-api-key: <secret>` (collection default), or
-- `Authorization: Bearer <secret>`
-
-**Never** put `APIFY_TOKEN` in Postman. Never put production API keys in a **synced** Postman workspace unless you accept that workspace members can read them.
-
-## Collection folders
-
-1. **01 — Health & Connectivity** — `/health`, 401 without/invalid key  
-2. **02 — Real Facebook Posts** — latest posts, cache follow-up, limits, media/empty-caption rules  
-3. **03 — Cache Validation** — `source=cache`, stable IDs  
-4. **04 — Validation & Error Handling** — 400/401/403/404/405; limit clamping (not 400)  
-5. **05 — Multi-Site Authorization** — synthetic client A/B scopes (offline runner only)  
-6. **06 — Offline Resilience (synthetic)** — fake upstream 500/empty/502; never real Apify  
-7. **07 — Instagram Posts (offline)** — synthetic IG schema/auth/cache (included in `postman:offline`)  
-8. **08 — Instagram Real Posts** — real nasa acceptance against shared live-cache (`postman:instagram:live` only; **not** offline)
-
-### Instagram Desktop (after live seed)
-
-1. `npm run postman:instagram:live` once (or use existing IG cache)  
-2. `npm run postman:serve` (cache-only)  
-3. Set `instagramProfileUrl=https://www.instagram.com/nasa/`  
-4. Open **08 — Instagram Real Posts → Get Latest 10 Instagram Posts** → Send  
-5. Expect `meta.source=cache` and `meta.provider=instagram-apify` when seeded  
-
-Profile logo tips (API server `.env`, not Postman):
-
-- Company HTTPS override: `INSTAGRAM_PROFILE_LOGOS={"nasa":"https://…"}` — applied on responses without new Apify calls  
-- Do **not** enable `INSTAGRAM_PROFILE_ENRICHMENT` for Desktop unless you intentionally budget an extra shared-quota Actor run  
-- `ig_logo_status=fallback` in folder 08 means the generic placeholder is in use (not a verified account photo)  
-
-Controlled profile Actor validation (separate from Post Scraper):
-
-```bash
-npm run postman:instagram:profile
-# dry-run only — prints quota, input, USD cap, and the paid command
-
-# PAID — requires explicit dual flags after human approval (ONE profile Actor call):
-npm run postman:instagram:profile -- --execute-paid --confirm-cost
-```
-
-Never put `APIFY_TOKEN` or profile enrichment flags into Postman environment variables.  
-
+Do **not** create two collections. Do **not** put `APIFY_TOKEN` or production secrets in Postman.
 
 ## Minimum Desktop workflow
 
-1. Start the API (cache-only recommended):
+1. Start cache-only API (no paid scrape on startup):
 
    ```bash
    npm run postman:serve
    ```
 
-   Note `Listening:`, `CACHE_DIR:`, and the gitignored environment path under `.postman-local/`.
+2. In Postman Desktop → **Import**:
+   - `postman/Social-Media-Posts-API.postman_collection.json`
+   - `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`
 
-2. In Postman Desktop: **Import** →  
-   - `postman/Facebook-Posts-API.postman_collection.json`  
-   - `.postman-local/Facebook-Posts-Local.generated.postman_environment.json`
+3. Select environment **Social Media Posts API — Local Generated**.
 
-3. Select environment **Facebook Posts API — Local Generated**.
+4. Send:
+   - **Facebook:** `01 — Facebook` → `FB — 02 Real Posts` → **Get Latest 10 Facebook Posts**
+   - **Instagram:** `02 — Instagram` → `IG — 02 Real Posts` → **Get Latest 10 Instagram Posts**
 
-4. Open **02 — Real Facebook Posts → Get Latest 10 Posts**.
+Defaults (already set in the generated environment):
 
-5. Set environment variables as needed (no collection rebuild):
+| Variable | Default |
+|----------|---------|
+| `facebookPageUrl` / `pageUrl` | `https://www.facebook.com/cern` |
+| `instagramProfileUrl` | `https://www.instagram.com/nasa` |
+| `limit` | `10` |
+| `baseUrl` | actual listening port from serve |
+| `apiKey` | securely generated local key |
 
-   - `pageUrl` — public Facebook page URL (default `https://www.facebook.com/cern`)
-   - `limit` — default `10`
+**Qasioun Instagram live scrape is not assumed.** In cache-only mode, an uncached profile returns `502 UPSTREAM_UNAVAILABLE` (no Apify call). Do not “Run Collection” to seed accounts.
 
-6. Press **Send**. Authentication uses the generated `apiKey` automatically.
+## Collection tree
 
-### How to tell live vs cached
+```text
+Social Media Posts API — Facebook & Instagram
+├── 01 — Facebook
+│   ├── FB — 01 Health & Authentication     SAFE
+│   ├── FB — 02 Real Posts                  CAUTION if cold + live
+│   ├── FB — 03 Cache & Persistence         SAFE after seed
+│   ├── FB — 04 Validation & Errors         SAFE
+│   ├── FB — 05 Client Permissions          SAFE (scoped offline)
+│   └── FB — 06 Offline Resilience          SYNTHETIC ONLY (fakeUpstreamUrl)
+└── 02 — Instagram
+    ├── IG — 01 Health & Authentication     SAFE
+    ├── IG — 02 Real Posts                  CAUTION if cold + live
+    ├── IG — 03 Cache & Persistence         SAFE after seed
+    ├── IG — 04 Validation & Errors         SAFE
+    ├── IG — 05 Client Permissions          SAFE (scoped offline)
+    └── IG — 06 Offline Resilience          SYNTHETIC ONLY (fakeUpstreamUrl)
+```
 
-| `meta.source` | Meaning |
-|---------------|---------|
-| `live` | This response came from a fresh upstream scrape (counts toward daily Apify quota) |
-| `cache` | Fresh disk/memory hit — **no** new Apify call |
-| `stale-cache` | Served from cache while refresh rules apply — still not a failed wipe |
+Shared `/health` appears under both platforms (same endpoint).
 
-### Quota exhausted
+## Automated runners
 
-- Cached pages keep working (`source=cache` / `stale-cache`)
-- Uncached pages return `{ "success": false, "error": { "code": "…", "message": "…" } }` (typically `502 UPSTREAM_UNAVAILABLE` when the daily budget blocks Apify)
-- No extra Apify attempts are consumed when the reservation fails closed
+```bash
+npm run postman:offline          # fake upstream — zero Apify (both platforms)
+npm run postman:live             # ONE controlled Facebook Apify call (CERN fixture)
+npm run postman:instagram:live   # at most ONE Instagram Apify call (nasa fixture)
+npm run postman:serve            # Desktop — cache-only by default
+npm run postman:serve -- --live
+npm run postman:serve -- --live --daily-limit=3
+npm run postman:collection       # regenerate collection + template from generator
+```
 
-## Safe vs paid
+`postman:live` / `postman:instagram:live` / `postman:serve` share `.postman-local/live-cache` (posts + `apify-quota.json`). Quota is never reset by starting serve.
+
+## Interpreting responses
+
+| Field | Meaning |
+|-------|---------|
+| `meta.source=live` | Fresh upstream scrape (counts toward daily Apify budget) |
+| `meta.source=cache` | Fresh disk/memory hit — **no** new Apify call |
+| `meta.source=stale-cache` | Served while refresh rules apply — good cache preserved |
+| `meta.provider` | Upstream provider id (`apify`, `instagram-apify`, …) |
+| `meta.count` | Equals `data.posts.length` |
+| `meta.limit` | Effective clamped limit |
+
+Errors use `{ "success": false, "error": { "code", "message" } }` — typical codes: `401 UNAUTHORIZED`, `403 PAGE_NOT_ALLOWED`, `429 RATE_LIMITED`, `502 UPSTREAM_UNAVAILABLE`.
+
+## Safety
 
 | Action | Cost |
 |--------|------|
-| `postman:offline` | None (fake upstream) |
-| `postman:serve` (cache-only) + cached `pageUrl` | None |
-| `postman:live` / `postman:serve -- --live` + **uncached** `pageUrl` | Paid Apify (capped) |
-| Changing `pageUrl` alone | Only bills if that page is not already cached **and** live mode has remaining daily budget |
+| `postman:offline` | None |
+| `postman:serve` (cache-only) + cached page/profile | None |
+| `postman:serve` + uncached target | None (502) |
+| `postman:live` / serve `--live` + uncached | Paid Apify (capped) |
+| Collection “Run” on Real Posts in live mode | Can burn many paid runs — **avoid** |
 
-## Regenerating the collection
+Controlled first live scrape for a new account: raise live budget deliberately, send **one** Real Posts request, then return to cache-only.
+
+## Sharing with another backend engineer
+
+1. Commit/share: collection JSON + environment **template** (empty apiKey).
+2. They run `npm run postman:serve`, import the two files listed above, select the generated environment.
+3. Never share `.postman-local/*.generated.*` or `.env` with real tokens.
+
+## Regenerating
+
+Source of truth: `scripts/generate-postman-collection.mjs`
 
 ```bash
 npm run postman:collection
 ```
 
-## Security notes
-
-- Committed environment template keeps `apiKey` empty  
-- Generated GUI environments live under `.postman-local/` (gitignored)  
-- Importing a populated environment into a **synced** Postman cloud workspace can upload secret variable values — prefer local/untracked environments for keys  
+Running the generator twice must produce equivalent output (covered by unit tests).

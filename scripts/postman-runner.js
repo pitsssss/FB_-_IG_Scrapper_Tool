@@ -15,7 +15,7 @@
  *
  * `postman:live` and `postman:serve` share `.postman-local/live-cache` (posts + quota).
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -35,7 +35,8 @@ const newman = require('newman');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
-const collectionPath = join(root, 'postman', 'Facebook-Posts-API.postman_collection.json');
+const collectionPath = join(root, 'postman', 'Social-Media-Posts-API.postman_collection.json');
+const collectionGenerator = join(root, 'scripts', 'generate-postman-collection.mjs');
 const localDir = join(root, '.postman-local');
 const sharedCacheDir = resolveSharedCacheDir(root);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -43,9 +44,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PAGE_CERN = 'https://www.facebook.com/cern';
 const PAGE_NASA = 'https://www.facebook.com/nasa';
 const PAGE_COLD = 'https://www.facebook.com/cern';
+const PAGE_QASIOUN = 'https://www.facebook.com/cern';
 const IG_NASA = 'https://www.instagram.com/nasa/';
 const IG_NATGEO = 'https://www.instagram.com/natgeo/';
+const IG_QASIOUN = 'https://www.instagram.com/nasa';
 const IG_CAPTURE_DIR = join(localDir, 'instagram-capture');
+const GENERATED_ENV_NAME = 'Social Media Posts API — Local Generated';
+const GENERATED_ENV_FILE = 'Social-Media-Posts-Local.generated.postman_environment.json';
 
 const children = [];
 const servers = [];
@@ -181,12 +186,28 @@ async function readDotEnv() {
   }
 }
 
+const SECRET_ENV_KEYS = new Set(['apiKey', 'apiKeyB']);
+
 function envValues(map) {
   return Object.entries(map).map(([key, value]) => ({
     key,
     value: String(value ?? ''),
+    type: SECRET_ENV_KEYS.has(key) ? 'secret' : 'default',
     enabled: true,
   }));
+}
+
+function ensureCollectionGenerated() {
+  const result = spawnSync(process.execPath, [collectionGenerator], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `collection generator failed (exit ${result.status}): ${(result.stderr || result.stdout || '').slice(0, 500)}`,
+    );
+  }
+  if (result.stdout) log(result.stdout.trim());
 }
 
 function runNewman({ folders, environment, reporters = ['cli'] }) {
@@ -224,6 +245,7 @@ function summarizeNewman(summary) {
 
 async function runOffline() {
   log('== postman:offline (synthetic fake upstream, zero Apify) ==');
+  ensureCollectionGenerated();
   const keyA = `a${randomKey(16)}`;
   const keyB = `b${randomKey(16)}`;
   const cacheDir = await mkdtemp(join(tmpdir(), 'fb-postman-off-'));
@@ -235,8 +257,9 @@ async function runOffline() {
   const fakeUrl = `http://127.0.0.1:${fakePort}`;
 
   const apiPort = await freePort();
+  const IG_COLD = 'https://www.instagram.com/nasa';
   const scopes = JSON.stringify({
-    clientA: [PAGE_CERN, PAGE_COLD, IG_NASA],
+    clientA: [PAGE_CERN, PAGE_COLD, IG_NASA, IG_COLD],
     clientB: [PAGE_NASA, IG_NATGEO],
   });
 
@@ -265,23 +288,19 @@ async function runOffline() {
     baseUrl,
     apiKey: keyA,
     apiKeyB: keyB,
+    facebookPageUrl: PAGE_CERN,
     pageUrl: PAGE_CERN,
+    unauthorizedFacebookPageUrl: PAGE_NASA,
     unauthorizedPageUrl: PAGE_NASA,
     instagramProfileUrl: IG_NASA,
+    unauthorizedInstagramProfileUrl: IG_NATGEO,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: fakeUrl,
   };
 
-  const folders = [
-    '01 — Health & Connectivity',
-    '02 — Real Facebook Posts',
-    '03 — Cache Validation',
-    '04 — Validation & Error Handling',
-    '05 — Multi-Site Authorization',
-    '06 — Offline Resilience (synthetic)',
-    '07 — Instagram Posts (offline)',
-  ];
+  // Top-level platform folders (nested suites). Safe: APIFY_BASE_URL is local fake.
+  const folders = ['01 — Facebook', '02 — Instagram'];
 
   const { err, summary } = await runNewman({ folders, environment });
   const s = summarizeNewman(summary);
@@ -393,14 +412,18 @@ async function runLive() {
     baseUrl,
     apiKey: key,
     apiKeyB: '',
+    facebookPageUrl: PAGE_CERN,
     pageUrl: PAGE_CERN,
+    unauthorizedFacebookPageUrl: PAGE_NASA,
     unauthorizedPageUrl: PAGE_NASA,
+    instagramProfileUrl: IG_NASA,
+    unauthorizedInstagramProfileUrl: IG_NATGEO,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: '',
   };
 
-  // Single paid invocation happens HERE. Newman Folder 02 then validates cache-only follow-ups.
+  // Single paid invocation happens HERE. Newman FB Real Posts then validates cache-only follow-ups.
   let liveReport = {
     httpStatus: null,
     postCount: null,
@@ -494,9 +517,10 @@ async function runLive() {
     return 1;
   }
 
-  // Folder 02 against warm cache (no additional Apify calls; daily limit already 1/1).
+  // FB Real Posts against warm cache (no additional Apify calls; daily limit already 1/1).
+  ensureCollectionGenerated();
   const { err, summary } = await runNewman({
-    folders: ['02 — Real Facebook Posts'],
+    folders: ['FB — 02 Real Posts'],
     environment,
   });
   const s = summarizeNewman(summary);
@@ -644,7 +668,7 @@ async function runServe() {
     env.APIFY_DAILY_RUN_LIMIT = '0';
     log(`Shared cache (read/serve): ${cacheDir}`);
     log(
-      'Cache-only mode (APIFY_DAILY_RUN_LIMIT=0). Previously captured pages (e.g. CERN) are served from disk; new pages will not scrape.',
+      'Cache-only mode (APIFY_DAILY_RUN_LIMIT=0). Cached FB/IG entries in live-cache are served from disk; uncached targets return 502 (no scrape).',
     );
     log('Controlled live: npm run postman:serve -- --live [--daily-limit=3]');
   }
@@ -661,16 +685,28 @@ async function runServe() {
     return 1;
   }
 
-  const envPath = join(localDir, 'Facebook-Posts-Local.generated.postman_environment.json');
+  try {
+    ensureCollectionGenerated();
+  } catch (e) {
+    fail(e.message || String(e));
+    await cleanup();
+    return 1;
+  }
+
+  const envPath = join(localDir, GENERATED_ENV_FILE);
   const envDoc = {
-    id: 'fb-posts-local-generated',
-    name: 'Facebook Posts API — Local Generated',
+    id: 'social-media-posts-local-generated',
+    name: GENERATED_ENV_NAME,
     values: envValues({
       baseUrl,
       apiKey: key,
       apiKeyB: '',
-      pageUrl: PAGE_CERN,
+      facebookPageUrl: PAGE_QASIOUN,
+      pageUrl: PAGE_QASIOUN,
+      unauthorizedFacebookPageUrl: PAGE_NASA,
       unauthorizedPageUrl: PAGE_NASA,
+      instagramProfileUrl: IG_QASIOUN,
+      unauthorizedInstagramProfileUrl: IG_NATGEO,
       limit: '10',
       invalidApiKey: 'invalid-key-not-real',
       fakeUpstreamUrl: '',
@@ -681,11 +717,15 @@ async function runServe() {
 
   log(`Listening: ${baseUrl}`);
   log(`CACHE_DIR: ${cacheDir}`);
+  log(`Import collection: postman/Social-Media-Posts-API.postman_collection.json`);
   log(`Import environment (gitignored): ${envPath}`);
-  log('Import collection: postman/Facebook-Posts-API.postman_collection.json');
-  log('Select the generated environment, open Folder 02 → Get Latest 10 Posts.');
-  log('Change only pageUrl / limit in the environment, then press Send.');
+  log(`Select environment: ${GENERATED_ENV_NAME}`);
+  log('Facebook: 01 — Facebook → FB — 02 Real Posts → Get Latest 10 Facebook Posts');
+  log('Instagram: 02 — Instagram → IG — 02 Real Posts → Get Latest 10 Instagram Posts');
+  log('Defaults: facebookPageUrl=qasiounjourney1, instagramProfileUrl=qasiounjourney, limit=10');
+  log('NOTE: Qasioun Instagram may be uncached — cache-only then returns 502 UPSTREAM_UNAVAILABLE (no paid scrape).');
   log('meta.source=cache|stale-cache means no new Apify call; meta.source=live means a scrape ran.');
+  log('Do NOT Run Collection — Real Posts / cold cache can trigger paid Apify when live mode is on.');
   log('WARNING: Importing a populated environment into a synced Postman workspace may upload variable values.');
   log('The generated API key is in the environment file only — it is not printed here. Never put APIFY_TOKEN in Postman.');
   log('Press Ctrl+C to stop.');
@@ -948,21 +988,25 @@ async function runInstagramLive() {
     return 1;
   }
 
-  // Newman folder 08 against warm cache — no additional Apify calls (limit already at ceiling or 0).
+  // Newman IG Real Posts against warm cache — no additional Apify calls (limit already at ceiling or 0).
+  ensureCollectionGenerated();
   const environment = {
     baseUrl,
     apiKey: keyA,
     apiKeyB: keyB,
+    facebookPageUrl: PAGE_CERN,
     pageUrl: PAGE_CERN,
+    unauthorizedFacebookPageUrl: PAGE_NASA,
     unauthorizedPageUrl: PAGE_NASA,
     instagramProfileUrl: IG_NASA,
+    unauthorizedInstagramProfileUrl: IG_NATGEO,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: '',
   };
 
   const { err, summary } = await runNewman({
-    folders: ['08 — Instagram Real Posts'],
+    folders: ['IG — 02 Real Posts'],
     environment,
   });
   const s = summarizeNewman(summary);
