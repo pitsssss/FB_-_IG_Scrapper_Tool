@@ -1,11 +1,11 @@
-import { parsePageRef } from './pageRef.js';
-import { parseInstagramRef } from './instagramRef.js';
+import { parseFacebookConfigRef } from './pageRef.js';
+import { parseInstagramConfigRef } from './instagramRef.js';
 
 const toList = (v) => String(v ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
 /**
- * Parse and validate WARM_PAGES. Deduplicates by normalized page key.
- * Throws on invalid URLs or pages outside ALLOWED_PAGES.
+ * Parse and validate WARM_PAGES (usernames and/or legacy URLs).
+ * Deduplicates by normalized page key. Throws on invalid entries or allowlist misses.
  */
 export function parseWarmPageList(raw, { allowedPages = [] } = {}) {
   const urls = toList(raw);
@@ -13,9 +13,9 @@ export function parseWarmPageList(raw, { allowedPages = [] } = {}) {
   const seen = new Set();
   const refs = [];
   for (const url of urls) {
-    const ref = parsePageRef(url);
+    const ref = parseFacebookConfigRef(url);
     if (!ref) {
-      throw new Error(`WARM_PAGES contains an invalid Facebook page URL: ${url}`);
+      throw new Error(`WARM_PAGES contains an invalid Facebook page username: ${url}`);
     }
     if (allowedPages.length && !allowedPages.includes(ref.key)) {
       throw new Error(`WARM_PAGES page "${ref.key}" is not in ALLOWED_PAGES`);
@@ -28,7 +28,8 @@ export function parseWarmPageList(raw, { allowedPages = [] } = {}) {
 }
 
 /**
- * Parse INSTAGRAM_WARM_PROFILES. Deduplicates by `instagram:<user>` key.
+ * Parse INSTAGRAM_WARM_PROFILES (usernames and/or legacy URLs).
+ * Deduplicates by `instagram:<user>` key.
  */
 export function parseInstagramWarmProfileList(raw, { instagramAllowedProfiles = [] } = {}) {
   const urls = toList(raw);
@@ -36,11 +37,9 @@ export function parseInstagramWarmProfileList(raw, { instagramAllowedProfiles = 
   const seen = new Set();
   const refs = [];
   for (const url of urls) {
-    const ref = parseInstagramRef(url) || (/^[A-Za-z0-9._]{1,30}$/.test(url)
-      ? parseInstagramRef(`https://www.instagram.com/${url}/`)
-      : null);
+    const ref = parseInstagramConfigRef(url);
     if (!ref) {
-      throw new Error(`INSTAGRAM_WARM_PROFILES contains an invalid Instagram profile URL: ${url}`);
+      throw new Error(`INSTAGRAM_WARM_PROFILES contains an invalid Instagram username: ${url}`);
     }
     if (instagramAllowedProfiles.length && !instagramAllowedProfiles.includes(ref.key)) {
       throw new Error(`INSTAGRAM_WARM_PROFILES profile "${ref.key}" is not in INSTAGRAM_ALLOWED_PROFILES`);

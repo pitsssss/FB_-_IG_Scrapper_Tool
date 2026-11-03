@@ -24,7 +24,7 @@ async function get(baseUrl, path, { key, timeoutMs = 30_000, method = 'GET', hea
   }
 }
 
-export async function runSmoke(baseUrl, apiKey, pageUrl) {
+export async function runSmoke(baseUrl, apiKey, pageUsername) {
   let failed = 0;
   const check = (name, ok, detail) => {
     if (ok) pass(name, detail);
@@ -35,12 +35,12 @@ export async function runSmoke(baseUrl, apiKey, pageUrl) {
     const health = await get(baseUrl, '/health');
     check('GET /health', health.status === 200 && health.body?.status === 'ok', `status=${health.status}`);
 
-    const noKey = await get(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageUrl)}`);
+    const noKey = await get(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageUsername)}`);
     let errOk = false;
     try { assertErrorShape(noKey.body); errOk = true; } catch (e) { fail('no-key shape', e.message); failed += 1; }
     check('no key -> 401', noKey.status === 401 && errOk, `status=${noKey.status}`);
 
-    const badKey = await get(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageUrl)}`, { key: 'wrong-key' });
+    const badKey = await get(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageUsername)}`, { key: 'wrong-key' });
     check('wrong key -> 401', badKey.status === 401, `status=${badKey.status}`);
 
     const missing = await get(baseUrl, '/api/v1/facebook/posts', { key: apiKey });
@@ -52,14 +52,14 @@ export async function runSmoke(baseUrl, apiKey, pageUrl) {
 
     const invalid = await get(baseUrl, '/api/v1/facebook/posts?page=https://example.com/x', { key: apiKey });
     check(
-      'non-Facebook URL -> 400 INVALID_PAGE_URL',
+      'full URL -> 400 INVALID_PAGE_URL',
       invalid.status === 400 && invalid.body?.error?.code === 'INVALID_PAGE_URL',
       `status=${invalid.status} code=${invalid.body?.error?.code}`,
     );
 
     const live = await get(
       baseUrl,
-      `/api/v1/facebook/posts?page=${encodeURIComponent(pageUrl)}`,
+      `/api/v1/facebook/posts?page=${encodeURIComponent(pageUsername)}`,
       { key: apiKey, timeoutMs: 180_000 },
     );
     let shapeOk = false;
@@ -71,7 +71,7 @@ export async function runSmoke(baseUrl, apiKey, pageUrl) {
     );
 
     const t0 = Date.now();
-    const cached = await get(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageUrl)}`, { key: apiKey });
+    const cached = await get(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageUsername)}`, { key: apiKey });
     const elapsed = Date.now() - t0;
     check(
       'repeat < 2s and source cache',
@@ -81,7 +81,7 @@ export async function runSmoke(baseUrl, apiKey, pageUrl) {
 
     const limited = await get(
       baseUrl,
-      `/api/v1/facebook/posts?page=${encodeURIComponent(pageUrl)}&limit=3`,
+      `/api/v1/facebook/posts?page=${encodeURIComponent(pageUsername)}&limit=3`,
       { key: apiKey },
     );
     check(
@@ -96,7 +96,7 @@ export async function runSmoke(baseUrl, apiKey, pageUrl) {
 
     const posted = await get(
       baseUrl,
-      `/api/v1/facebook/posts?page=${encodeURIComponent(pageUrl)}`,
+      `/api/v1/facebook/posts?page=${encodeURIComponent(pageUsername)}`,
       { key: apiKey, method: 'POST' },
     );
     check('POST -> 405', posted.status === 405, `status=${posted.status}`);
@@ -112,12 +112,12 @@ export async function runSmoke(baseUrl, apiKey, pageUrl) {
 }
 
 async function main() {
-  const [baseUrl, apiKey, pageUrl] = process.argv.slice(2);
-  if (!baseUrl || !apiKey || !pageUrl) {
-    console.error('Usage: node scripts/smoke.js <baseUrl> <apiKey> <pageUrl>');
+  const [baseUrl, apiKey, pageUsername] = process.argv.slice(2);
+  if (!baseUrl || !apiKey || !pageUsername) {
+    console.error('Usage: node scripts/smoke.js <baseUrl> <apiKey> <pageUsername>');
     process.exit(1);
   }
-  const ok = await runSmoke(baseUrl.replace(/\/+$/, ''), apiKey, pageUrl);
+  const ok = await runSmoke(baseUrl.replace(/\/+$/, ''), apiKey, pageUsername);
   process.exit(ok ? 0 : 1);
 }
 

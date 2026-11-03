@@ -141,13 +141,13 @@ HEALTH="$(http_body "$BASE/health")"
 echo "$HEALTH" | grep -q '"status":"ok"'
 
 echo "== auth missing/invalid =="
-CODE_MISSING="$(http_code "$BASE/api/v1/facebook/posts?page=https://www.facebook.com/cern")"
-CODE_BAD="$(http_code "$BASE/api/v1/facebook/posts?page=https://www.facebook.com/cern" "x-api-key" "wrong")"
+CODE_MISSING="$(http_code "$BASE/api/v1/facebook/posts?page=cern")"
+CODE_BAD="$(http_code "$BASE/api/v1/facebook/posts?page=cern" "x-api-key" "wrong")"
 test "$CODE_MISSING" = "401"
 test "$CODE_BAD" = "401"
 
 echo "== live fetch via fake upstream =="
-LIVE="$(http_body "$BASE/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=3" "x-api-key" "$SMOKE_KEY")"
+LIVE="$(http_body "$BASE/api/v1/facebook/posts?page=cern&limit=3" "x-api-key" "$SMOKE_KEY")"
 echo "$LIVE" | grep -q '"success":true'
 echo "$LIVE" | grep -q '"source":"live"'
 IDS="$(node -e "const j=JSON.parse(process.argv[1]); process.stdout.write(j.data.posts.map(p=>p.id).join(','))" "$LIVE")"
@@ -200,7 +200,7 @@ if [ "$READY" != "1" ]; then
   exit 1
 fi
 
-CACHED="$(http_body "$BASE/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=3" "x-api-key" "$SMOKE_KEY")"
+CACHED="$(http_body "$BASE/api/v1/facebook/posts?page=cern&limit=3" "x-api-key" "$SMOKE_KEY")"
 echo "$CACHED" | grep -q '"success":true'
 SOURCE="$(node -e "const j=JSON.parse(process.argv[1]); process.stdout.write(j.meta.source)" "$CACHED")"
 IDS2="$(node -e "const j=JSON.parse(process.argv[1]); process.stdout.write(j.data.posts.map(p=>p.id).join(','))" "$CACHED")"
@@ -246,7 +246,7 @@ done
 test "$READY" = "1"
 
 # Existing cached posts should still be readable even when disk is unwritable
-STILL_CACHED="$(http_body "$BASE/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=3" "x-api-key" "$SMOKE_KEY")"
+STILL_CACHED="$(http_body "$BASE/api/v1/facebook/posts?page=cern&limit=3" "x-api-key" "$SMOKE_KEY")"
 echo "$STILL_CACHED" | grep -q '"success":true'
 STILL_SOURCE="$(node -e "const j=JSON.parse(process.argv[1]); process.stdout.write(j.meta.source)" "$STILL_CACHED")"
 echo "unwritable_disk_source=$STILL_SOURCE"
@@ -254,7 +254,7 @@ echo "$STILL_SOURCE" | grep -Eq 'cache|stale-cache'
 
 # Fresh uncached page must fail closed (no silent live without quota persistence)
 # Use a page that was never cached in this volume.
-FAIL_CLOSED_CODE="$(http_code "$BASE/api/v1/facebook/posts?page=https://www.facebook.com/nasa&limit=1" "x-api-key" "$SMOKE_KEY")"
+FAIL_CLOSED_CODE="$(http_code "$BASE/api/v1/facebook/posts?page=nasa&limit=1" "x-api-key" "$SMOKE_KEY")"
 echo "unwritable_live_http=$FAIL_CLOSED_CODE"
 # Expect non-200 (quota/disk failure or upstream error path) — not a silent success live scrape
 test "$FAIL_CLOSED_CODE" != "200"

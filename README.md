@@ -61,7 +61,7 @@ Optional (code present; not all live-verified): Meta Graph for managed Facebook 
 | | Facebook | Instagram |
 | --- | --- | --- |
 | **Endpoint** | `GET /api/v1/facebook/posts` | `GET /api/v1/instagram/posts` |
-| **`page` parameter** | Public Facebook **page** URL | Public Instagram **profile** URL |
+| **`page` parameter** | Public Facebook **username** only | Public Instagram **username** only |
 | **Default limit** | `MAX_POSTS` (default **10**) | Same |
 | **Primary provider** | Apify `apify/facebook-posts-scraper` | Apify `apify/instagram-post-scraper` |
 | **Optional provider** | Meta Graph API (`GRAPH_PAGE_TOKENS`) for pages you manage | Profile enrichment Actor (`INSTAGRAM_PROFILE_ENRICHMENT`, off by default) |
@@ -156,7 +156,7 @@ Expected: `{ "status": "ok" }`
 Replace `YOUR_API_KEY` and ensure the page/profile is allowed by your scopes/allowlists:
 
 ```bash
-curl -s "http://127.0.0.1:3000/api/v1/facebook/posts?page=https%3A%2F%2Fwww.facebook.com%2Fcern&limit=10" ^
+curl -s "http://127.0.0.1:3000/api/v1/facebook/posts?page=cern&limit=10" ^
   -H "x-api-key: YOUR_API_KEY"
 ```
 
@@ -164,7 +164,7 @@ PowerShell:
 
 ```powershell
 Invoke-RestMethod `
-  -Uri "http://127.0.0.1:3000/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=10" `
+  -Uri "http://127.0.0.1:3000/api/v1/facebook/posts?page=cern&limit=10" `
   -Headers @{ "x-api-key" = "YOUR_API_KEY" }
 ```
 
@@ -182,11 +182,11 @@ Liveness probe. No API key. Response: `{ "status": "ok" }`. Does **not** prove A
 
 | Query | Required | Description |
 | --- | --- | --- |
-| `page` | yes | Public Facebook **page** URL (max 500 chars). Groups/reels/login paths → `400`. |
+| `page` | yes | Public Facebook **page username** only (e.g. `cern`). Full URLs → `400`. |
 | `limit` | no | Clamped to `1..MAX_POSTS` (default `MAX_POSTS`, typically 10). Invalid values are clamped, not rejected. |
 
 ```http
-GET /api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=10 HTTP/1.1
+GET /api/v1/facebook/posts?page=cern&limit=10 HTTP/1.1
 Host: 127.0.0.1:3000
 x-api-key: YOUR_API_KEY
 ```
@@ -195,21 +195,23 @@ x-api-key: YOUR_API_KEY
 
 | Query | Required | Description |
 | --- | --- | --- |
-| `page` | yes | Public Instagram **profile** URL (not `/p/`, `/reel/`, `/stories/`, …). |
+| `page` | yes | Public Instagram **username** only (not a profile URL, not `@user`, not `/p/` or `/reel/`). |
 | `limit` | no | Same clamping rules as Facebook. |
 
 ```http
-GET /api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10 HTTP/1.1
+GET /api/v1/instagram/posts?page=nasa&limit=10 HTTP/1.1
 Host: 127.0.0.1:3000
 x-api-key: YOUR_API_KEY
 ```
 
-Illustrative public demo URLs used in the shareable Postman template (not guaranteed warm caches):
+**Breaking change:** both endpoints previously accepted full social URLs in `page`. They now require **bare usernames** only. Full `https://…` inputs return `400 INVALID_PAGE_URL`. The server constructs canonical provider URLs internally.
 
-- Facebook: `https://www.facebook.com/cern`
-- Instagram: `https://www.instagram.com/nasa/`
+Illustrative public demo usernames in the shareable Postman template:
 
-Replace with your own authorized page/profile URLs (`YOUR_FACEBOOK_PAGE_URL` / `YOUR_INSTAGRAM_PROFILE_URL`). Port may differ when using `postman:serve` (generated `baseUrl`).
+- Facebook: `cern`
+- Instagram: `nasa`
+
+Replace with your authorized usernames. Port may differ when using `postman:serve` (generated `baseUrl`).
 
 ### Common HTTP statuses
 
@@ -408,7 +410,7 @@ npm run postman:serve
 4. Open `01 — Facebook` → `FB — 02 Real Posts` → **Get Latest 10 Facebook Posts**.  
 5. Open `02 — Instagram` → `IG — 02 Real Posts` → **Get Latest 10 Instagram Posts**.
 
-Pre-filled variables: `facebookPageUrl` / `pageUrl` → public demo Facebook page (CERN); `instagramProfileUrl` → public demo Instagram profile (NASA); `limit=10`; `baseUrl` and `apiKey` filled by serve. Optional private overrides: `POSTMAN_FACEBOOK_PAGE_URL`, `POSTMAN_INSTAGRAM_PROFILE_URL` (runtime only).
+Pre-filled variables: `facebookUsername=cern`, `instagramUsername=nasa`, `limit=10`; `baseUrl` and `apiKey` filled by serve. Optional private overrides: `POSTMAN_FACEBOOK_USERNAME`, `POSTMAN_INSTAGRAM_USERNAME` (runtime only).
 
 Do **not** commit or sync the generated environment to a shared Postman cloud workspace.
 
@@ -489,7 +491,7 @@ Recommended pattern (server-to-server):
 
 ```js
 const url = new URL(`${API_BASE}/api/v1/facebook/posts`);
-url.searchParams.set('page', process.env.YOUR_FACEBOOK_PAGE_URL || 'https://www.facebook.com/cern');
+url.searchParams.set('page', process.env.YOUR_FACEBOOK_USERNAME || 'cern');
 url.searchParams.set('limit', '10');
 
 const res = await fetch(url, {

@@ -172,10 +172,10 @@ async function main() {
   let api = spawnApi(commonEnv);
   await waitHealth(baseUrl);
 
-  const pageOne = 'https://www.facebook.com/e2eone';
-  const pageTwo = 'https://www.facebook.com/e2etwo';
-  const pageNone = 'https://www.facebook.com/e2enone';
-  const pageSlow = 'https://www.facebook.com/e2eslow';
+  const pageOne = 'e2eone';
+  const pageTwo = 'e2etwo';
+  const pageNone = 'e2enone';
+  const pageSlow = 'e2eslow';
 
   // ---- 1. smoke ----
   console.log('\n== 1. smoke ==');
@@ -330,13 +330,15 @@ async function main() {
     CACHE_DIR: rateDir,
   });
   await waitHealth(rateUrl);
+  // Use an invalid username so requests return 400 (no upstream) while still counting toward the limit.
+  const ratePath = '/api/v1/facebook/posts?page=%40bad';
   let rateOk = true;
   let rateDetail = '';
   for (let i = 1; i <= 3; i += 1) {
-    const r = await fetchJson(rateUrl, '/api/v1/facebook/posts?page=missing', { key: apiKey });
+    const r = await fetchJson(rateUrl, ratePath, { key: apiKey });
     if (r.status !== 400) { rateOk = false; rateDetail = `req${i} status=${r.status}`; break; }
   }
-  const limited = await fetchJson(rateUrl, '/api/v1/facebook/posts?page=missing', { key: apiKey });
+  const limited = await fetchJson(rateUrl, ratePath, { key: apiKey });
   let limitedShape = false;
   try { assertErrorShape(limited.body); limitedShape = true; } catch (e) { fail('429 shape', e.message); }
   const retryAfter = limited.headers.get('retry-after');
@@ -421,8 +423,8 @@ async function main() {
   });
   await waitHealth(quotaUrl);
 
-  const q1 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage1')}`, { key: apiKey });
-  const q2 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage2')}`, { key: apiKey });
+  const q1 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('qpage1')}`, { key: apiKey });
+  const q2 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('qpage2')}`, { key: apiKey });
   check('quota: first two invocations succeed', q1.status === 200 && q2.status === 200, `s1=${q1.status} s2=${q2.status}`);
   const qIds = (q1.body?.data?.posts || []).map((p) => p.id).join(',');
 
@@ -435,7 +437,7 @@ async function main() {
   );
 
   const statsBeforeThird = await getStats(upstreamBase);
-  const q3 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage3')}`, { key: apiKey });
+  const q3 = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('qpage3')}`, { key: apiKey });
   const statsAfterThird = await getStats(upstreamBase);
   let q3Err = false;
   try { assertErrorShape(q3.body); q3Err = true; } catch (e) { fail('quota third shape', e.message); }
@@ -446,7 +448,7 @@ async function main() {
   );
 
   // Cached page still served after exhaustion
-  const qCached = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage1')}`, { key: apiKey });
+  const qCached = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('qpage1')}`, { key: apiKey });
   check(
     'quota: cached page still 200 after exhaustion',
     qCached.status === 200 && (qCached.body?.data?.posts || []).map((p) => p.id).join(',') === qIds,
@@ -466,7 +468,7 @@ async function main() {
     FRESH_TTL_SECONDS: '3600',
   });
   await waitHealth(quotaUrl);
-  const qAfterRestart = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qpage4')}`, { key: apiKey });
+  const qAfterRestart = await fetchJson(quotaUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('qpage4')}`, { key: apiKey });
   const statsAfterRestart = await getStats(upstreamBase);
   check(
     'quota: restart preserves consumption (no new upstream)',
@@ -494,7 +496,7 @@ async function main() {
   });
   await waitHealth(retryUrl);
   const beforeRetry = await getStats(upstreamBase);
-  const retryRes = await fetchJson(retryUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/qretry')}`, { key: apiKey, timeoutMs: 30_000 });
+  const retryRes = await fetchJson(retryUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('qretry')}`, { key: apiKey, timeoutMs: 30_000 });
   const afterRetry = await getStats(upstreamBase);
   check(
     'quota: retries do not exceed daily limit',
@@ -512,7 +514,7 @@ async function main() {
   const warmPort = await freePort();
   usedPorts.push(warmPort);
   const warmUrl = `http://127.0.0.1:${warmPort}`;
-  const warmPage = 'https://www.facebook.com/e2ewarm';
+  const warmPage = 'e2ewarm';
   const warmChild = spawnApi({
     ...commonEnv,
     PORT: String(warmPort),
@@ -608,8 +610,8 @@ async function main() {
     CACHE_DIR: scopeDir,
     API_KEYS: `website1:${scopeKeyA},website2:${scopeKeyB}`,
     API_KEY_PAGE_SCOPES: JSON.stringify({
-      website1: ['https://www.facebook.com/pagea'],
-      website2: ['https://www.facebook.com/pageb'],
+      website1: ['pagea'],
+      website2: ['pageb'],
     }),
     APIFY_DAILY_RUN_LIMIT: '50',
     UPSTREAM_RETRIES: '0',
@@ -617,10 +619,10 @@ async function main() {
   });
   await waitHealth(scopeUrl);
   const scopeBefore = await getStats(upstreamBase);
-  const sa = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}`, { key: scopeKeyA });
-  const sab = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pageb')}`, { key: scopeKeyA });
-  const sb = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pageb')}`, { key: scopeKeyB });
-  const sba = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}`, { key: scopeKeyB });
+  const sa = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('pagea')}`, { key: scopeKeyA });
+  const sab = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('pageb')}`, { key: scopeKeyA });
+  const sb = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('pageb')}`, { key: scopeKeyB });
+  const sba = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('pagea')}`, { key: scopeKeyB });
   const scopeAfterDeny = await getStats(upstreamBase);
   check('scopes: A/pageA 200', sa.status === 200, `status=${sa.status}`);
   check('scopes: A/pageB 403', sab.status === 403 && sab.body?.error?.code === 'PAGE_NOT_ALLOWED', `status=${sab.status}`);
@@ -631,15 +633,15 @@ async function main() {
     scopeAfterDeny.calls - scopeBefore.calls === 2,
     `upstreamDelta=${scopeAfterDeny.calls - scopeBefore.calls}`,
   );
-  const saCache = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}`, { key: scopeKeyA });
+  const saCache = await fetchJson(scopeUrl, `/api/v1/facebook/posts?page=${encodeURIComponent('pagea')}`, { key: scopeKeyA });
   check('scopes: authorized repeat is cache', saCache.status === 200 && saCache.body?.meta?.source === 'cache', `source=${saCache.body?.meta?.source}`);
   await stopChild(scopeChild);
 
   // ---- 9. Instagram (synthetic) ----
   console.log('\n== 9. Instagram (synthetic) ==');
   await setMode(upstreamBase, 'ok');
-  const igUrl = 'https://www.instagram.com/nasa/';
-  const igPath = `/api/v1/instagram/posts?page=${encodeURIComponent(igUrl)}&limit=10`;
+  const igUser = 'nasa';
+  const igPath = `/api/v1/instagram/posts?page=${encodeURIComponent(igUser)}&limit=10`;
   const igBefore = await getStats(upstreamBase);
   const igLive = await fetchJson(baseUrl, igPath, { key: apiKey });
   let igShape = false;
@@ -651,7 +653,7 @@ async function main() {
   check('instagram: repeat is cache', igCache.status === 200 && igCache.body?.meta?.source === 'cache', `source=${igCache.body?.meta?.source}`);
   check('instagram: cache IDs stable', (igCache.body?.data?.posts || []).map((p) => p.id).join(',') === igIds, 'ids match');
   const igParallel = await Promise.all(
-    Array.from({ length: 5 }, () => fetchJson(baseUrl, `/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/natgeo/')}&limit=5`, { key: apiKey, timeoutMs: 60_000 })),
+    Array.from({ length: 5 }, () => fetchJson(baseUrl, `/api/v1/instagram/posts?page=${encodeURIComponent('natgeo')}&limit=5`, { key: apiKey, timeoutMs: 60_000 })),
   );
   const igAfter = await getStats(upstreamBase);
   const igAll200 = igParallel.every((r) => r.status === 200);

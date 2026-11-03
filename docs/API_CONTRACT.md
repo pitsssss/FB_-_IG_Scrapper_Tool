@@ -5,8 +5,8 @@ Stable public contract for integrating independent websites with **fb-posts-api*
 ## Endpoints
 
 ```
-GET /api/v1/facebook/posts?page=<facebook-page-url>&limit=<1..MAX_POSTS>
-GET /api/v1/instagram/posts?page=<instagram-profile-url>&limit=<1..MAX_POSTS>
+GET /api/v1/facebook/posts?page=<facebook-username>&limit=<1..MAX_POSTS>
+GET /api/v1/instagram/posts?page=<instagram-username>&limit=<1..MAX_POSTS>
 GET /health  →  { "status": "ok" }
 ```
 
@@ -26,7 +26,7 @@ Accepted **only** via headers (never query string):
 Missing or invalid credentials → `401` with error envelope (no account names or scope details).
 
 Optional `API_KEY_PAGE_SCOPES` restricts each named API key to specific Facebook pages and/or Instagram profiles
-(canonical keys from `parsePageRef()` / `parseInstagramRef()`). Global `ALLOWED_PAGES` applies to Facebook only.
+(prefer bare usernames / `instagram:<username>`; legacy trusted URLs still normalize at startup). Global `ALLOWED_PAGES` applies to Facebook only.
 Optional `INSTAGRAM_ALLOWED_PROFILES` applies to Instagram only.
 
 **Canonical-key limitation:** a Facebook page slug (e.g. `cern`) and a numeric page id are **not** treated as the same resource unless both appear explicitly in configuration. Instagram keys are always `instagram:<username>`.
@@ -35,11 +35,12 @@ Optional `INSTAGRAM_ALLOWED_PROFILES` applies to Instagram only.
 
 | Name | Required | Description |
 | --- | --- | --- |
-| `page` | yes | Facebook **page** URL **or** Instagram **profile** URL (depending on route). Max length 500. |
+| `page` | yes | Bare Facebook **page username** or Instagram **username** (depending on route). Full social URLs are rejected. |
 | `limit` | no | Integer clamped to `1..MAX_POSTS` (default `MAX_POSTS`, typically 10). Invalid/negative values are clamped, not rejected. |
 
-Unsupported Facebook paths (groups, reels, login, etc.) → `400 INVALID_PAGE_URL`.
-Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID_PAGE_URL`.
+**Breaking change:** `page` no longer accepts `https://www.facebook.com/…` or `https://www.instagram.com/…`. Pass `cern` / `nasa` style usernames only. The API constructs provider URLs internally.
+
+Full URLs, `@user`, reserved route names, and invalid punctuation → `400 INVALID_PAGE_URL`.
 
 ### Instagram notes
 
@@ -57,7 +58,7 @@ Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID
 - Controlled dry-run / paid profile validation: `npm run postman:instagram:profile` (default dry-run). Paid path requires `--execute-paid --confirm-cost` and never calls the Post Scraper.
 - Sidecar/`basicData`: live NASA capture had `Sidecar` type **without** `childPosts`/`images` → cover `displayUrl` only (incomplete carousel). Complete carousels map `childPosts` in order when present. Do **not** enable `detailedData` without explicit approval.
 - Controlled live posts: `npm run postman:instagram:live` (shared `.postman-local/live-cache`).
-- Unified Postman Collection: `postman/Social-Media-Posts-API.postman_collection.json` (folders `01 — Facebook` / `02 — Instagram`). Desktop: `npm run postman:serve` then import the collection + `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`. Template defaults use public demo accounts (CERN / NASA). Cache-only mode returns `502` for uncached profiles until an intentional live seed exists.
+- Unified Postman Collection: `postman/Social-Media-Posts-API.postman_collection.json` (folders `01 — Facebook` / `02 — Instagram`). Desktop: `npm run postman:serve` then import the collection + `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`. Template defaults use public demo usernames (`cern` / `nasa`). Cache-only mode returns `502` for uncached profiles until an intentional live seed exists.
 
 ## Success response shape
 

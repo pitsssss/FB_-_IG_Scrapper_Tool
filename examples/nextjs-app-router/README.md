@@ -7,7 +7,7 @@ Copy these files into a Next.js App Router project.
 ```bash
 FB_POSTS_API_BASE_URL=https://api.example.com
 FB_POSTS_API_KEY=your_site_secret_here
-FB_POSTS_PAGE_URL=https://www.facebook.com/cern
+FB_POSTS_PAGE_URL=cern
 ```
 
 Never use `NEXT_PUBLIC_` for `FB_POSTS_API_KEY`.

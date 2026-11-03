@@ -1,5 +1,5 @@
-import { parsePageRef } from './pageRef.js';
-import { parseInstagramRef } from './instagramRef.js';
+import { parseFacebookConfigRef, parseFacebookUsername } from './pageRef.js';
+import { parseInstagramConfigRef } from './instagramRef.js';
 import { parseInstagramProfileLogos } from './instagramLogo.js';
 
 const toInt = (v, d) => {
@@ -21,8 +21,9 @@ export const WARM_CONCURRENCY_MAX = 8;
 
 /**
  * Parse API_KEYS. Rejects duplicate names and duplicate secret values.
- * Note: page authorization uses parsePageRef() / parseInstagramRef() canonical keys.
+ * Note: page authorization uses canonical cache keys from username/config parsers.
  * Facebook slug and numeric id for the "same" page are NOT auto-equated.
+ * Instagram keys are always `instagram:<username>` (never collide with Facebook).
  */
 export function parseApiKeys(raw) {
   const apiKeys = toList(raw).map((entry) => {
@@ -43,15 +44,27 @@ export function parseApiKeys(raw) {
   return apiKeys;
 }
 
-/** Resolve a scope URL to a cache key (Facebook or Instagram). */
-export function parseScopeRef(url) {
-  return parsePageRef(url) || parseInstagramRef(url);
+/**
+ * Resolve a trusted scope entry to a cache key (Facebook or Instagram).
+ * Accepted forms (config only — NOT public API):
+ * - facebook:<username> / bare Facebook username
+ * - instagram:<username>
+ * - legacy Facebook/Instagram profile URLs
+ * Bare names without a platform prefix resolve as Facebook usernames
+ * (use `instagram:<user>` for Instagram to avoid cross-platform ambiguity).
+ */
+export function parseScopeRef(entry) {
+  if (typeof entry !== 'string' || !entry.trim()) return null;
+  const raw = entry.trim();
+  if (/^instagram:/i.test(raw)) return parseInstagramConfigRef(raw);
+  if (/^facebook:/i.test(raw)) return parseFacebookConfigRef(raw);
+  return parseFacebookConfigRef(raw) || parseInstagramConfigRef(raw);
 }
 
 /**
  * Optional per-client page scopes. Absent/empty => backward-compatible unscoped mode.
  * When present, every configured API key name must have an explicit array entry.
- * Entries may be Facebook page URLs and/or Instagram profile URLs (mixed arrays OK).
+ * Entries may be usernames, platform-prefixed ids, and/or legacy profile URLs.
  */
 export function parseApiKeyPageScopes(raw, apiKeys) {
   if (raw === undefined || raw === null || String(raw).trim() === '') return null;
@@ -62,7 +75,7 @@ export function parseApiKeyPageScopes(raw, apiKeys) {
     throw new Error('API_KEY_PAGE_SCOPES must be valid JSON object');
   }
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-    throw new Error('API_KEY_PAGE_SCOPES must be a JSON object of clientName -> page URL array');
+    throw new Error('API_KEY_PAGE_SCOPES must be a JSON object of clientName -> username/URL array');
   }
 
   const keyNames = new Set(apiKeys.map((k) => k.name));
@@ -80,7 +93,7 @@ export function parseApiKeyPageScopes(raw, apiKeys) {
   const scopes = new Map();
   for (const [name, urls] of Object.entries(obj)) {
     if (!Array.isArray(urls)) {
-      throw new Error(`API_KEY_PAGE_SCOPES["${name}"] must be an array of Facebook/Instagram URLs`);
+      throw new Error(`API_KEY_PAGE_SCOPES["${name}"] must be an array of Facebook/Instagram usernames or URLs`);
     }
     const keys = new Set();
     for (const url of urls) {
@@ -92,7 +105,7 @@ export function parseApiKeyPageScopes(raw, apiKeys) {
       }
       const ref = parseScopeRef(url.trim());
       if (!ref) {
-        throw new Error(`API_KEY_PAGE_SCOPES["${name}"] has unsupported page URL`);
+        throw new Error(`API_KEY_PAGE_SCOPES["${name}"] has unsupported page/profile reference`);
       }
       keys.add(ref.key);
     }
@@ -106,11 +119,23 @@ export function parseInstagramAllowedProfiles(raw) {
   const urls = toList(raw);
   const keys = [];
   for (const url of urls) {
-    const ref = parseInstagramRef(url) || (/^[A-Za-z0-9._]{1,30}$/.test(url)
-      ? parseInstagramRef(`https://www.instagram.com/${url}/`)
-      : null);
+    const ref = parseInstagramConfigRef(url);
     if (!ref) {
       throw new Error(`INSTAGRAM_ALLOWED_PROFILES contains an invalid Instagram profile: ${url}`);
+    }
+    keys.push(ref.key);
+  }
+  return keys;
+}
+
+/** Parse ALLOWED_PAGES → Facebook cache keys (usernames / legacy URLs). */
+export function parseAllowedPages(raw) {
+  const items = toList(raw);
+  const keys = [];
+  for (const item of items) {
+    const ref = parseFacebookConfigRef(item) || parseFacebookUsername(item);
+    if (!ref) {
+      throw new Error(`ALLOWED_PAGES contains an invalid Facebook page username: ${item}`);
     }
     keys.push(ref.key);
   }
@@ -207,7 +232,7 @@ export function loadConfig(env = process.env) {
     host: env.HOST || '0.0.0.0',
     apiKeys,
     pageScopes,
-    allowedPages: toList(env.ALLOWED_PAGES).map((s) => s.toLowerCase()),
+    allowedPages: parseAllowedPages(env.ALLOWED_PAGES),
     instagramAllowedProfiles: parseInstagramAllowedProfiles(env.INSTAGRAM_ALLOWED_PROFILES),
     allowedOrigins: toList(env.ALLOWED_ORIGINS),
     rateLimitPerMin: toInt(env.RATE_LIMIT_PER_MIN, 120),

@@ -41,23 +41,27 @@ const localDir = join(root, '.postman-local');
 const sharedCacheDir = resolveSharedCacheDir(root);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const PAGE_CERN = 'https://www.facebook.com/cern';
-const PAGE_NASA = 'https://www.facebook.com/nasa';
-const PAGE_COLD = 'https://www.facebook.com/cern';
-const IG_NASA = 'https://www.instagram.com/nasa/';
-const IG_NATGEO = 'https://www.instagram.com/natgeo/';
+const PAGE_CERN = 'cern';
+const PAGE_CERN_URL = 'https://www.facebook.com/cern';
+const PAGE_NASA = 'nasa';
+const PAGE_NASA_URL = 'https://www.facebook.com/nasa';
+const PAGE_COLD = 'SomeNeverCachedPage99';
+const IG_NASA = 'nasa';
+const IG_NASA_URL = 'https://www.instagram.com/nasa/';
+const IG_NATGEO = 'natgeo';
+const IG_NATGEO_KEY = 'instagram:natgeo';
 const IG_CAPTURE_DIR = join(localDir, 'instagram-capture');
 const GENERATED_ENV_NAME = 'Social Media Posts API — Local Generated';
 const GENERATED_ENV_FILE = 'Social-Media-Posts-Local.generated.postman_environment.json';
 
 /** Optional private overrides (runtime env only — never commit values). */
 function resolveDemoFacebookPageUrl() {
-  const raw = (process.env.POSTMAN_FACEBOOK_PAGE_URL || '').trim();
+  const raw = (process.env.POSTMAN_FACEBOOK_USERNAME || '').trim();
   return raw || PAGE_CERN;
 }
 
 function resolveDemoInstagramProfileUrl() {
-  const raw = (process.env.POSTMAN_INSTAGRAM_PROFILE_URL || '').trim();
+  const raw = (process.env.POSTMAN_INSTAGRAM_USERNAME || '').trim();
   return raw || IG_NASA;
 }
 
@@ -266,10 +270,10 @@ async function runOffline() {
   const fakeUrl = `http://127.0.0.1:${fakePort}`;
 
   const apiPort = await freePort();
-  const IG_COLD = 'https://www.instagram.com/nasa';
+  const IG_COLD = 'SomeNeverCachedProfile99';
   const scopes = JSON.stringify({
-    clientA: [PAGE_CERN, PAGE_COLD, IG_NASA, IG_COLD],
-    clientB: [PAGE_NASA, IG_NATGEO],
+    clientA: [PAGE_CERN, PAGE_COLD, 'instagram:nasa', 'instagram:SomeNeverCachedProfile99'],
+    clientB: [PAGE_NASA, 'instagram:natgeo'],
   });
 
   const child = spawnApi({
@@ -297,12 +301,10 @@ async function runOffline() {
     baseUrl,
     apiKey: keyA,
     apiKeyB: keyB,
-    facebookPageUrl: PAGE_CERN,
-    pageUrl: PAGE_CERN,
-    unauthorizedFacebookPageUrl: PAGE_NASA,
-    unauthorizedPageUrl: PAGE_NASA,
-    instagramProfileUrl: IG_NASA,
-    unauthorizedInstagramProfileUrl: IG_NATGEO,
+    facebookUsername: PAGE_CERN,
+    unauthorizedFacebookUsername: PAGE_NASA,
+    instagramUsername: IG_NASA,
+    unauthorizedInstagramUsername: IG_NATGEO,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: fakeUrl,
@@ -421,12 +423,10 @@ async function runLive() {
     baseUrl,
     apiKey: key,
     apiKeyB: '',
-    facebookPageUrl: PAGE_CERN,
-    pageUrl: PAGE_CERN,
-    unauthorizedFacebookPageUrl: PAGE_NASA,
-    unauthorizedPageUrl: PAGE_NASA,
-    instagramProfileUrl: IG_NASA,
-    unauthorizedInstagramProfileUrl: IG_NATGEO,
+    facebookUsername: PAGE_CERN,
+    unauthorizedFacebookUsername: PAGE_NASA,
+    instagramUsername: IG_NASA,
+    unauthorizedInstagramUsername: IG_NATGEO,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: '',
@@ -712,12 +712,10 @@ async function runServe() {
       baseUrl,
       apiKey: key,
       apiKeyB: '',
-      facebookPageUrl: demoFacebook,
-      pageUrl: demoFacebook,
-      unauthorizedFacebookPageUrl: PAGE_NASA,
-      unauthorizedPageUrl: PAGE_NASA,
-      instagramProfileUrl: demoInstagram,
-      unauthorizedInstagramProfileUrl: IG_NATGEO,
+      facebookUsername: demoFacebook,
+      unauthorizedFacebookUsername: PAGE_NASA,
+      instagramUsername: demoInstagram,
+      unauthorizedInstagramUsername: IG_NATGEO,
       limit: '10',
       invalidApiKey: 'invalid-key-not-real',
       fakeUpstreamUrl: '',
@@ -733,9 +731,9 @@ async function runServe() {
   log(`Select environment: ${GENERATED_ENV_NAME}`);
   log('Facebook: 01 — Facebook → FB — 02 Real Posts → Get Latest 10 Facebook Posts');
   log('Instagram: 02 — Instagram → IG — 02 Real Posts → Get Latest 10 Instagram Posts');
-  log('Public demo defaults: facebookPageUrl=CERN page, instagramProfileUrl=NASA profile, limit=10');
+  log('Public demo defaults: facebookUsername=cern, instagramUsername=nasa, limit=10');
   log(
-    'Optional private overrides (runtime only): POSTMAN_FACEBOOK_PAGE_URL, POSTMAN_INSTAGRAM_PROFILE_URL',
+    'Optional private overrides (runtime only): POSTMAN_FACEBOOK_USERNAME, POSTMAN_INSTAGRAM_USERNAME',
   );
   log('NOTE: Uncached targets in cache-only mode return 502 UPSTREAM_UNAVAILABLE (no paid scrape).');
   log('meta.source=cache|stale-cache means no new Apify call; meta.source=live means a scrape ran.');
@@ -823,8 +821,8 @@ async function runInstagramLive() {
   const keyB = `igdeny${randomKey(12)}`;
   const apiPort = await freePort();
   const scopes = JSON.stringify({
-    liveA: [IG_NASA, PAGE_CERN],
-    liveB: [IG_NATGEO],
+    liveA: ['instagram:nasa', PAGE_CERN],
+    liveB: ['instagram:natgeo'],
   });
 
   const child = spawnApi({
@@ -1008,12 +1006,10 @@ async function runInstagramLive() {
     baseUrl,
     apiKey: keyA,
     apiKeyB: keyB,
-    facebookPageUrl: PAGE_CERN,
-    pageUrl: PAGE_CERN,
-    unauthorizedFacebookPageUrl: PAGE_NASA,
-    unauthorizedPageUrl: PAGE_NASA,
-    instagramProfileUrl: IG_NASA,
-    unauthorizedInstagramProfileUrl: IG_NATGEO,
+    facebookUsername: PAGE_CERN,
+    unauthorizedFacebookUsername: PAGE_NASA,
+    instagramUsername: IG_NASA,
+    unauthorizedInstagramUsername: IG_NATGEO,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: '',

@@ -1,3 +1,5 @@
+import { looksLikeSocialUrlOrPath } from './pageRef.js';
+
 const HOSTS = new Set([
   'instagram.com',
   'www.instagram.com',
@@ -18,10 +20,37 @@ const safeDecode = (s) => {
   try { return decodeURIComponent(s); } catch { return s; }
 };
 
+function instagramRefFromUsername(user) {
+  const lower = user.toLowerCase();
+  if (RESERVED.has(lower)) return null;
+  if (!USERNAME_RE.test(user)) return null;
+  if (/^\.+$/.test(user)) return null;
+  return {
+    platform: 'instagram',
+    key: `instagram:${lower}`,
+    username: lower,
+    url: `https://www.instagram.com/${lower}/`,
+  };
+}
+
 /**
- * Parses an Instagram profile URL into a platform-aware reference.
- * Cache key is always prefixed: `instagram:<username>` (never collides with Facebook keys).
+ * Public Instagram API input: bare profile username only.
+ * Full Instagram URLs are rejected (return null).
+ */
+export function parseInstagramUsername(input) {
+  if (typeof input !== 'string' || !input.trim()) return null;
+  const raw = input.trim();
+  if (raw.length > 30) return null;
+  if (looksLikeSocialUrlOrPath(raw)) return null;
+  // Instagram usernames cannot contain '-' (unlike Facebook).
+  if (raw.includes('-')) return null;
+  return instagramRefFromUsername(raw);
+}
+
+/**
+ * Trusted / legacy Instagram profile URL parser (config, warmers, fixtures).
  * Returns null when the input is not a supported Instagram profile URL.
+ * Not used for public HTTP `page` query values.
  *
  * @returns {{ platform: 'instagram', key: string, username: string, url: string } | null}
  */
@@ -40,28 +69,25 @@ export function parseInstagramRef(input) {
   const host = u.hostname.toLowerCase();
   if (!HOSTS.has(host)) return null;
 
-  // Fragments must not affect identity; ignore hash. Strip tracking query params by not using them.
   const seg = u.pathname.split('/').filter(Boolean).map(safeDecode);
   if (!seg.length) return null;
-  if (seg.length > 1) {
-    // Allow trailing empty only; reject /user/tagged, /user/reels, etc.
-    return null;
+  if (seg.length > 1) return null;
+
+  return instagramRefFromUsername(seg[0]);
+}
+
+/**
+ * Trusted config helper: username, instagram:username, or legacy profile URL.
+ */
+export function parseInstagramConfigRef(input) {
+  if (typeof input !== 'string' || !input.trim()) return null;
+  const raw = input.trim();
+  const prefixed = /^instagram:(.+)$/i.exec(raw);
+  if (prefixed) {
+    // Allow "instagram:nasa" where the remainder is a bare username (not a URL).
+    return parseInstagramUsername(prefixed[1]);
   }
-
-  const user = seg[0];
-  const lower = user.toLowerCase();
-  if (RESERVED.has(lower)) return null;
-  if (!USERNAME_RE.test(user)) return null;
-  // Instagram usernames cannot be only dots.
-  if (/^\.+$/.test(user)) return null;
-
-  const username = lower;
-  return {
-    platform: 'instagram',
-    key: `instagram:${username}`,
-    username,
-    url: `https://www.instagram.com/${username}/`,
-  };
+  return parseInstagramUsername(raw) || parseInstagramRef(raw);
 }
 
 export function isInstagramRef(ref) {

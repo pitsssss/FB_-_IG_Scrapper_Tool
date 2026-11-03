@@ -87,21 +87,21 @@ describe('per-client page scopes', () => {
     calls = 0;
     const { server, get } = await start();
     try {
-      const aOk = await get('https://www.facebook.com/pagea', 'secretA');
+      const aOk = await get('pagea', 'secretA');
       assert.equal(aOk.status, 200);
       assertResponseShape(aOk.body);
 
-      const aDeny = await get('https://www.facebook.com/pageb', 'secretA');
+      const aDeny = await get('pageb', 'secretA');
       assert.equal(aDeny.status, 403);
       assertErrorShape(aDeny.body);
       assert.equal(aDeny.body.error.code, 'PAGE_NOT_ALLOWED');
       assert.equal(aDeny.text.includes('website2'), false);
       assert.equal(aDeny.text.includes('secret'), false);
 
-      const bOk = await get('https://www.facebook.com/pageb', 'secretB');
+      const bOk = await get('pageb', 'secretB');
       assert.equal(bOk.status, 200);
 
-      const bDeny = await get('https://www.facebook.com/pagea', 'secretB');
+      const bDeny = await get('pagea', 'secretB');
       assert.equal(bDeny.status, 403);
       assertErrorShape(bDeny.body);
     } finally {
@@ -114,14 +114,14 @@ describe('per-client page scopes', () => {
     calls = 0;
     const { server, get, config } = await start({ CACHE_DIR: dir, APIFY_DAILY_RUN_LIMIT: '10' });
     try {
-      const warm = await get('https://www.facebook.com/pagea', 'secretA');
+      const warm = await get('pagea', 'secretA');
       assert.equal(warm.status, 200);
       const before = calls;
       const qBefore = await createApifyQuota({ stateDir: dir, dailyLimit: 10 }).getStatus();
 
-      const denyCached = await get('https://www.facebook.com/pagea', 'secretB');
+      const denyCached = await get('pagea', 'secretB');
       assert.equal(denyCached.status, 403);
-      const denyFresh = await get('https://www.facebook.com/pagec', 'secretA');
+      const denyFresh = await get('pagec', 'secretA');
       assert.equal(denyFresh.status, 403);
 
       assert.equal(calls, before);
@@ -145,7 +145,7 @@ describe('per-client page scopes', () => {
         API_KEYS: 'website1:secretA',
         API_KEY_PAGE_SCOPES: JSON.stringify({ website1: ['https://example.com/x'] }),
       }),
-      /unsupported page URL|invalid/i,
+      /unsupported page\/profile reference|unsupported page URL|invalid/i,
     );
     assert.throws(
       () => loadConfig({ API_KEYS: 'website1:a,website1:b' }),
@@ -160,9 +160,9 @@ describe('per-client page scopes', () => {
   it('13: global ALLOWED_PAGES still applies with scopes', async () => {
     const { server, get } = await start({ ALLOWED_PAGES: 'pagea' });
     try {
-      assert.equal((await get('https://www.facebook.com/pagea', 'secretA')).status, 200);
+      assert.equal((await get('pagea', 'secretA')).status, 200);
       // pageb is in website2 scope but blocked globally
-      assert.equal((await get('https://www.facebook.com/pageb', 'secretB')).status, 403);
+      assert.equal((await get('pageb', 'secretB')).status, 403);
     } finally {
       server.close();
     }
@@ -181,7 +181,7 @@ describe('per-client page scopes', () => {
     const server = createApp(config);
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     try {
-      const res = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/anyok')}`, {
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/facebook/posts?page=${encodeURIComponent('anyok')}`, {
         headers: { 'x-api-key': 'secretA' },
       });
       assert.equal(res.status, 200);
@@ -193,19 +193,19 @@ describe('per-client page scopes', () => {
   it('15: invalid credentials never expose account details', async () => {
     const { server, get } = await start();
     try {
-      const missing = await get('https://www.facebook.com/pagea', null);
+      const missing = await get('pagea', null);
       assert.equal(missing.status, 401);
       assertErrorShape(missing.body);
       assert.equal(missing.text.includes('website1'), false);
       assert.equal(missing.text.includes('secretA'), false);
 
-      const wrong = await get('https://www.facebook.com/pagea', 'wrong-key');
+      const wrong = await get('pagea', 'wrong-key');
       assert.equal(wrong.status, 401);
       assertErrorShape(wrong.body);
       assert.equal(wrong.text.includes('website'), false);
 
       // Query-string credentials must be ignored
-      const res = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/facebook/posts?page=${encodeURIComponent('https://www.facebook.com/pagea')}&api_key=secretA&apiKey=secretA`);
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/facebook/posts?page=${encodeURIComponent('pagea')}&api_key=secretA&apiKey=secretA`);
       assert.equal(res.status, 401);
     } finally {
       server.close();
@@ -216,11 +216,11 @@ describe('per-client page scopes', () => {
     const { server, get } = await start();
     try {
       const results = await Promise.all([
-        get('https://www.facebook.com/pagea', 'secretA'),
-        get('https://www.facebook.com/pageb', 'secretA'),
-        get('https://www.facebook.com/pageb', 'secretB'),
-        get('https://www.facebook.com/pagea', 'secretB'),
-        get('https://www.facebook.com/pagea', 'secretA'),
+        get('pagea', 'secretA'),
+        get('pageb', 'secretA'),
+        get('pageb', 'secretB'),
+        get('pagea', 'secretB'),
+        get('pagea', 'secretA'),
       ]);
       assert.equal(results[0].status, 200);
       assert.equal(results[1].status, 403);

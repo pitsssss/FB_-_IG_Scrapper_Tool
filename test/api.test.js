@@ -73,12 +73,14 @@ test('auth, validation, live fetch, then cache hit', async () => {
   mode = 'ok';
   const { server, get } = await makeApp({ FRESH_TTL_SECONDS: '3600' });
   try {
-    assert.equal((await get('page=https://facebook.com/cern', {})).status, 401);
-    assert.equal((await get('page=https://facebook.com/cern', { 'x-api-key': 'wrong' })).status, 401);
+    assert.equal((await get('page=cern', {})).status, 401);
+    assert.equal((await get('page=cern', { 'x-api-key': 'wrong' })).status, 401);
     assert.equal((await get('')).status, 400);
+    assert.equal((await get('page=https://www.facebook.com/cern')).status, 400);
+    assert.equal((await get('page=@cern')).status, 400);
     assert.equal((await get('page=https://example.com/x')).status, 400);
 
-    const a = await get('page=https://www.facebook.com/cern');
+    const a = await get('page=cern');
     assert.equal(a.status, 200);
     assertResponseShape(a.body);
     assert.equal(a.body.meta.source, 'live');
@@ -89,7 +91,7 @@ test('auth, validation, live fetch, then cache hit', async () => {
       assert.equal(p.page.logo, 'https://cdn.example/logo.jpg');
       assert.ok(p.created_at && p.image && p.url);
     }
-    const b = await get('page=https://www.facebook.com/cern&limit=3');
+    const b = await get('page=cern&limit=3');
     assertResponseShape(b.body);
     assert.equal(b.body.meta.source, 'cache');
     assert.equal(b.body.data.posts.length, 3);
@@ -100,25 +102,25 @@ test('upstream failure or empty result falls back to cached posts (never empty)'
   mode = 'ok';
   const { server, get } = await makeApp({ FRESH_TTL_SECONDS: '0' }); // everything is immediately stale
   try {
-    assert.equal((await get('page=https://www.facebook.com/cern')).body.meta.source, 'live');
+    assert.equal((await get('page=cern')).body.meta.source, 'live');
     await sleep(50);
     mode = 'fail';
-    const r = await get('page=https://www.facebook.com/cern');
+    const r = await get('page=cern');
     assert.equal(r.status, 200);
     assertResponseShape(r.body);
     assert.equal(r.body.meta.source, 'stale-cache');
     assert.equal(r.body.data.posts.length, 10);
     await sleep(100);
     mode = 'empty';
-    const r2 = await get('page=https://www.facebook.com/cern');
+    const r2 = await get('page=cern');
     assert.equal(r2.status, 200);
     assertResponseShape(r2.body);
     assert.equal(r2.body.data.posts.length, 10);
     await sleep(100);
     mode = 'ok';
-    await get('page=https://www.facebook.com/cern'); // triggers background refresh
+    await get('page=cern'); // triggers background refresh
     await sleep(100);
-    assert.equal((await get('page=https://www.facebook.com/cern')).body.meta.warning, null);
+    assert.equal((await get('page=cern')).body.meta.warning, null);
   } finally { server.close(); }
 });
 
@@ -126,7 +128,7 @@ test('no cache + upstream down => clean JSON error, not a crash', async () => {
   mode = 'fail';
   const { server, get } = await makeApp();
   try {
-    const r = await get('page=https://www.facebook.com/somepage');
+    const r = await get('page=somepage');
     assert.equal(r.status, 502);
     assertErrorShape(r.body);
     assert.equal(r.body.error.code, 'UPSTREAM_UNAVAILABLE');

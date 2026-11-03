@@ -187,7 +187,7 @@ describe('shared cache + quota for Postman serve (synthetic)', () => {
     const before = await fakeStats(fakeUrl);
     assert.equal(before.calls, 0, 'no automatic scrape at startup');
 
-    const live = await fetchPosts(base1, key, 'https://www.facebook.com/cern', 10);
+    const live = await fetchPosts(base1, key, 'cern', 10);
     assert.equal(live.status, 200);
     assertResponseShape(live.body);
     assert.equal(live.body.meta.source, 'live');
@@ -228,7 +228,7 @@ describe('shared cache + quota for Postman serve (synthetic)', () => {
     assert.match(api2.__log(), /cache warmer: disabled/);
 
     const callsBeforeCache = (await fakeStats(fakeUrl)).calls;
-    const cached = await fetchPosts(base2, key2, 'https://www.facebook.com/cern', 10);
+    const cached = await fetchPosts(base2, key2, 'cern', 10);
     assert.equal(cached.status, 200);
     assertResponseShape(cached.body);
     assert.equal(cached.body.meta.source, 'cache');
@@ -243,7 +243,7 @@ describe('shared cache + quota for Postman serve (synthetic)', () => {
     assert.equal(quota2.consumed, 1, 'quota must not reset');
 
     // Uncached page under cache-only → clean error, no extra quota burn
-    const cold = await fetchPosts(base2, key2, 'https://www.facebook.com/nasa', 5);
+    const cold = await fetchPosts(base2, key2, 'nasa', 5);
     assert.equal(cold.status, 502);
     assertErrorShape(cold.body);
     assert.equal(cold.body.error.code, 'UPSTREAM_UNAVAILABLE');
@@ -286,27 +286,27 @@ describe('shared cache + quota for Postman serve (synthetic)', () => {
     const calls0 = (await fakeStats(fakeUrl)).calls;
 
     // 2nd total (nasa)
-    const r2 = await fetchPosts(base, key, 'https://www.facebook.com/nasa', 10);
+    const r2 = await fetchPosts(base, key, 'nasa', 10);
     assert.equal(r2.status, 200);
     assert.equal(r2.body.meta.source, 'live');
     assert.equal(JSON.parse(await readFile(join(cacheDir, 'apify-quota.json'), 'utf8')).consumed, 2);
 
     // 3rd total (another slug) — still within TOTAL daily-limit=3
-    const r3 = await fetchPosts(base, key, 'https://www.facebook.com/cern', 5);
+    const r3 = await fetchPosts(base, key, 'SomeNeverCachedPage99', 5);
     assert.equal(r3.status, 200);
     assert.equal(r3.body.meta.source, 'live');
     assert.equal(JSON.parse(await readFile(join(cacheDir, 'apify-quota.json'), 'utf8')).consumed, 3);
     assert.equal((await fakeStats(fakeUrl)).calls, calls0 + 2);
 
     // 4th total blocked — same API process, new pageUrl (no collection rebuild)
-    const r4 = await fetchPosts(base, key, 'https://www.facebook.com/AnotherColdPage88', 5);
+    const r4 = await fetchPosts(base, key, 'AnotherColdPage88', 5);
     assert.equal(r4.status, 502);
     assertErrorShape(r4.body);
     assert.equal((await fakeStats(fakeUrl)).calls, calls0 + 2, 'blocked request must not hit upstream');
     assert.equal(JSON.parse(await readFile(join(cacheDir, 'apify-quota.json'), 'utf8')).consumed, 3);
 
     // Cached CERN still available without burning quota
-    const cern = await fetchPosts(base, key, 'https://www.facebook.com/cern', 10);
+    const cern = await fetchPosts(base, key, 'cern', 10);
     assert.equal(cern.status, 200);
     assert.equal(cern.body.meta.source, 'cache');
     assert.equal(JSON.parse(await readFile(join(cacheDir, 'apify-quota.json'), 'utf8')).consumed, 3);
@@ -340,11 +340,11 @@ describe('shared cache + quota for Postman serve (synthetic)', () => {
     await waitHealth(base);
 
     const calls0 = (await fakeStats(fakeUrl)).calls;
-    const cached = await fetchPosts(base, key, 'https://www.facebook.com/cern', 10);
+    const cached = await fetchPosts(base, key, 'cern', 10);
     assert.equal(cached.status, 200);
     assert.ok(['cache', 'stale-cache'].includes(cached.body.meta.source));
 
-    const cold = await fetchPosts(base, key, 'https://www.facebook.com/BrandNewCold77', 3);
+    const cold = await fetchPosts(base, key, 'BrandNewCold77', 3);
     assert.equal(cold.status, 502);
     assert.equal((await fakeStats(fakeUrl)).calls, calls0);
 
@@ -391,7 +391,7 @@ describe('real .postman-local/live-cache visibility (if present)', () => {
       const base = `http://127.0.0.1:${port}`;
       await waitHealth(base);
       assert.match(api.__log(), /cache warmer: disabled/);
-      const res = await fetchPosts(base, key, 'https://www.facebook.com/cern', 10);
+      const res = await fetchPosts(base, key, 'cern', 10);
       assert.equal(res.status, 200, 'expected CERN in shared live-cache');
       assertResponseShape(res.body);
       assert.ok(['cache', 'stale-cache'].includes(res.body.meta.source));
