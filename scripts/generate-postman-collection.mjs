@@ -25,10 +25,10 @@ const isDirectRun =
 
 export const COLLECTION_NAME = 'Social Media Posts API — Facebook & Instagram';
 /** Neutral public demo defaults for the shareable Postman template (not customer accounts). */
-export const FB_DEFAULT = 'https://www.facebook.com/cern';
-export const IG_DEFAULT = 'https://www.instagram.com/nasa/';
-export const FB_UNAUTHORIZED_DEFAULT = 'https://www.facebook.com/nasa';
-export const IG_UNAUTHORIZED_DEFAULT = 'https://www.instagram.com/natgeo/';
+export const FB_DEFAULT = 'cern';
+export const IG_DEFAULT = 'nasa';
+export const FB_UNAUTHORIZED_DEFAULT = 'nasa';
+export const IG_UNAUTHORIZED_DEFAULT = 'natgeo';
 
 const AUTH_HEADER = { key: 'x-api-key', value: '{{apiKey}}', type: 'text' };
 
@@ -235,18 +235,18 @@ ${SCRIPTS.noSecretsInBody}
 }
 
 function buildFacebookRealPosts() {
-  const pageQ = { key: 'page', value: '{{facebookPageUrl}}' };
+  const pageQ = { key: 'page', value: '{{facebookUsername}}' };
   const path = ['api', 'v1', 'facebook', 'posts'];
   return folder(
     'FB — 02 Real Posts',
     'CAUTION: cold cache + live Apify token may trigger ONE paid Facebook scrape.\n' +
-      'Prefer cache-only serve for Desktop. Default account: {{facebookPageUrl}} (public demo page).\n' +
+      'Prefer cache-only serve for Desktop. Default account: {{facebookUsername}} (public demo page).\n' +
       'Offline runner uses fake upstream — safe.',
     [
       getReq('Get Latest 10 Facebook Posts', {
         pathSegments: path,
         query: [pageQ, { key: 'limit', value: '10' }],
-        description: 'Primary Facebook request for {{facebookPageUrl}}. Expect ≤10 posts; exact-10 only when upstream provides them.',
+        description: 'Primary Facebook request for {{facebookUsername}}. Expect ≤10 posts; exact-10 only when upstream provides them.',
         events: [event('test', `
 pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
 ${SCRIPTS.assertSuccessSchema}
@@ -333,12 +333,12 @@ ${SCRIPTS.noSecretsInBody}
 }
 
 function buildInstagramRealPosts() {
-  const pageQ = { key: 'page', value: '{{instagramProfileUrl}}' };
+  const pageQ = { key: 'page', value: '{{instagramUsername}}' };
   const path = ['api', 'v1', 'instagram', 'posts'];
   return folder(
     'IG — 02 Real Posts',
     'CAUTION: cold cache may trigger ONE paid Instagram Post Scraper run.\n' +
-      'Default account: {{instagramProfileUrl}} (public demo profile).\n' +
+      'Default account: {{instagramUsername}} (public demo profile).\n' +
       'Cache-only mode returns 502 when the profile is uncached — do not assume a warm cache.\n' +
       'Do not assert real profile photo or carousel children without verification.\n' +
       'Offline runner uses fake upstream — safe.',
@@ -346,7 +346,7 @@ function buildInstagramRealPosts() {
       getReq('Get Latest 10 Instagram Posts', {
         pathSegments: path,
         query: [pageQ, { key: 'limit', value: '10' }],
-        description: 'Primary Instagram request for {{instagramProfileUrl}}.',
+        description: 'Primary Instagram request for {{instagramUsername}}.',
         events: [event('test', `
 pm.test('HTTP 200 or clean 502 when uncached/cache-only', function () {
   pm.expect([200, 502]).to.include(pm.response.code);
@@ -590,9 +590,9 @@ pm.test('MISSING_PAGE', function () { pm.expect(pm.response.json().error.code).t
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Invalid Facebook URL (groups)', {
+    getReq('Full Facebook URL Rejected', {
       pathSegments: path,
-      query: [{ key: 'page', value: 'https://www.facebook.com/groups/123' }, { key: 'limit', value: '10' }],
+      query: [{ key: 'page', value: 'https://www.facebook.com/cern' }, { key: 'limit', value: '10' }],
       events: [event('test', `
 pm.test('status 400', function () { pm.response.to.have.status(400); });
 ${SCRIPTS.assertError}
@@ -600,9 +600,9 @@ pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.cod
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Unsupported Domain', {
+    getReq('Invalid Facebook Username', {
       pathSegments: path,
-      query: [{ key: 'page', value: 'https://example.com/cern' }, { key: 'limit', value: '10' }],
+      query: [{ key: 'page', value: 'bad user' }, { key: 'limit', value: '10' }],
       events: [event('test', `
 pm.test('status 400', function () { pm.response.to.have.status(400); });
 ${SCRIPTS.assertError}
@@ -612,8 +612,8 @@ ${SCRIPTS.noSecretsInBody}
     }),
     getReq('Unauthorized Facebook Page', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{unauthorizedFacebookPageUrl}}' }, { key: 'limit', value: '10' }],
-      description: 'Requires scoped apiKey that cannot access unauthorizedFacebookPageUrl (offline runner configures this).',
+      query: [{ key: 'page', value: '{{unauthorizedFacebookUsername}}' }, { key: 'limit', value: '10' }],
+      description: 'Requires scoped apiKey that cannot access unauthorizedFacebookUsername (offline runner configures this).',
       events: [event('test', `
 pm.test('status 403', function () { pm.response.to.have.status(403); });
 ${SCRIPTS.assertError}
@@ -623,7 +623,7 @@ ${SCRIPTS.noSecretsInBody}
     }),
     getReq('Limit Boundary Clamp', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{facebookPageUrl}}' }, { key: 'limit', value: '999' }],
+      query: [{ key: 'page', value: '{{facebookUsername}}' }, { key: 'limit', value: '999' }],
       events: [event('test', `
 pm.test('status 200 (clamped, not 400) or 502/403', function () {
   pm.expect([200, 403, 502]).to.include(pm.response.code);
@@ -638,7 +638,7 @@ ${SCRIPTS.noSecretsInBody}
     getReq('Unsupported HTTP Method', {
       pathSegments: path,
       method: 'POST',
-      query: [{ key: 'page', value: '{{facebookPageUrl}}' }, { key: 'limit', value: '10' }],
+      query: [{ key: 'page', value: '{{facebookUsername}}' }, { key: 'limit', value: '10' }],
       events: [event('test', `
 pm.test('status 405', function () { pm.response.to.have.status(405); });
 ${SCRIPTS.assertError}
@@ -672,9 +672,9 @@ pm.test('MISSING_PAGE', function () { pm.expect(pm.response.json().error.code).t
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Post URL Instead of Profile', {
+    getReq('Full Instagram URL Rejected', {
       pathSegments: path,
-      query: [{ key: 'page', value: 'https://www.instagram.com/p/ABC123/' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: 'https://www.instagram.com/nasa/' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 400', function () { pm.response.to.have.status(400); });
 ${SCRIPTS.assertError}
@@ -682,9 +682,9 @@ pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.cod
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Reel URL Instead of Profile', {
+    getReq('At-Sign Username Rejected', {
       pathSegments: path,
-      query: [{ key: 'page', value: 'https://www.instagram.com/reel/ABC123/' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '@nasa' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 400', function () { pm.response.to.have.status(400); });
 ${SCRIPTS.assertError}
@@ -692,9 +692,9 @@ pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.cod
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Unsupported Domain', {
+    getReq('Invalid Instagram Username', {
       pathSegments: path,
-      query: [{ key: 'page', value: 'https://example.com/nasa' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: 'bad/user' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 400', function () { pm.response.to.have.status(400); });
 ${SCRIPTS.assertError}
@@ -704,8 +704,8 @@ ${SCRIPTS.noSecretsInBody}
     }),
     getReq('Unauthorized Instagram Profile', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{unauthorizedInstagramProfileUrl}}' }, { key: 'limit', value: '3' }],
-      description: 'Requires scoped apiKey without access to unauthorizedInstagramProfileUrl.',
+      query: [{ key: 'page', value: '{{unauthorizedInstagramUsername}}' }, { key: 'limit', value: '3' }],
+      description: 'Requires scoped apiKey without access to unauthorizedInstagramUsername.',
       events: [event('test', `
 pm.test('status 403', function () { pm.response.to.have.status(403); });
 ${SCRIPTS.assertError}
@@ -715,7 +715,7 @@ ${SCRIPTS.noSecretsInBody}
     }),
     getReq('Invalid Limit (clamped)', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{instagramProfileUrl}}' }, { key: 'limit', value: '999' }],
+      query: [{ key: 'page', value: '{{instagramUsername}}' }, { key: 'limit', value: '999' }],
       events: [event('test', `
 pm.test('status 200/403/502 (invalid limit is clamped, not 400)', function () {
   pm.expect([200, 403, 502]).to.include(pm.response.code);
@@ -730,7 +730,7 @@ ${SCRIPTS.noSecretsInBody}
     getReq('Missing API Key', {
       pathSegments: path,
       auth: false,
-      query: [{ key: 'page', value: '{{instagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{instagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 401', function () { pm.response.to.have.status(401); });
 ${SCRIPTS.assertError}
@@ -742,7 +742,7 @@ ${SCRIPTS.noSecretsInBody}
       pathSegments: path,
       auth: false,
       headers: [{ key: 'x-api-key', value: '{{invalidApiKey}}', type: 'text' }],
-      query: [{ key: 'page', value: '{{instagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{instagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 401', function () { pm.response.to.have.status(401); });
 ${SCRIPTS.assertError}
@@ -753,7 +753,7 @@ ${SCRIPTS.noSecretsInBody}
     getReq('Unsupported HTTP Method', {
       pathSegments: path,
       method: 'POST',
-      query: [{ key: 'page', value: '{{instagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{instagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 405', function () { pm.response.to.have.status(405); });
 ${SCRIPTS.assertError}
@@ -779,7 +779,7 @@ function buildFacebookAuthz() {
   return folder('FB — 05 Client Permissions', 'SAFE when scopes configured (offline runner). Multi-client isolation.', [
     getReq('Client A → authorized Facebook page', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{facebookPageUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{facebookUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 200 or 502', function () { pm.expect([200, 502]).to.include(pm.response.code); });
 if (pm.response.code === 200) { ${SCRIPTS.assertSuccessSchema} }
@@ -788,7 +788,7 @@ ${SCRIPTS.noSecretsInBody}
     }),
     getReq('Client A → unauthorized Facebook page', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{unauthorizedFacebookPageUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{unauthorizedFacebookUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 403', function () { pm.response.to.have.status(403); });
 ${SCRIPTS.assertError}
@@ -796,11 +796,11 @@ pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.cod
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Client B → authorized for unauthorizedFacebookPageUrl', {
+    getReq('Client B → authorized for unauthorizedFacebookUsername', {
       pathSegments: path,
       auth: false,
       headers: [{ key: 'x-api-key', value: '{{apiKeyB}}', type: 'text' }],
-      query: [{ key: 'page', value: '{{unauthorizedFacebookPageUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{unauthorizedFacebookUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 const keyB = pm.environment.get('apiKeyB') || '';
 if (!keyB) {
@@ -811,11 +811,11 @@ if (!keyB) {
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Client B → denied facebookPageUrl', {
+    getReq('Client B → denied facebookUsername', {
       pathSegments: path,
       auth: false,
       headers: [{ key: 'x-api-key', value: '{{apiKeyB}}', type: 'text' }],
-      query: [{ key: 'page', value: '{{facebookPageUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{facebookUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 const keyB = pm.environment.get('apiKeyB') || '';
 if (!keyB) {
@@ -835,7 +835,7 @@ function buildInstagramAuthz() {
   return folder('IG — 05 Client Permissions', 'SAFE when scopes configured. Cross-client Instagram isolation.', [
     getReq('Client A → authorized Instagram profile', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{instagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{instagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 200 or 502', function () { pm.expect([200, 502]).to.include(pm.response.code); });
 if (pm.response.code === 200) { ${SCRIPTS.assertSuccessSchema} }
@@ -844,7 +844,7 @@ ${SCRIPTS.noSecretsInBody}
     }),
     getReq('Client A → unauthorized Instagram profile', {
       pathSegments: path,
-      query: [{ key: 'page', value: '{{unauthorizedInstagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{unauthorizedInstagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 pm.test('status 403', function () { pm.response.to.have.status(403); });
 ${SCRIPTS.assertError}
@@ -852,11 +852,11 @@ pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.cod
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Client B → authorized unauthorizedInstagramProfileUrl', {
+    getReq('Client B → authorized unauthorizedInstagramUsername', {
       pathSegments: path,
       auth: false,
       headers: [{ key: 'x-api-key', value: '{{apiKeyB}}', type: 'text' }],
-      query: [{ key: 'page', value: '{{unauthorizedInstagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{unauthorizedInstagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 const keyB = pm.environment.get('apiKeyB') || '';
 if (!keyB) {
@@ -867,11 +867,11 @@ if (!keyB) {
 ${SCRIPTS.noSecretsInBody}
 `.trim())],
     }),
-    getReq('Client B → denied instagramProfileUrl', {
+    getReq('Client B → denied instagramUsername', {
       pathSegments: path,
       auth: false,
       headers: [{ key: 'x-api-key', value: '{{apiKeyB}}', type: 'text' }],
-      query: [{ key: 'page', value: '{{instagramProfileUrl}}' }, { key: 'limit', value: '3' }],
+      query: [{ key: 'page', value: '{{instagramUsername}}' }, { key: 'limit', value: '3' }],
       events: [event('test', `
 const keyB = pm.environment.get('apiKeyB') || '';
 if (!keyB) {
@@ -1009,29 +1009,29 @@ pm.test('no obvious secrets in any response body', function () {
   item: [
     folder(
       '01 — Facebook',
-      'Facebook page posts API. Default page: {{facebookPageUrl}}.\n' +
+      'Facebook page posts API. Default page: {{facebookUsername}}.\n' +
         'Endpoint: GET /api/v1/facebook/posts',
       [
-        buildHealthAuth('FB', 'facebookPageUrl'),
+        buildHealthAuth('FB', 'facebookUsername'),
         buildFacebookRealPosts(),
-        buildCacheFolder('FB', 'facebookPageUrl', 'fbLastPostIds', 'fbLastFetchedAt', ['api', 'v1', 'facebook', 'posts']),
+        buildCacheFolder('FB', 'facebookUsername', 'fbLastPostIds', 'fbLastFetchedAt', ['api', 'v1', 'facebook', 'posts']),
         buildFacebookErrors(),
         buildFacebookAuthz(),
-        buildResilience('FB', 'facebookPageUrl', ['api', 'v1', 'facebook', 'posts'], 'https://www.facebook.com/SomeNeverCachedPage99'),
+        buildResilience('FB', 'facebookUsername', ['api', 'v1', 'facebook', 'posts'], 'SomeNeverCachedPage99'),
       ],
     ),
     folder(
       '02 — Instagram',
-      'Instagram profile posts API. Default profile: {{instagramProfileUrl}}.\n' +
+      'Instagram profile posts API. Default profile: {{instagramUsername}}.\n' +
         'Endpoint: GET /api/v1/instagram/posts\n' +
         'Cache-only Desktop may return 502 until the profile is present in local cache.',
       [
-        buildHealthAuth('IG', 'instagramProfileUrl'),
+        buildHealthAuth('IG', 'instagramUsername'),
         buildInstagramRealPosts(),
-        buildCacheFolder('IG', 'instagramProfileUrl', 'igLastPostIds', 'igLastFetchedAt', ['api', 'v1', 'instagram', 'posts']),
+        buildCacheFolder('IG', 'instagramUsername', 'igLastPostIds', 'igLastFetchedAt', ['api', 'v1', 'instagram', 'posts']),
         buildInstagramErrors(),
         buildInstagramAuthz(),
-        buildResilience('IG', 'instagramProfileUrl', ['api', 'v1', 'instagram', 'posts'], 'https://www.instagram.com/SomeNeverCachedProfile99/'),
+        buildResilience('IG', 'instagramUsername', ['api', 'v1', 'instagram', 'posts'], 'SomeNeverCachedProfile99'),
       ],
     ),
   ],
@@ -1055,13 +1055,11 @@ const envTemplate = {
     { key: 'baseUrl', value: 'http://127.0.0.1:3000', type: 'default', enabled: true },
     { key: 'apiKey', value: '', type: 'secret', enabled: true },
     { key: 'apiKeyB', value: '', type: 'secret', enabled: true },
-    { key: 'facebookPageUrl', value: FB_DEFAULT, type: 'default', enabled: true },
-    { key: 'instagramProfileUrl', value: IG_DEFAULT, type: 'default', enabled: true },
-    { key: 'pageUrl', value: FB_DEFAULT, type: 'default', enabled: true },
-    { key: 'unauthorizedFacebookPageUrl', value: FB_UNAUTHORIZED_DEFAULT, type: 'default', enabled: true },
-    { key: 'unauthorizedInstagramProfileUrl', value: IG_UNAUTHORIZED_DEFAULT, type: 'default', enabled: true },
-    { key: 'unauthorizedPageUrl', value: FB_UNAUTHORIZED_DEFAULT, type: 'default', enabled: true },
-    { key: 'limit', value: '10', type: 'default', enabled: true },
+    { key: 'facebookUsername', value: FB_DEFAULT, type: 'default', enabled: true },
+    { key: 'instagramUsername', value: IG_DEFAULT, type: 'default', enabled: true },
+        { key: 'unauthorizedFacebookUsername', value: FB_UNAUTHORIZED_DEFAULT, type: 'default', enabled: true },
+    { key: 'unauthorizedInstagramUsername', value: IG_UNAUTHORIZED_DEFAULT, type: 'default', enabled: true },
+        { key: 'limit', value: '10', type: 'default', enabled: true },
     { key: 'invalidApiKey', value: 'invalid-key-not-real', type: 'default', enabled: true },
     { key: 'fakeUpstreamUrl', value: '', type: 'default', enabled: true },
   ],

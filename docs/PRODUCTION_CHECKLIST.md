@@ -105,7 +105,7 @@ If disk writes fail, the process may still serve from memory until restart; thos
 
 - [ ] Import **one** collection: `postman/Social-Media-Posts-API.postman_collection.json`
 - [ ] Use `npm run postman:serve` → import `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json`
-- [ ] Confirm defaults: public demo Facebook/Instagram URLs (or private runtime overrides), `limit=10`, generated `apiKey`
+- [ ] Confirm defaults: public demo Facebook/Instagram usernames (`cern` / `nasa`, or private runtime overrides), `limit=10`, generated `apiKey`
 - [ ] Prefer cache-only serve; never “Run Collection” in live mode
 - [ ] Do not claim an arbitrary Instagram profile is cached until verified
 - [ ] Share only the collection + empty-key template with other engineers (never generated env / `.env`)

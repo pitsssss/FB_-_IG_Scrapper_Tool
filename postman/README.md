@@ -7,7 +7,7 @@ One unified Collection v2.1 covering **both** platforms, plus a safe environment
 | File | Purpose |
 |------|---------|
 | `Social-Media-Posts-API.postman_collection.json` | **The** collection (exactly two top folders: Facebook + Instagram) |
-| `Social-Media-Posts-Local.postman_environment.json` | Shareable **template** — empty `apiKey`; public demo URLs (CERN / NASA) |
+| `Social-Media-Posts-Local.postman_environment.json` | Shareable **template** — empty `apiKey`; public demo usernames (`cern` / `nasa`) |
 | `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json` | Created by `npm run postman:serve` — real `baseUrl` + local `apiKey` (gitignored) |
 
 Do **not** create two collections. Do **not** put `APIFY_TOKEN` or production secrets in Postman.
@@ -34,13 +34,15 @@ Defaults (already set in the generated environment):
 
 | Variable | Default |
 |----------|---------|
-| `facebookPageUrl` / `pageUrl` | `https://www.facebook.com/cern` (public demo) |
-| `instagramProfileUrl` | `https://www.instagram.com/nasa/` (public demo) |
+| `facebookUsername` | `cern` (public demo) |
+| `instagramUsername` | `nasa` (public demo) |
 | `limit` | `10` |
 | `baseUrl` | actual listening port from serve |
 | `apiKey` | securely generated local key |
 
-Optional private overrides for serve (runtime env only, never commit): `POSTMAN_FACEBOOK_PAGE_URL`, `POSTMAN_INSTAGRAM_PROFILE_URL`.
+Both platforms send `page={{facebookUsername|instagramUsername}}` — bare usernames only (full URLs → 400).
+
+Optional private overrides for serve (runtime env only, never commit): `POSTMAN_FACEBOOK_USERNAME`, `POSTMAN_INSTAGRAM_USERNAME`.
 
 In cache-only mode, an uncached profile returns `502 UPSTREAM_UNAVAILABLE` (no Apify call). Do not “Run Collection” to seed accounts.
 

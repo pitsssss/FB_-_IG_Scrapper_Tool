@@ -1,8 +1,8 @@
 import http from 'node:http';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createService } from './service.js';
-import { parsePageRef } from './pageRef.js';
-import { parseInstagramRef } from './instagramRef.js';
+import { parseFacebookUsername } from './pageRef.js';
+import { parseInstagramUsername } from './instagramRef.js';
 import { ServiceError } from './errors.js';
 
 const sha = (s) => createHash('sha256').update(s).digest();
@@ -90,15 +90,18 @@ export function createApp(config, service = createService(config)) {
     if (wait) return send(res, 429, errBody('RATE_LIMITED', 'Too many requests'), { 'retry-after': String(wait) });
 
     const pageParam = url.searchParams.get('page');
-    const label = platform === 'instagram' ? 'Instagram profile URL' : 'Facebook page URL';
+    const label = platform === 'instagram' ? 'Instagram username' : 'Facebook page username';
     if (!pageParam) {
       return send(res, 400, errBody('MISSING_PAGE', `Query parameter "page" (${label}) is required`));
     }
-    if (pageParam.length > 500) {
+    if (pageParam.length > 100) {
       return send(res, 400, errBody('INVALID_PAGE_URL', `Not a valid ${label}`));
     }
 
-    const ref = platform === 'instagram' ? parseInstagramRef(pageParam) : parsePageRef(pageParam);
+    // Public contract: bare username only. Full social URLs are rejected with 400.
+    const ref = platform === 'instagram'
+      ? parseInstagramUsername(pageParam)
+      : parseFacebookUsername(pageParam);
     if (!ref) {
       return send(res, 400, errBody('INVALID_PAGE_URL', `Not a valid ${label}`));
     }

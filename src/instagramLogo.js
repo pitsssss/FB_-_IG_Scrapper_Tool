@@ -1,5 +1,5 @@
 import { INSTAGRAM_LOGO_FALLBACK } from './instagramNormalize.js';
-import { parseInstagramRef } from './instagramRef.js';
+import { parseInstagramConfigRef } from './instagramRef.js';
 
 const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
@@ -35,7 +35,7 @@ export function parseInstagramProfileLogos(raw) {
   }
   const out = new Map();
   for (const [k, v] of Object.entries(obj)) {
-    const ref = parseInstagramRef(String(k).includes('instagram.com') ? k : `https://www.instagram.com/${k}/`);
+    const ref = parseInstagramConfigRef(String(k));
     if (!ref) throw new Error(`INSTAGRAM_PROFILE_LOGOS has invalid Instagram username/URL key: ${k}`);
     if (!isVerifiedHttpsLogoUrl(v)) {
       throw new Error(`INSTAGRAM_PROFILE_LOGOS[${k}] must be an https:// URL without credentials`);

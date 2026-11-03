@@ -5,7 +5,7 @@
 ```bash
 export FB_POSTS_API_BASE_URL="https://api.example.com"
 export FB_POSTS_API_KEY="your_site_secret_here"
-export FB_POSTS_PAGE_URL="https://www.facebook.com/cern"
+export FB_POSTS_PAGE_URL="cern"
 ```
 
 Run behind your web server so the key never reaches the browser.

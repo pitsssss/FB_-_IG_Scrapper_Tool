@@ -48,7 +48,7 @@
   "item": [
     {
       "name": "01 — Facebook",
-      "description": "Facebook page posts API. Default page: {{facebookPageUrl}}.\nEndpoint: GET /api/v1/facebook/posts",
+      "description": "Facebook page posts API. Default page: {{facebookUsername}}.\nEndpoint: GET /api/v1/facebook/posts",
       "item": [
         {
           "name": "FB — 01 Health & Authentication",
@@ -100,7 +100,7 @@
                 "header": [],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit={{limit}}",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit={{limit}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -113,7 +113,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -166,7 +166,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit={{limit}}",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit={{limit}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -179,7 +179,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -223,7 +223,7 @@
         },
         {
           "name": "FB — 02 Real Posts",
-          "description": "CAUTION: cold cache + live Apify token may trigger ONE paid Facebook scrape.\nPrefer cache-only serve for Desktop. Default account: {{facebookPageUrl}} (public demo page).\nOffline runner uses fake upstream — safe.",
+          "description": "CAUTION: cold cache + live Apify token may trigger ONE paid Facebook scrape.\nPrefer cache-only serve for Desktop. Default account: {{facebookUsername}} (public demo page).\nOffline runner uses fake upstream — safe.",
           "item": [
             {
               "name": "Get Latest 10 Facebook Posts",
@@ -236,9 +236,9 @@
                     "type": "text"
                   }
                 ],
-                "description": "Primary Facebook request for {{facebookPageUrl}}. Expect ≤10 posts; exact-10 only when upstream provides them.",
+                "description": "Primary Facebook request for {{facebookUsername}}. Expect ≤10 posts; exact-10 only when upstream provides them.",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -251,7 +251,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -392,7 +392,7 @@
                 ],
                 "description": "SAFE after a successful prior hit — expects source=cache.",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -405,7 +405,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -535,7 +535,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -548,7 +548,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -678,7 +678,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -691,7 +691,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     }
                   ]
                 }
@@ -816,7 +816,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -829,7 +829,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -963,7 +963,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -976,7 +976,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -1105,7 +1105,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1118,7 +1118,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -1252,7 +1252,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1265,7 +1265,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -1396,7 +1396,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1409,7 +1409,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -1544,7 +1544,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1557,7 +1557,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -1746,7 +1746,7 @@
               ]
             },
             {
-              "name": "Invalid Facebook URL (groups)",
+              "name": "Full Facebook URL Rejected",
               "request": {
                 "method": "GET",
                 "header": [
@@ -1758,7 +1758,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://www.facebook.com/groups/123&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1771,7 +1771,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://www.facebook.com/groups/123"
+                      "value": "https://www.facebook.com/cern"
                     },
                     {
                       "key": "limit",
@@ -1812,7 +1812,7 @@
               ]
             },
             {
-              "name": "Unsupported Domain",
+              "name": "Invalid Facebook Username",
               "request": {
                 "method": "GET",
                 "header": [
@@ -1824,7 +1824,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://example.com/cern&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page=bad user&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1837,7 +1837,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://example.com/cern"
+                      "value": "bad user"
                     },
                     {
                       "key": "limit",
@@ -1888,9 +1888,9 @@
                     "type": "text"
                   }
                 ],
-                "description": "Requires scoped apiKey that cannot access unauthorizedFacebookPageUrl (offline runner configures this).",
+                "description": "Requires scoped apiKey that cannot access unauthorizedFacebookUsername (offline runner configures this).",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedFacebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedFacebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1903,7 +1903,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{unauthorizedFacebookPageUrl}}"
+                      "value": "{{unauthorizedFacebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -1956,7 +1956,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=999",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=999",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1969,7 +1969,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2098,7 +2098,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2111,7 +2111,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2226,7 +2226,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2239,7 +2239,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2363,7 +2363,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedFacebookPageUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedFacebookUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2376,7 +2376,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{unauthorizedFacebookPageUrl}}"
+                      "value": "{{unauthorizedFacebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2417,7 +2417,7 @@
               ]
             },
             {
-              "name": "Client B → authorized for unauthorizedFacebookPageUrl",
+              "name": "Client B → authorized for unauthorizedFacebookUsername",
               "request": {
                 "method": "GET",
                 "header": [
@@ -2429,7 +2429,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedFacebookPageUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{unauthorizedFacebookUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2442,7 +2442,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{unauthorizedFacebookPageUrl}}"
+                      "value": "{{unauthorizedFacebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2478,7 +2478,7 @@
               ]
             },
             {
-              "name": "Client B → denied facebookPageUrl",
+              "name": "Client B → denied facebookUsername",
               "request": {
                 "method": "GET",
                 "header": [
@@ -2490,7 +2490,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2503,7 +2503,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2566,7 +2566,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2579,7 +2579,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2716,7 +2716,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2729,7 +2729,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -2872,7 +2872,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2885,7 +2885,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3025,7 +3025,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page=https://www.facebook.com/SomeNeverCachedPage99&limit=5",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page=SomeNeverCachedPage99&limit=5",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3038,7 +3038,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://www.facebook.com/SomeNeverCachedPage99"
+                      "value": "SomeNeverCachedPage99"
                     },
                     {
                       "key": "limit",
@@ -3104,7 +3104,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookPageUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/facebook/posts?page={{facebookUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3117,7 +3117,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{facebookPageUrl}}"
+                      "value": "{{facebookUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3245,7 +3245,7 @@
     },
     {
       "name": "02 — Instagram",
-      "description": "Instagram profile posts API. Default profile: {{instagramProfileUrl}}.\nEndpoint: GET /api/v1/instagram/posts\nCache-only Desktop may return 502 until the profile is present in local cache.",
+      "description": "Instagram profile posts API. Default profile: {{instagramUsername}}.\nEndpoint: GET /api/v1/instagram/posts\nCache-only Desktop may return 502 until the profile is present in local cache.",
       "item": [
         {
           "name": "IG — 01 Health & Authentication",
@@ -3297,7 +3297,7 @@
                 "header": [],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit={{limit}}",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit={{limit}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3310,7 +3310,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3363,7 +3363,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit={{limit}}",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit={{limit}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3376,7 +3376,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3420,7 +3420,7 @@
         },
         {
           "name": "IG — 02 Real Posts",
-          "description": "CAUTION: cold cache may trigger ONE paid Instagram Post Scraper run.\nDefault account: {{instagramProfileUrl}} (public demo profile).\nCache-only mode returns 502 when the profile is uncached — do not assume a warm cache.\nDo not assert real profile photo or carousel children without verification.\nOffline runner uses fake upstream — safe.",
+          "description": "CAUTION: cold cache may trigger ONE paid Instagram Post Scraper run.\nDefault account: {{instagramUsername}} (public demo profile).\nCache-only mode returns 502 when the profile is uncached — do not assume a warm cache.\nDo not assert real profile photo or carousel children without verification.\nOffline runner uses fake upstream — safe.",
           "item": [
             {
               "name": "Get Latest 10 Instagram Posts",
@@ -3433,9 +3433,9 @@
                     "type": "text"
                   }
                 ],
-                "description": "Primary Instagram request for {{instagramProfileUrl}}.",
+                "description": "Primary Instagram request for {{instagramUsername}}.",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3448,7 +3448,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3605,7 +3605,7 @@
                 ],
                 "description": "Expect source=cache after a prior 200. Skip/fail cleanly if prior request was 502.",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3618,7 +3618,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3752,7 +3752,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3765,7 +3765,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -3899,7 +3899,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3912,7 +3912,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     }
                   ]
                 }
@@ -4037,7 +4037,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4050,7 +4050,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -4188,7 +4188,7 @@
                 ],
                 "description": "Reports video/carousel presence; does not require carousel children (basicData may omit them).",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4201,7 +4201,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -4343,7 +4343,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4356,7 +4356,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -4485,7 +4485,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4498,7 +4498,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -4632,7 +4632,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4645,7 +4645,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -4776,7 +4776,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4789,7 +4789,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -4924,7 +4924,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4937,7 +4937,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5126,7 +5126,7 @@
               ]
             },
             {
-              "name": "Post URL Instead of Profile",
+              "name": "Full Instagram URL Rejected",
               "request": {
                 "method": "GET",
                 "header": [
@@ -5138,7 +5138,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=https://www.instagram.com/p/ABC123/&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5151,7 +5151,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://www.instagram.com/p/ABC123/"
+                      "value": "https://www.instagram.com/nasa/"
                     },
                     {
                       "key": "limit",
@@ -5192,7 +5192,7 @@
               ]
             },
             {
-              "name": "Reel URL Instead of Profile",
+              "name": "At-Sign Username Rejected",
               "request": {
                 "method": "GET",
                 "header": [
@@ -5204,7 +5204,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=https://www.instagram.com/reel/ABC123/&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=@nasa&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5217,7 +5217,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://www.instagram.com/reel/ABC123/"
+                      "value": "@nasa"
                     },
                     {
                       "key": "limit",
@@ -5258,7 +5258,7 @@
               ]
             },
             {
-              "name": "Unsupported Domain",
+              "name": "Invalid Instagram Username",
               "request": {
                 "method": "GET",
                 "header": [
@@ -5270,7 +5270,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=https://example.com/nasa&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=bad/user&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5283,7 +5283,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://example.com/nasa"
+                      "value": "bad/user"
                     },
                     {
                       "key": "limit",
@@ -5334,9 +5334,9 @@
                     "type": "text"
                   }
                 ],
-                "description": "Requires scoped apiKey without access to unauthorizedInstagramProfileUrl.",
+                "description": "Requires scoped apiKey without access to unauthorizedInstagramUsername.",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{unauthorizedInstagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{unauthorizedInstagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5349,7 +5349,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{unauthorizedInstagramProfileUrl}}"
+                      "value": "{{unauthorizedInstagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5402,7 +5402,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=999",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=999",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5415,7 +5415,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5538,7 +5538,7 @@
                 "header": [],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5551,7 +5551,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5604,7 +5604,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5617,7 +5617,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5670,7 +5670,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5683,7 +5683,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5799,7 +5799,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5812,7 +5812,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5936,7 +5936,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{unauthorizedInstagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{unauthorizedInstagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -5949,7 +5949,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{unauthorizedInstagramProfileUrl}}"
+                      "value": "{{unauthorizedInstagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -5990,7 +5990,7 @@
               ]
             },
             {
-              "name": "Client B → authorized unauthorizedInstagramProfileUrl",
+              "name": "Client B → authorized unauthorizedInstagramUsername",
               "request": {
                 "method": "GET",
                 "header": [
@@ -6002,7 +6002,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{unauthorizedInstagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{unauthorizedInstagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6015,7 +6015,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{unauthorizedInstagramProfileUrl}}"
+                      "value": "{{unauthorizedInstagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -6051,7 +6051,7 @@
               ]
             },
             {
-              "name": "Client B → denied instagramProfileUrl",
+              "name": "Client B → denied instagramUsername",
               "request": {
                 "method": "GET",
                 "header": [
@@ -6063,7 +6063,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=3",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6076,7 +6076,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -6139,7 +6139,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6152,7 +6152,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -6289,7 +6289,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6302,7 +6302,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -6445,7 +6445,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6458,7 +6458,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",
@@ -6598,7 +6598,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=https://www.instagram.com/SomeNeverCachedProfile99/&limit=5",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page=SomeNeverCachedProfile99&limit=5",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6611,7 +6611,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "https://www.instagram.com/SomeNeverCachedProfile99/"
+                      "value": "SomeNeverCachedProfile99"
                     },
                     {
                       "key": "limit",
@@ -6677,7 +6677,7 @@
                 ],
                 "description": "",
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+                  "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramUsername}}&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -6690,7 +6690,7 @@
                   "query": [
                     {
                       "key": "page",
-                      "value": "{{instagramProfileUrl}}"
+                      "value": "{{instagramUsername}}"
                     },
                     {
                       "key": "limit",

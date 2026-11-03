@@ -26,8 +26,8 @@ function trackedFiles() {
 
 describe('public repository privacy', () => {
   it('Postman generator defaults to neutral public demo accounts', () => {
-    assert.equal(FB_DEFAULT, 'https://www.facebook.com/cern');
-    assert.equal(IG_DEFAULT, 'https://www.instagram.com/nasa/');
+    assert.equal(FB_DEFAULT, 'cern');
+    assert.equal(IG_DEFAULT, 'nasa');
   });
 
   it('shareable Postman template matches generator defaults and has empty apiKey', async () => {
@@ -35,9 +35,8 @@ describe('public repository privacy', () => {
       await readFile(join(root, 'postman', 'Social-Media-Posts-Local.postman_environment.json'), 'utf8'),
     );
     const map = Object.fromEntries(env.values.map((v) => [v.key, v.value]));
-    assert.equal(map.facebookPageUrl, FB_DEFAULT);
-    assert.equal(map.instagramProfileUrl, IG_DEFAULT);
-    assert.equal(map.pageUrl, FB_DEFAULT);
+    assert.equal(map.facebookUsername, FB_DEFAULT);
+    assert.equal(map.instagramUsername, IG_DEFAULT);
     assert.equal(map.apiKey, '');
     assert.equal(map.limit, '10');
   });

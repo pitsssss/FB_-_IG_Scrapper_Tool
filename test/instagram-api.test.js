@@ -101,12 +101,12 @@ describe('Instagram API integration (synthetic)', () => {
 
     // Missing / invalid key
     {
-      const r = await get(base, '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/', null);
+      const r = await get(base, '/api/v1/instagram/posts?page=nasa', null);
       assert.equal(r.status, 401);
       assertErrorShape(r.body);
     }
     {
-      const r = await get(base, '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/', 'wrong');
+      const r = await get(base, '/api/v1/instagram/posts?page=nasa', 'wrong');
       assert.equal(r.status, 401);
     }
 
@@ -119,7 +119,7 @@ describe('Instagram API integration (synthetic)', () => {
 
     // Unauthorized Instagram for clientA
     {
-      const r = await get(base, '/api/v1/instagram/posts?page=https://www.instagram.com/natgeo/', keyA);
+      const r = await get(base, '/api/v1/instagram/posts?page=natgeo', keyA);
       assert.equal(r.status, 403);
       assert.equal(r.body.error.code, 'PAGE_NOT_ALLOWED');
     }
@@ -129,7 +129,7 @@ describe('Instagram API integration (synthetic)', () => {
     // Live Instagram fetch
     const live = await get(
       base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10',
+      '/api/v1/instagram/posts?page=nasa&limit=10',
       keyA,
     );
     assert.equal(live.status, 200);
@@ -148,7 +148,7 @@ describe('Instagram API integration (synthetic)', () => {
     // Cache hit — zero new Apify
     const cached = await get(
       base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10',
+      '/api/v1/instagram/posts?page=nasa&limit=10',
       keyA,
     );
     assert.equal(cached.status, 200);
@@ -159,7 +159,7 @@ describe('Instagram API integration (synthetic)', () => {
     // limit=3
     const lim3 = await get(
       base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=3',
+      '/api/v1/instagram/posts?page=nasa&limit=3',
       keyA,
     );
     assert.equal(lim3.body.data.posts.length, 3);
@@ -167,7 +167,7 @@ describe('Instagram API integration (synthetic)', () => {
     // Facebook still works and uses separate cache key (second quota consume)
     const fb = await get(
       base,
-      '/api/v1/facebook/posts?page=https://www.facebook.com/cern&limit=10',
+      '/api/v1/facebook/posts?page=cern&limit=10',
       keyA,
     );
     assert.equal(fb.status, 200);
@@ -185,7 +185,7 @@ describe('Instagram API integration (synthetic)', () => {
     // Shared quota exhausted — new Instagram scrape denied; cached still OK
     const cold = await get(
       base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/', // wait - nasa is cached
+      '/api/v1/instagram/posts?page=nasa', // wait - nasa is cached
       keyA,
     );
     assert.equal(cold.body.meta.source, 'cache');
@@ -193,7 +193,7 @@ describe('Instagram API integration (synthetic)', () => {
     // Uncached IG for clientB would need quota — clientB natgeo is authorized but quota full
     const blocked = await get(
       base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/natgeo/&limit=5',
+      '/api/v1/instagram/posts?page=natgeo&limit=5',
       keyB,
     );
     assert.equal(blocked.status, 502);
@@ -206,7 +206,7 @@ describe('Instagram API integration (synthetic)', () => {
     const results = await Promise.all(
       Array.from({ length: 5 }, () => get(
         base,
-        '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10',
+        '/api/v1/instagram/posts?page=nasa&limit=10',
         keyA,
       )),
     );
@@ -217,7 +217,7 @@ describe('Instagram API integration (synthetic)', () => {
     // Existing Facebook scopes still enforce
     const fbDenied = await get(
       base,
-      '/api/v1/facebook/posts?page=https://www.facebook.com/nasa',
+      '/api/v1/facebook/posts?page=nasa',
       keyA,
     );
     assert.equal(fbDenied.status, 403);
@@ -233,7 +233,7 @@ describe('Instagram API integration (synthetic)', () => {
     appClose = l2.close;
     const after = await get(
       l2.base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10',
+      '/api/v1/instagram/posts?page=nasa&limit=10',
       keyA,
     );
     assert.equal(after.status, 200);
@@ -251,7 +251,7 @@ describe('Instagram API integration (synthetic)', () => {
     // with fresh TTL still active, source=cache. Good enough for isolation.
     const still = await get(
       l2.base,
-      '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/&limit=10',
+      '/api/v1/instagram/posts?page=nasa&limit=10',
       keyA,
     );
     assert.equal(still.status, 200);
@@ -291,10 +291,10 @@ describe('Instagram API integration (synthetic)', () => {
     const app = createApp(config);
     const { base, close } = await listen(app);
     try {
-      await get(base, '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/', key);
-      await get(base, '/api/v1/facebook/posts?page=https://www.facebook.com/cern', key);
-      await get(base, '/api/v1/instagram/posts?page=https://www.instagram.com/nasa/', key);
-      const limited = await get(base, '/api/v1/facebook/posts?page=https://www.facebook.com/cern', key);
+      await get(base, '/api/v1/instagram/posts?page=nasa', key);
+      await get(base, '/api/v1/facebook/posts?page=cern', key);
+      await get(base, '/api/v1/instagram/posts?page=nasa', key);
+      const limited = await get(base, '/api/v1/facebook/posts?page=cern', key);
       assert.equal(limited.status, 429);
       assertErrorShape(limited.body);
     } finally {

@@ -114,18 +114,16 @@ describe('unified Postman collection', () => {
     for (const key of [
       'baseUrl',
       'apiKey',
-      'facebookPageUrl',
-      'instagramProfileUrl',
+      'facebookUsername',
+      'instagramUsername',
       'limit',
-      'pageUrl',
     ]) {
       assert.ok(map[key], `missing ${key}`);
     }
-    assert.equal(FB_DEFAULT, 'https://www.facebook.com/cern');
-    assert.equal(IG_DEFAULT, 'https://www.instagram.com/nasa/');
-    assert.equal(map.facebookPageUrl.value, FB_DEFAULT);
-    assert.equal(map.instagramProfileUrl.value, IG_DEFAULT);
-    assert.equal(map.pageUrl.value, FB_DEFAULT);
+    assert.equal(FB_DEFAULT, 'cern');
+    assert.equal(IG_DEFAULT, 'nasa');
+    assert.equal(map.facebookUsername.value, FB_DEFAULT);
+    assert.equal(map.instagramUsername.value, IG_DEFAULT);
     assert.equal(map.limit.value, '10');
     assert.equal(map.apiKey.value, '');
     const blob = JSON.stringify(envTemplate);

@@ -261,7 +261,7 @@ describe('Instagram profile store + enrichment (synthetic)', () => {
     const base = `http://127.0.0.1:${port}`;
     const key = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
-    const live = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/nasa/')}&limit=3`, {
+    const live = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('nasa')}&limit=3`, {
       headers: { 'x-api-key': key },
     });
     const body = await live.json();
@@ -270,7 +270,7 @@ describe('Instagram profile store + enrichment (synthetic)', () => {
     assert.equal(fake.calls.profile, 0, 'enrichment disabled → no profile Actor');
     assert.equal(fake.calls.posts, 1);
 
-    const cached = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/nasa/')}&limit=3`, {
+    const cached = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('nasa')}&limit=3`, {
       headers: { 'x-api-key': key },
     });
     const body2 = await cached.json();
@@ -308,7 +308,7 @@ describe('Instagram profile store + enrichment (synthetic)', () => {
     const base = `http://127.0.0.1:${port}`;
     const key = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
-    const live = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/nasa/')}&limit=5`, {
+    const live = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('nasa')}&limit=5`, {
       headers: { 'x-api-key': key },
     });
     const body = await live.json();
@@ -320,7 +320,7 @@ describe('Instagram profile store + enrichment (synthetic)', () => {
     const q1 = JSON.parse(await readFile(join(cacheDir, 'apify-quota.json'), 'utf8'));
     assert.equal(q1.consumed, 2); // posts + profile
 
-    const again = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/nasa/')}&limit=5`, {
+    const again = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('nasa')}&limit=5`, {
       headers: { 'x-api-key': key },
     });
     const body2 = await again.json();
@@ -364,7 +364,7 @@ describe('Instagram profile store + enrichment (synthetic)', () => {
     await new Promise((r) => app.listen(port, '127.0.0.1', r));
     const base = `http://127.0.0.1:${port}`;
     const key = 'cccccccccccccccccccccccccccccccc';
-    const res = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/nasa/')}&limit=2`, {
+    const res = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('nasa')}&limit=2`, {
       headers: { 'x-api-key': key },
     });
     const body = await res.json();
@@ -415,7 +415,7 @@ describe('Instagram profile store + enrichment (synthetic)', () => {
     await new Promise((r) => app.listen(port, '127.0.0.1', r));
     const base = `http://127.0.0.1:${port}`;
     const key = 'dddddddddddddddddddddddddddddddd';
-    const res = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/nasa/')}&limit=2`, {
+    const res = await fetch(`${base}/api/v1/instagram/posts?page=${encodeURIComponent('nasa')}&limit=2`, {
       headers: { 'x-api-key': key },
     });
     const body = await res.json();
