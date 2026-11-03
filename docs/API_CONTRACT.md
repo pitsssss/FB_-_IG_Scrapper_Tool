@@ -53,7 +53,8 @@ Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID
   3. Explicit company map `INSTAGRAM_PROFILE_LOGOS` (HTTPS only)
   4. Documented generic fallback (`logo === logo_fallback` — **not** a real profile photo)
 - Never use commenter / tagged / `coauthorProducers[].profile_pic_url` images as `page.logo`.
-- Optional Apify profile enrichment (`INSTAGRAM_PROFILE_ENRICHMENT=1`, Actor `apify/instagram-profile-scraper`) is **disabled by default**, shares the same daily quota + `maxTotalChargeUsd`, and is **not** live-verified in this repository’s automated suite.
+- Optional Apify profile enrichment (`INSTAGRAM_PROFILE_ENRICHMENT=1`, Actor `apify/instagram-profile-scraper`) is **disabled by default**, shares the same daily quota + `maxTotalChargeUsd`, and is **not** live-verified until an explicitly approved paid run.
+- Controlled dry-run / paid profile validation: `npm run postman:instagram:profile` (default dry-run). Paid path requires `--execute-paid --confirm-cost` and never calls the Post Scraper.
 - Sidecar/`basicData`: live NASA capture had `Sidecar` type **without** `childPosts`/`images` → cover `displayUrl` only (incomplete carousel). Complete carousels map `childPosts` in order when present. Do **not** enable `detailedData` without explicit approval.
 - Controlled live posts: `npm run postman:instagram:live` (shared `.postman-local/live-cache`).
 

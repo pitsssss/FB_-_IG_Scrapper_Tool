@@ -1,4 +1,4 @@
-import { ProviderError, isRetryableStatus } from '../errors.js';
+import { ProviderError } from '../errors.js';
 import { buildApifyRunUrl } from './apify.js';
 import { createApifyQuota } from '../apifyQuota.js';
 import { isVerifiedHttpsLogoUrl } from '../instagramLogo.js';
