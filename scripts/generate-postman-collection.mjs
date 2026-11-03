@@ -200,16 +200,19 @@ function folder(name, description, items) {
 }
 
 const pageQ = { key: 'page', value: '{{pageUrl}}' };
+const igPageQ = { key: 'page', value: '{{instagramProfileUrl}}' };
 const limitQ = { key: 'limit', value: '{{limit}}' };
 const limit3 = { key: 'limit', value: '3' };
+const igPath = ['api', 'v1', 'instagram', 'posts'];
 
 const collection = {
   info: {
     name: 'Facebook Posts API — Complete Integration & Acceptance Tests',
     description:
-      'Importable acceptance suite for fb-posts-api.\n\n' +
-      '- Folders 01–06: safe offline (fake upstream) via `npm run postman:offline`.\n' +
-      '- Folder 02 against real Apify: `npm run postman:live` (ONE controlled invocation).\n' +
+      'Importable acceptance suite for fb-posts-api (Facebook + Instagram).\n\n' +
+      '- Folders 01–06 + 07 Instagram: safe offline (fake upstream) via `npm run postman:offline`.\n' +
+      '- Folder 02 against real Apify: `npm run postman:live` (ONE controlled Facebook invocation).\n' +
+      '- Folder 07 Instagram live scrape is NOT enabled in this phase.\n' +
       '- Auth header: `x-api-key` (Bearer also accepted by API).\n' +
       '- Never put APIFY_TOKEN in Postman variables.',
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
@@ -857,6 +860,181 @@ pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type'
               `
 pm.test('200', function () { pm.response.to.have.status(200); });
 ${SCRIPTS.assertSuccessSchema}
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+      ],
+    ),
+
+    folder(
+      '07 — Instagram Posts (offline)',
+      'Offline-safe Instagram endpoint checks against fake upstream. Same auth key and schema as Facebook.\n' +
+        'Do NOT run paid Instagram Apify from this folder until a controlled live phase is approved.',
+      [
+        getReq('IG — Health still ok', {
+          pathSegments: ['health'],
+          auth: false,
+          query: [],
+          events: [
+            event(
+              'test',
+              `
+pm.test('status 200', function () { pm.response.to.have.status(200); });
+pm.test('JSON status=ok', function () {
+  pm.response.to.be.json;
+  pm.expect(pm.response.json().status).to.eql('ok');
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('IG — Without Key', {
+          pathSegments: igPath,
+          auth: false,
+          query: [igPageQ, limitQ],
+          events: [
+            event(
+              'test',
+              `
+pm.test('status 401', function () { pm.response.to.have.status(401); });
+${SCRIPTS.assertError}
+pm.test('UNAUTHORIZED', function () { pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'); });
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Get Latest 10 Instagram Posts', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'prerequest',
+              `
+const fake = pm.environment.get('fakeUpstreamUrl');
+if (fake) {
+  pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'ok' }) } }, function () {});
+}
+`.trim(),
+            ),
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+${SCRIPTS.noSecretsInBody}
+const body = pm.response.json();
+pm.test('meta.limit is 10', function () { pm.expect(body.meta.limit).to.eql(10); });
+pm.test('instagram page url', function () {
+  pm.expect(body.data.page.url).to.match(/instagram\\.com\\//i);
+});
+pm.test('shares are non-negative integers', function () {
+  body.data.posts.forEach(function (p) {
+    pm.expect(Number.isInteger(p.stats.shares) && p.stats.shares >= 0).to.be.true;
+  });
+});
+pm.collectionVariables.set('igLastFetchedAt', body.meta.fetched_at);
+pm.collectionVariables.set('igLastPostIds', body.data.posts.map(function (p) { return p.id; }).join(','));
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Get Cached Instagram Posts', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('source is cache', function () { pm.expect(body.meta.source).to.eql('cache'); });
+pm.test('same post IDs as previous', function () {
+  const prev = (pm.collectionVariables.get('igLastPostIds') || '').split(',').filter(Boolean);
+  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Instagram Limit 3', {
+          pathSegments: igPath,
+          query: [igPageQ, limit3],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('at most 3 posts', function () { pm.expect(body.data.posts.length).to.be.at.most(3); });
+pm.test('meta.limit is 3', function () { pm.expect(body.meta.limit).to.eql(3); });
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Invalid Instagram profile URL', {
+          pathSegments: igPath,
+          query: [{ key: 'page', value: 'https://www.instagram.com/p/ABC123/' }, { key: 'limit', value: '3' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('status 400', function () { pm.response.to.have.status(400); });
+${SCRIPTS.assertError}
+pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.code).to.eql('INVALID_PAGE_URL'); });
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Unauthorized Instagram profile', {
+          pathSegments: igPath,
+          query: [{ key: 'page', value: 'https://www.instagram.com/natgeo/' }, { key: 'limit', value: '3' }],
+          description: 'Requires API_KEY_PAGE_SCOPES where apiKey cannot access natgeo. Offline runner configures this.',
+          events: [
+            event(
+              'test',
+              `
+pm.test('status 403', function () { pm.response.to.have.status(403); });
+${SCRIPTS.assertError}
+pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('PAGE_NOT_ALLOWED'); });
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('IG Offline resilience — fail mode still serves cache', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'prerequest',
+              `
+const fake = pm.environment.get('fakeUpstreamUrl');
+if (!fake) { throw new Error('fakeUpstreamUrl required'); }
+pm.sendRequest({ url: fake + '/__mode', method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify({ mode: 'fail' }) } }, function () {});
+`.trim(),
+            ),
+            event(
+              'test',
+              `
+pm.test('still 200 from cache', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('source cache or stale-cache', function () {
+  pm.expect(['cache', 'stale-cache']).to.include(body.meta.source);
+});
+pm.test('IDs preserved', function () {
+  const prev = (pm.collectionVariables.get('igLastPostIds') || '').split(',').filter(Boolean);
+  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);
+});
 ${SCRIPTS.noSecretsInBody}
 `.trim(),
             ),

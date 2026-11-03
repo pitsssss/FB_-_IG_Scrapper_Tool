@@ -43,6 +43,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PAGE_CERN = 'https://www.facebook.com/cern';
 const PAGE_NASA = 'https://www.facebook.com/nasa';
 const PAGE_COLD = 'https://www.facebook.com/cern';
+const IG_NASA = 'https://www.instagram.com/nasa/';
+const IG_NATGEO = 'https://www.instagram.com/natgeo/';
 
 const children = [];
 const servers = [];
@@ -233,8 +235,8 @@ async function runOffline() {
 
   const apiPort = await freePort();
   const scopes = JSON.stringify({
-    clientA: [PAGE_CERN, PAGE_COLD],
-    clientB: [PAGE_NASA],
+    clientA: [PAGE_CERN, PAGE_COLD, IG_NASA],
+    clientB: [PAGE_NASA, IG_NATGEO],
   });
 
   const child = spawnApi({
@@ -249,6 +251,7 @@ async function runOffline() {
     APIFY_DAILY_RUN_LIMIT: '50',
     UPSTREAM_RETRIES: '0',
     WARM_PAGES: '',
+    INSTAGRAM_WARM_PROFILES: '',
     FRESH_TTL_SECONDS: '3600',
     RATE_LIMIT_PER_MIN: '0',
     MAX_POSTS: '10',
@@ -263,6 +266,7 @@ async function runOffline() {
     apiKeyB: keyB,
     pageUrl: PAGE_CERN,
     unauthorizedPageUrl: PAGE_NASA,
+    instagramProfileUrl: IG_NASA,
     limit: '10',
     invalidApiKey: 'invalid-key-not-real',
     fakeUpstreamUrl: fakeUrl,
@@ -275,6 +279,7 @@ async function runOffline() {
     '04 — Validation & Error Handling',
     '05 — Multi-Site Authorization',
     '06 — Offline Resilience (synthetic)',
+    '07 — Instagram Posts (offline)',
   ];
 
   const { err, summary } = await runNewman({ folders, environment });
