@@ -47,9 +47,15 @@ Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID
 - Default input uses `skipPinnedPosts=true`, `dataDetailLevel=basicData`, `includeMusicData=false` (avoid paid extras).
   With `skipPinnedPosts=true`, results are newest accessible **non-pinned** posts (a recently pinned post may be excluded).
 - `stats.shares` is always `0` (not provided by the Actor). Zero likes/comments may also mean unavailable (`-1` mapped to `0`).
-- Owner profile photo: used when `ownerProfilePicUrl` (or equivalent) is present. Live NASA/`basicData` acceptance returned **no** owner pic fields → documented generic HTTPS fallback (`logo === logo_fallback`). Do not treat fallback as a real profile photo.
-- Sidecar/`basicData`: type may be `Sidecar` without `childPosts` — carousel children are **not** expanded unless the Actor provides them (do not enable `detailedData` without explicit approval).
-- Controlled live: `npm run postman:instagram:live` (shared `.postman-local/live-cache`, at most one new paid run).
+- Owner profile photo resolution priority (schema unchanged):
+  1. Genuine requested-owner image from post Actor fields (`ownerProfilePicUrl` / owner object)
+  2. Verified cached profile metadata (optional enrichment store under `CACHE_DIR/instagram-profiles/`)
+  3. Explicit company map `INSTAGRAM_PROFILE_LOGOS` (HTTPS only)
+  4. Documented generic fallback (`logo === logo_fallback` — **not** a real profile photo)
+- Never use commenter / tagged / `coauthorProducers[].profile_pic_url` images as `page.logo`.
+- Optional Apify profile enrichment (`INSTAGRAM_PROFILE_ENRICHMENT=1`, Actor `apify/instagram-profile-scraper`) is **disabled by default**, shares the same daily quota + `maxTotalChargeUsd`, and is **not** live-verified in this repository’s automated suite.
+- Sidecar/`basicData`: live NASA capture had `Sidecar` type **without** `childPosts`/`images` → cover `displayUrl` only (incomplete carousel). Complete carousels map `childPosts` in order when present. Do **not** enable `detailedData` without explicit approval.
+- Controlled live posts: `npm run postman:instagram:live` (shared `.postman-local/live-cache`).
 
 ## Success response shape
 

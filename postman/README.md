@@ -103,6 +103,12 @@ Headers only:
 4. Open **08 — Instagram Real Posts → Get Latest 10 Instagram Posts** → Send  
 5. Expect `meta.source=cache` and `meta.provider=instagram-apify` when seeded  
 
+Profile logo tips (API server `.env`, not Postman):
+
+- Company HTTPS override: `INSTAGRAM_PROFILE_LOGOS={"nasa":"https://…"}` — applied on responses without new Apify calls  
+- Do **not** enable `INSTAGRAM_PROFILE_ENRICHMENT` for Desktop unless you intentionally budget an extra shared-quota Actor run  
+- `ig_logo_status=fallback` in folder 08 means the generic placeholder is in use (not a verified account photo)  
+
 
 ## Minimum Desktop workflow
 

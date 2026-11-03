@@ -71,8 +71,24 @@ function ownerMatchesRef(item, ref) {
 }
 
 /**
+ * True when Actor marks Sidecar/carousel but provides no child media arrays.
+ * Live NASA basicData (2026-11-03): Sidecar rows had displayUrl only — incomplete.
+ */
+export function isIncompleteCarousel(item) {
+  if (!item || typeof item !== 'object') return false;
+  const type = String(item.type || '').toLowerCase();
+  if (type !== 'sidecar' && type !== 'carousel') return false;
+  const children = Array.isArray(item.childPosts) ? item.childPosts : [];
+  const images = Array.isArray(item.images) ? item.images : [];
+  return children.length === 0 && images.length === 0;
+}
+
+/**
  * Extract media from an Instagram Actor post item (image / video / carousel).
- * Does not pull commenter profile pictures into media.
+ * Does not pull commenter/coauthor profile pictures into media.
+ *
+ * Complete carousels: prefer childPosts order (then images[]), dedupe URLs, keep video thumbnails.
+ * Incomplete Sidecar (basicData): keep verified cover displayUrl/videoUrl only — never invent children.
  */
 export function extractInstagramMedia(item) {
   const out = [];
@@ -88,28 +104,33 @@ export function extractInstagramMedia(item) {
   const video = pick(item.videoUrl, item.video_url);
   const images = Array.isArray(item.images) ? item.images : [];
   const children = Array.isArray(item.childPosts) ? item.childPosts : [];
+  const incomplete = isIncompleteCarousel(item);
 
+  // Complete carousel: expand children first (preserve Actor order), then images[].
+  if (!incomplete && (children.length || images.length)) {
+    for (const child of children) {
+      if (!child || typeof child !== 'object') continue;
+      const cVid = pick(child.videoUrl, child.video_url);
+      const cDisp = pick(child.displayUrl, child.display_url);
+      if (cVid) add('video', cVid, cDisp);
+      else if (cDisp) add('image', cDisp);
+    }
+    for (const u of images) {
+      if (typeof u === 'string') add('image', u);
+      else if (u && typeof u === 'object') add('image', pick(u.url, u.displayUrl, u.src));
+    }
+    // Cover may duplicate first child — add only if unique.
+    if (video) add('video', video, display);
+    else if (display) add('image', display);
+    return out;
+  }
+
+  // Single image / video / incomplete Sidecar cover only.
   if (video) {
     add('video', video, display);
   } else if (display) {
     add('image', display);
   }
-
-  for (const u of images) {
-    if (typeof u === 'string') add('image', u);
-    else if (u && typeof u === 'object') add('image', pick(u.url, u.displayUrl, u.src));
-  }
-
-  for (const child of children) {
-    if (!child || typeof child !== 'object') continue;
-    const cVid = pick(child.videoUrl, child.video_url);
-    const cDisp = pick(child.displayUrl, child.display_url);
-    if (cVid) add('video', cVid, cDisp);
-    else if (cDisp) add('image', cDisp);
-  }
-
-  // Sidecar / carousel type with only displayUrl already added above.
-  if (!out.length && type === 'sidecar' && display) add('image', display);
 
   return out;
 }
@@ -123,15 +144,16 @@ function collectAccountIdentity(items, ref) {
     || majorityVote(pool.map((it) => it.ownerUsername))
     || ref.username;
 
-  // Only owner profile pictures — never commenter avatars (latestComments[].ownerProfilePicUrl).
+  // Only requested-owner profile pictures — never commenters, tagged users, or coauthorProducers.
   const logo =
-    majorityVote(pool.flatMap((it) => [
-      it.ownerProfilePicUrl,
-      it.owner?.profile_pic_url,
-      it.owner?.profilePicUrl,
-      it.profilePicUrl,
-      it.profile_pic_url,
-    ]))
+    majorityVote(pool.flatMap((it) => {
+      if (!ownerMatchesRef(it, ref)) return [];
+      return [
+        it.ownerProfilePicUrl,
+        it.owner?.profile_pic_url,
+        it.owner?.profilePicUrl,
+      ];
+    }))
     || INSTAGRAM_LOGO_FALLBACK;
 
   const id =

@@ -66,9 +66,11 @@ invocation budget. Cache keys are platform-isolated (`cern` vs `instagram:nasa`)
 Instagram notes:
 - Default Actor input: `skipPinnedPosts=true`, `dataDetailLevel=basicData`, `includeMusicData=false`.
 - `stats.shares` دائماً `0`؛ likes المخفية قد تظهر `0`.
-- Live NASA acceptance (`basicData`): 10 genuine posts; **no** `ownerProfilePicUrl` → documented logo fallback (not a real profile photo).
-- Sidecar rows may lack `childPosts` under `basicData` (carousel children NOT expanded without paid `detailedData`).
-- Controlled live: `npm run postman:instagram:live` (shared `.postman-local/live-cache`; never resets quota).
+- Logo priority: post-owner pic → cached profile metadata → `INSTAGRAM_PROFILE_LOGOS` → generic fallback.
+  - **OPTION 1:** set `INSTAGRAM_PROFILE_LOGOS` for company accounts (no extra Actor cost).
+  - **OPTION 2:** `INSTAGRAM_PROFILE_ENRICHMENT=1` uses `apify/instagram-profile-scraper` (extra paid run, **same** daily quota; disabled by default; not live-verified here).
+- Live NASA `basicData`: no owner pic fields; Sidecar without `childPosts` → cover image only (incomplete carousel).
+- Controlled live posts: `npm run postman:instagram:live` (shared `.postman-local/live-cache`; never resets quota).
 
 ## ربط الموقع (الأفضل من السيرفر مو من المتصفح عشان ما ينكشف المفتاح)
 PHP:
