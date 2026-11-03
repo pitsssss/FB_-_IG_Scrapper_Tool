@@ -12,10 +12,11 @@ This document is an operational checklist. Passing local tests does **not** by i
 
 ## Authorization
 
-- [ ] `API_KEY_PAGE_SCOPES` configured for multi-site deployments
+- [ ] `API_KEY_PAGE_SCOPES` configured for multi-site deployments (may mix Facebook + Instagram URLs)
 - [ ] Every `API_KEYS` name has an explicit scopes array when scopes mode is enabled
-- [ ] Global `ALLOWED_PAGES` reviewed
-- [ ] Canonical-key limitation understood (slug ≠ numeric id unless both listed)
+- [ ] Global `ALLOWED_PAGES` reviewed (Facebook only)
+- [ ] Optional `INSTAGRAM_ALLOWED_PROFILES` reviewed
+- [ ] Canonical-key limitation understood (FB slug ≠ numeric id; IG keys are `instagram:<user>`)
 
 ## CORS
 
@@ -39,16 +40,18 @@ If disk writes fail, the process may still serve from memory until restart; thos
 
 ## Apify controls
 
-- [ ] `APIFY_DAILY_RUN_LIMIT` set as an operational attempt budget (not a USD guarantee)
-- [ ] Optional `APIFY_MAX_CHARGE_USD_PER_RUN`
+- [ ] `APIFY_DAILY_RUN_LIMIT` set as an operational attempt budget across **both** FB + IG Actors
+- [ ] Optional `APIFY_MAX_CHARGE_USD_PER_RUN` (applies per run for either Actor)
+- [ ] `INSTAGRAM_APIFY_ACTOR` / input keep `dataDetailLevel=basicData` unless enrichment is approved
 - [ ] `npm run quota:status` known to operators
 - [ ] `APIFY_DAILY_RUN_LIMIT=0` understood as cache-only mode
 
 ## Cache warming
 
-- [ ] `WARM_PAGES` only for owned/approved pages
+- [ ] `WARM_PAGES` only for owned/approved Facebook pages
+- [ ] `INSTAGRAM_WARM_PROFILES` only for owned/approved Instagram profiles
 - [ ] Interval/concurrency sized so fresh TTL usually yields skipped-fresh
-- [ ] Warm pages also allowed by scopes / `ALLOWED_PAGES`
+- [ ] Warm targets also allowed by scopes / `ALLOWED_PAGES` / `INSTAGRAM_ALLOWED_PROFILES`
 
 ## Upstream outage behavior
 
@@ -101,6 +104,7 @@ If disk writes fail, the process may still serve from memory until restart; thos
 ## Still NOT proven by this repository alone
 
 - Live Apify spend / actor reliability in production
+- **Live Instagram Actor response capture / profile-photo coverage / paid-run cost**
 - Live hosting/CDN/TLS configuration
 - Multi-region failover
 - Long-term disk integrity under platform outages

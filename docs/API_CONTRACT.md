@@ -1,18 +1,18 @@
-# API contract — `GET /api/v1/facebook/posts`
+# API contract — Facebook & Instagram posts
 
 Stable public contract for integrating independent websites with **fb-posts-api**.
 
-## Endpoint
+## Endpoints
 
 ```
 GET /api/v1/facebook/posts?page=<facebook-page-url>&limit=<1..MAX_POSTS>
-```
-
-Also available:
-
-```
+GET /api/v1/instagram/posts?page=<instagram-profile-url>&limit=<1..MAX_POSTS>
 GET /health  →  { "status": "ok" }
 ```
+
+Both data endpoints share the **same** success/error JSON schema, authentication, rate limiting,
+persistent cache semantics, and Apify daily invocation budget. Cache keys are platform-isolated
+(`cern` vs `instagram:nasa`).
 
 ## Authentication
 
@@ -25,18 +25,29 @@ Accepted **only** via headers (never query string):
 
 Missing or invalid credentials → `401` with error envelope (no account names or scope details).
 
-Optional `API_KEY_PAGE_SCOPES` restricts each named API key to specific Facebook pages (canonical keys from `parsePageRef()`). Global `ALLOWED_PAGES` still applies when set.
+Optional `API_KEY_PAGE_SCOPES` restricts each named API key to specific Facebook pages and/or Instagram profiles
+(canonical keys from `parsePageRef()` / `parseInstagramRef()`). Global `ALLOWED_PAGES` applies to Facebook only.
+Optional `INSTAGRAM_ALLOWED_PROFILES` applies to Instagram only.
 
-**Canonical-key limitation:** a page slug (e.g. `cern`) and a numeric page id are **not** treated as the same resource unless both appear explicitly in configuration. Do not assume equivalence.
+**Canonical-key limitation:** a Facebook page slug (e.g. `cern`) and a numeric page id are **not** treated as the same resource unless both appear explicitly in configuration. Instagram keys are always `instagram:<username>`.
 
 ## Query parameters
 
 | Name | Required | Description |
 | --- | --- | --- |
-| `page` | yes | Facebook **page** URL (public page feed). Max length 500. |
+| `page` | yes | Facebook **page** URL **or** Instagram **profile** URL (depending on route). Max length 500. |
 | `limit` | no | Integer clamped to `1..MAX_POSTS` (default `MAX_POSTS`, typically 10). Invalid/negative values are clamped, not rejected. |
 
 Unsupported Facebook paths (groups, reels, login, etc.) → `400 INVALID_PAGE_URL`.
+Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID_PAGE_URL`.
+
+### Instagram notes
+
+- Actor: `apify/instagram-post-scraper` (official input: `username`, `resultsLimit`, `skipPinnedPosts`, `dataDetailLevel`).
+- Default input uses `dataDetailLevel=basicData` and `includeMusicData=false` (avoid paid extras).
+- `stats.shares` is always `0` (not provided by the Actor).
+- Hidden likes may appear as `0` (Actor returns `-1`).
+- Owner profile photo: used when present on posts; otherwise a documented generic HTTPS fallback. Live coverage is **UNVERIFIED** until a real scrape.
 
 ## Success response shape
 

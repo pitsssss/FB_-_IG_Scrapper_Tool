@@ -1,10 +1,18 @@
 import { loadConfig } from './config.js';
 import { createApp } from './server.js';
 import { createService } from './service.js';
-import { createCacheWarmer, parseWarmPageList } from './cacheWarmer.js';
+import {
+  createCacheWarmer,
+  parseWarmPageList,
+  parseInstagramWarmProfileList,
+} from './cacheWarmer.js';
 
 const config = loadConfig();
-const warmPages = parseWarmPageList(config.warmPagesRaw, { allowedPages: config.allowedPages });
+const warmFacebook = parseWarmPageList(config.warmPagesRaw, { allowedPages: config.allowedPages });
+const warmInstagram = parseInstagramWarmProfileList(config.instagramWarmProfilesRaw, {
+  instagramAllowedProfiles: config.instagramAllowedProfiles,
+});
+const warmPages = [...warmFacebook, ...warmInstagram];
 const service = createService(config);
 const server = createApp(config, service);
 let warmer = null;
@@ -13,7 +21,8 @@ let shuttingDown = false;
 server.listen(config.port, config.host, () => {
   console.log(`fb-posts-api listening on http://${config.host}:${config.port}`);
   console.log(`providers: ${config.providers.join(' -> ')} | fresh TTL: ${config.freshTtlMs / 1000}s | cache dir: ${config.cacheDir}`);
-  console.log(`apify daily run limit: ${config.apify.dailyRunLimit} (UTC) | maxChargeUsdPerRun: ${config.apify.maxChargeUsdPerRun ?? '(none)'}`);
+  console.log(`apify daily run limit: ${config.apify.dailyRunLimit} (UTC, shared FB+IG) | maxChargeUsdPerRun: ${config.apify.maxChargeUsdPerRun ?? '(none)'}`);
+  console.log(`instagram actor: ${config.instagramApify.actor}`);
   if (!config.apify.token && !Object.keys(config.graph.tokens).length) {
     console.warn('WARNING: neither APIFY_TOKEN nor GRAPH_PAGE_TOKENS is set - only cached pages can be served.');
   }
@@ -22,9 +31,9 @@ server.listen(config.port, config.host, () => {
   if (warmPages.length) {
     warmer = createCacheWarmer({ config, service, pages: warmPages });
     warmer.start();
-    console.log(`cache warmer: ${warmPages.length} page(s), startup delay ${config.warmStartupDelayMs / 1000}s, interval ${config.warmIntervalMs / 1000}s, concurrency ${config.warmConcurrency}`);
+    console.log(`cache warmer: ${warmPages.length} page(s) (fb=${warmFacebook.length}, ig=${warmInstagram.length}), startup delay ${config.warmStartupDelayMs / 1000}s, interval ${config.warmIntervalMs / 1000}s, concurrency ${config.warmConcurrency}`);
   } else {
-    console.log('cache warmer: disabled (WARM_PAGES empty)');
+    console.log('cache warmer: disabled (WARM_PAGES / INSTAGRAM_WARM_PROFILES empty)');
   }
 });
 

@@ -1,7 +1,8 @@
 # fb-posts-api
 
-خدمة API وسيطة (Node.js بدون أي مكتبات خارجية) بترجّع آخر 10 بوستات لأي صفحة Facebook عامة، بشكل Response ثابت،
-مع كاش دائم على القرص، وإعادة محاولة، وتبديل تلقائي بين المزوّدات.
+Unified Facebook & Instagram posts API (Node.js, zero runtime dependencies). Returns the latest posts
+for a public Facebook page or Instagram profile in a **stable JSON contract**, with persistent disk cache,
+provider fallback, shared Apify quota, auth, and rate limiting.
 
 ## التشغيل
 ```bash
@@ -18,10 +19,14 @@ docker run -d -p 3000:3000 -v fbdata:/data --env-file .env fb-posts-api
 
 ## الاستخدام
 ```
-GET /api/v1/facebook/posts?page=<رابط الصفحة>&limit=10
+GET /api/v1/facebook/posts?page=<facebook-page-url>&limit=10
+GET /api/v1/instagram/posts?page=<instagram-profile-url>&limit=10
 Header: x-api-key: <مفتاح الموقع>      (أو Authorization: Bearer <مفتاح>)
 GET /health
 ```
+
+Both data endpoints share the same success/error schema, `x-api-key`, Apify token, and daily Apify
+invocation budget. Cache keys are platform-isolated (`cern` vs `instagram:nasa`).
 
 ### الـ Response (ثابت دائماً)
 ```json
@@ -53,9 +58,12 @@ GET /health
 6. الحالة الوحيدة اللي بترجع خطأ: صفحة ما إلها كاش أبداً + المزوّد واقع.
 
 ## المزوّدات
-- `apify`: صفحات عامة بدون تسجيل دخول. محتاج `APIFY_TOKEN`. تأكد من حقول Input الخاصة بالـ Actor اللي بتختاره وعدّل `APIFY_INPUT`.
-- `graph`: Meta Graph API الرسمي، مجاني، بس للصفحات اللي بتديرها (Page access token لكل صفحة بـ `GRAPH_PAGE_TOKENS`).
-  بيتجرّب أولاً للصفحات اللي إلها توكن، وإذا فشل بيحوّل على apify.
+- `apify` (Facebook): `APIFY_ACTOR` / `APIFY_INPUT` — صفحات عامة. يحتاج `APIFY_TOKEN`.
+- `instagram-apify`: Actor الرسمي `apify/instagram-post-scraper` عبر `INSTAGRAM_APIFY_ACTOR` /
+  `INSTAGRAM_APIFY_INPUT` (نفس `APIFY_TOKEN` ونفس `APIFY_DAILY_RUN_LIMIT`).
+- `graph`: Meta Graph API (Facebook فقط) عبر `GRAPH_PAGE_TOKENS`.
+
+Instagram notes: `stats.shares` دائماً `0`؛ likes المخفية قد تظهر `0`؛ صورة البروفايل تُستخدم إن وُجدت في مخرجات الـ Actor وإلا fallback موثّق. تغطية الصورة الحقيقية **غير مثبتة** حتى تشغيل live واحد.
 
 ## ربط الموقع (الأفضل من السيرفر مو من المتصفح عشان ما ينكشف المفتاح)
 PHP:
@@ -95,7 +103,8 @@ Inspect without mutating: `npm run quota:status`.
 
 | Setting | Meaning |
 | --- | --- |
-| `WARM_PAGES` | Comma-separated Facebook page URLs. Empty disables the warmer. |
+| `WARM_PAGES` | Comma-separated Facebook page URLs. Empty disables FB warming. |
+| `INSTAGRAM_WARM_PROFILES` | Comma-separated Instagram profile URLs. Empty disables IG warming. |
 | `WARM_INTERVAL_SECONDS` | Period between cycles. `0` = startup warm only. |
 | `WARM_CONCURRENCY` | Parallel warm refreshes (1–8). |
 | `WARM_STARTUP_DELAY_SECONDS` | Delay after listen before the first cycle. |
@@ -103,10 +112,11 @@ Inspect without mutating: `npm run quota:status`.
 Behavior:
 - The HTTP server becomes healthy immediately; warming runs in the background.
 - Fresh cache (`FRESH_TTL_SECONDS`) → **no** upstream call.
-- Stale/missing cache → existing refresh path (single-flight, cooldown, Apify quota, never overwrite good cache with empty/failed results).
-- Invalid `WARM_PAGES` URLs or pages outside `ALLOWED_PAGES` fail **startup** with a clear error.
+- Stale/missing cache → existing refresh path (single-flight, cooldown, shared Apify quota, never overwrite good cache with empty/failed results).
+- Invalid warm URLs or pages/profiles outside allowlists fail **startup** with a clear error.
 - Warming does **not** go through public auth, CORS, or API rate limits.
 - SIGINT/SIGTERM stop the warmer cleanly.
+- Both lists empty → warmer disabled (no scrape on startup).
 
 ### Illustrative example (not a cost/freshness SLA)
 
@@ -126,7 +136,8 @@ With a 6h TTL, hourly warming usually hits **skipped-fresh** and does not spend 
 When Apify is unavailable or the daily quota is exhausted: cached pages keep serving (`cache` / `stale-cache`); pages with no cache return the existing `UPSTREAM_UNAVAILABLE` error envelope.
 
 ## ملاحظات مهمة
-- روابط الصور واللوغو من CDN فيسبوك بتنتهي صلاحيتها بعد أيام؛ استعمل `onerror` بالـ `<img>` وارجع لـ `page.logo_fallback`.
-- `ALLOWED_PAGES` بيحدد الصفحات المسموحة (بيحمي رصيدك من إساءة الاستخدام).
-- الـ scraping لصفحات عامة بيخالف شروط استخدام فيسبوك من ناحية تقنية؛ للصفحات اللي بتملكها استعمل Graph API.
-- Run **one** API container/replica while using the filesystem Apify quota.
+- روابط الصور واللوغو من CDN فيسبوك/إنستغرام بتنتهي صلاحيتها؛ استعمل `onerror` بالـ `<img>` وارجع لـ `page.logo_fallback`.
+- `ALLOWED_PAGES` (Facebook) و `INSTAGRAM_ALLOWED_PROFILES` و `API_KEY_PAGE_SCOPES` يحمون الرصيد.
+- الـ scraping لصفحات عامة قد يخالف شروط المنصات؛ للصفحات اللي بتملكها استعمل Graph API حيث ينطبق.
+- Run **one** API container/replica while using the filesystem Apify quota (Facebook + Instagram share it).
+- Live Instagram acceptance (real Actor run) is a **separate phase** — offline tests use synthetic data only.
