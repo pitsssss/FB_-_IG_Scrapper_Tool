@@ -1042,6 +1042,235 @@ ${SCRIPTS.noSecretsInBody}
         }),
       ],
     ),
+
+    folder(
+      '08 — Instagram Real Posts',
+      'Real Instagram acceptance against shared live-cache.\n' +
+        'Paid scrape: only via `npm run postman:instagram:live` (at most ONE new Apify invocation).\n' +
+        'NOT included in `postman:offline`. After a live seed, Newman runs are cache-only.',
+      [
+        getReq('Get Latest 10 Instagram Posts', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          description: 'Primary NASA Instagram acceptance when cache is warm (or after controlled live seed).',
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+${SCRIPTS.noSecretsInBody}
+const body = pm.response.json();
+pm.test('exactly 10 posts (Instagram acceptance)', function () {
+  pm.expect(body.data.posts.length, 'actual count=' + body.data.posts.length).to.eql(10);
+});
+pm.test('meta.limit is 10', function () { pm.expect(body.meta.limit).to.eql(10); });
+pm.test('meta.provider is Apify-backed', function () {
+  pm.expect(String(body.meta.provider || '')).to.match(/apify/i);
+});
+pm.test('instagram page url', function () {
+  pm.expect(body.data.page.url).to.match(/instagram\\.com\\/nasa/i);
+});
+pm.test('post URLs are Instagram permalinks', function () {
+  body.data.posts.forEach(function (p) {
+    pm.expect(p.url).to.be.a('string');
+    pm.expect(/instagram\\.com\\/(p|reel)\\//i.test(p.url)).to.eql(true);
+  });
+});
+const logo = body.data.page.logo;
+const fallback = body.data.page.logo_fallback;
+const isFallback = logo === fallback || /anonymousUser\\.jpg/i.test(logo);
+pm.collectionVariables.set('igLogoIsFallback', isFallback ? 'true' : 'false');
+pm.collectionVariables.set('igRealFetchedAt', body.meta.fetched_at);
+pm.collectionVariables.set('igRealPostIds', body.data.posts.map(function (p) { return p.id; }).join(','));
+pm.test('report logo real vs fallback', function () {
+  console.log('ig_logo_status=' + (isFallback ? 'fallback' : 'provider'));
+  pm.expect(true).to.eql(true);
+});
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Get Latest 10 Instagram Posts — Cached', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('source is cache', function () { pm.expect(body.meta.source).to.eql('cache'); });
+pm.test('same post IDs as first request', function () {
+  const prev = (pm.collectionVariables.get('igRealPostIds') || '').split(',').filter(Boolean);
+  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);
+});
+pm.test('exactly 10 posts', function () { pm.expect(body.data.posts.length).to.eql(10); });
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Get Latest 3 Instagram Posts', {
+          pathSegments: igPath,
+          query: [igPageQ, limit3],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('exactly 3 posts', function () { pm.expect(body.data.posts.length).to.eql(3); });
+pm.test('meta.limit is 3', function () { pm.expect(body.meta.limit).to.eql(3); });
+pm.test('IDs are prefix of cached 10', function () {
+  const all = (pm.collectionVariables.get('igRealPostIds') || '').split(',').filter(Boolean);
+  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(all.slice(0, 3));
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Get Instagram Posts With Default Limit', {
+          pathSegments: igPath,
+          query: [igPageQ],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('default limit clamps to MAX_POSTS (10)', function () {
+  pm.expect(body.meta.limit).to.eql(10);
+  pm.expect(body.data.posts.length).to.eql(10);
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Validate Instagram Media', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('media arrays present on all posts', function () {
+  body.data.posts.forEach(function (p) { pm.expect(p.media).to.be.an('array'); });
+});
+pm.test('shares are zero (Instagram Actor does not provide shares)', function () {
+  body.data.posts.forEach(function (p) { pm.expect(p.stats.shares).to.eql(0); });
+});
+const hasVideo = body.data.posts.some(function (p) {
+  return p.media.some(function (m) { return m.type === 'video'; });
+});
+const hasCarousel = body.data.posts.some(function (p) {
+  return p.media.filter(function (m) { return m.type === 'image'; }).length >= 2;
+});
+pm.test('report reel/carousel presence (informational)', function () {
+  console.log('ig_has_video=' + hasVideo + ' ig_has_carousel=' + hasCarousel);
+  pm.expect(true).to.eql(true);
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Invalid Instagram Profile URL', {
+          pathSegments: igPath,
+          query: [{ key: 'page', value: 'https://www.instagram.com/reel/ABC123/' }, { key: 'limit', value: '3' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('status 400', function () { pm.response.to.have.status(400); });
+${SCRIPTS.assertError}
+pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.code).to.eql('INVALID_PAGE_URL'); });
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Unauthorized Instagram Profile', {
+          pathSegments: igPath,
+          auth: false,
+          headers: [{ key: 'x-api-key', value: '{{apiKeyB}}', type: 'text' }],
+          query: [igPageQ, { key: 'limit', value: '3' }],
+          description: 'Requires scoped apiKeyB without nasa Instagram access (instagram:live runner configures this).',
+          events: [
+            event(
+              'test',
+              `
+const keyB = pm.environment.get('apiKeyB') || '';
+if (!keyB) {
+  pm.test('skipped when apiKeyB empty', function () { pm.expect(true).to.eql(true); });
+} else {
+  pm.test('status 403', function () { pm.response.to.have.status(403); });
+  ${SCRIPTS.assertError}
+  pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('PAGE_NOT_ALLOWED'); });
+}
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Instagram Cache Metadata', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('cache metadata fields', function () {
+  pm.expect(body.meta.source).to.eql('cache');
+  pm.expect(body.meta.stale).to.eql(false);
+  pm.expect(body.meta.cache_age_seconds).to.be.a('number').and.at.least(0);
+  pm.expect(body.meta.fetched_at).to.eql(pm.collectionVariables.get('igRealFetchedAt'));
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+        getReq('Instagram Cache Identity', {
+          pathSegments: igPath,
+          query: [igPageQ, { key: 'limit', value: '10' }],
+          events: [
+            event(
+              'test',
+              `
+pm.test('HTTP 200', function () { pm.response.to.have.status(200); });
+${SCRIPTS.assertSuccessSchema}
+const body = pm.response.json();
+pm.test('IDs unchanged', function () {
+  const prev = (pm.collectionVariables.get('igRealPostIds') || '').split(',').filter(Boolean);
+  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);
+});
+pm.test('page identity consistent', function () {
+  const page = body.data.page;
+  body.data.posts.forEach(function (p) {
+    pm.expect(p.page.name).to.eql(page.name);
+    pm.expect(p.page.logo).to.eql(page.logo);
+    pm.expect(p.page.url).to.eql(page.url);
+  });
+});
+${SCRIPTS.noSecretsInBody}
+`.trim(),
+            ),
+          ],
+        }),
+      ],
+    ),
   ],
 };
 

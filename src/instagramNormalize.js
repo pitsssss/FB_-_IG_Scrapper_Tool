@@ -11,8 +11,10 @@ const pick = (...vals) => {
 
 /**
  * Generic schema-compliant logo when the Actor does not expose the owner's profile picture.
- * Documented limitation: live verification of real Instagram profile photos is required in a later phase.
- * Never use commenter avatars as the account logo.
+ * Live acceptance (2026-11-03, nasa, dataDetailLevel=basicData): ownerProfilePicUrl was absent on
+ * all rows — logo correctly used this fallback (not a real profile photo).
+ * Never use commenter avatars / coauthors as the account logo.
+ * Future enrichment: a separate profile Actor or detailedData (paid) — not enabled by default.
  */
 export const INSTAGRAM_LOGO_FALLBACK = 'https://www.instagram.com/static/images/anonymousUser.jpg';
 

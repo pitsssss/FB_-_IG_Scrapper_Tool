@@ -4325,6 +4325,1201 @@
           ]
         }
       ]
+    },
+    {
+      "name": "08 — Instagram Real Posts",
+      "description": "Real Instagram acceptance against shared live-cache.\nPaid scrape: only via `npm run postman:instagram:live` (at most ONE new Apify invocation).\nNOT included in `postman:offline`. After a live seed, Newman runs are cache-only.",
+      "item": [
+        {
+          "name": "Get Latest 10 Instagram Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "Primary NASA Instagram acceptance when cache is warm (or after controlled live seed).",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('exactly 10 posts (Instagram acceptance)', function () {",
+                  "  pm.expect(body.data.posts.length, 'actual count=' + body.data.posts.length).to.eql(10);",
+                  "});",
+                  "pm.test('meta.limit is 10', function () { pm.expect(body.meta.limit).to.eql(10); });",
+                  "pm.test('meta.provider is Apify-backed', function () {",
+                  "  pm.expect(String(body.meta.provider || '')).to.match(/apify/i);",
+                  "});",
+                  "pm.test('instagram page url', function () {",
+                  "  pm.expect(body.data.page.url).to.match(/instagram\\.com\\/nasa/i);",
+                  "});",
+                  "pm.test('post URLs are Instagram permalinks', function () {",
+                  "  body.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.url).to.be.a('string');",
+                  "    pm.expect(/instagram\\.com\\/(p|reel)\\//i.test(p.url)).to.eql(true);",
+                  "  });",
+                  "});",
+                  "const logo = body.data.page.logo;",
+                  "const fallback = body.data.page.logo_fallback;",
+                  "const isFallback = logo === fallback || /anonymousUser\\.jpg/i.test(logo);",
+                  "pm.collectionVariables.set('igLogoIsFallback', isFallback ? 'true' : 'false');",
+                  "pm.collectionVariables.set('igRealFetchedAt', body.meta.fetched_at);",
+                  "pm.collectionVariables.set('igRealPostIds', body.data.posts.map(function (p) { return p.id; }).join(','));",
+                  "pm.test('report logo real vs fallback', function () {",
+                  "  console.log('ig_logo_status=' + (isFallback ? 'fallback' : 'provider'));",
+                  "  pm.expect(true).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Latest 10 Instagram Posts — Cached",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('source is cache', function () { pm.expect(body.meta.source).to.eql('cache'); });",
+                  "pm.test('same post IDs as first request', function () {",
+                  "  const prev = (pm.collectionVariables.get('igRealPostIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);",
+                  "});",
+                  "pm.test('exactly 10 posts', function () { pm.expect(body.data.posts.length).to.eql(10); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Latest 3 Instagram Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('exactly 3 posts', function () { pm.expect(body.data.posts.length).to.eql(3); });",
+                  "pm.test('meta.limit is 3', function () { pm.expect(body.meta.limit).to.eql(3); });",
+                  "pm.test('IDs are prefix of cached 10', function () {",
+                  "  const all = (pm.collectionVariables.get('igRealPostIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(all.slice(0, 3));",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Instagram Posts With Default Limit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('default limit clamps to MAX_POSTS (10)', function () {",
+                  "  pm.expect(body.meta.limit).to.eql(10);",
+                  "  pm.expect(body.data.posts.length).to.eql(10);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate Instagram Media",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('media arrays present on all posts', function () {",
+                  "  body.data.posts.forEach(function (p) { pm.expect(p.media).to.be.an('array'); });",
+                  "});",
+                  "pm.test('shares are zero (Instagram Actor does not provide shares)', function () {",
+                  "  body.data.posts.forEach(function (p) { pm.expect(p.stats.shares).to.eql(0); });",
+                  "});",
+                  "const hasVideo = body.data.posts.some(function (p) {",
+                  "  return p.media.some(function (m) { return m.type === 'video'; });",
+                  "});",
+                  "const hasCarousel = body.data.posts.some(function (p) {",
+                  "  return p.media.filter(function (m) { return m.type === 'image'; }).length >= 2;",
+                  "});",
+                  "pm.test('report reel/carousel presence (informational)', function () {",
+                  "  console.log('ig_has_video=' + hasVideo + ' ig_has_carousel=' + hasCarousel);",
+                  "  pm.expect(true).to.eql(true);",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid Instagram Profile URL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page=https://www.instagram.com/reel/ABC123/&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "https://www.instagram.com/reel/ABC123/"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('INVALID_PAGE_URL', function () { pm.expect(pm.response.json().error.code).to.eql('INVALID_PAGE_URL'); });",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthorized Instagram Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKeyB}}",
+                "type": "text"
+              }
+            ],
+            "description": "Requires scoped apiKeyB without nasa Instagram access (instagram:live runner configures this).",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const keyB = pm.environment.get('apiKeyB') || '';",
+                  "if (!keyB) {",
+                  "  pm.test('skipped when apiKeyB empty', function () { pm.expect(true).to.eql(true); });",
+                  "} else {",
+                  "  pm.test('status 403', function () { pm.response.to.have.status(403); });",
+                  "  pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const body = pm.response.json();",
+                  "pm.test('error envelope', function () {",
+                  "  pm.expect(body).to.have.keys('success', 'error');",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error).to.have.keys('code', 'message');",
+                  "  pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.error.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "  pm.test('PAGE_NOT_ALLOWED', function () { pm.expect(pm.response.json().error.code).to.eql('PAGE_NOT_ALLOWED'); });",
+                  "}",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Instagram Cache Metadata",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('cache metadata fields', function () {",
+                  "  pm.expect(body.meta.source).to.eql('cache');",
+                  "  pm.expect(body.meta.stale).to.eql(false);",
+                  "  pm.expect(body.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(body.meta.fetched_at).to.eql(pm.collectionVariables.get('igRealFetchedAt'));",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Instagram Cache Identity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "description": "",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instagram/posts?page={{instagramProfileUrl}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "instagram",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{instagramProfileUrl}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "function isIso(v) {",
+                  "  if (typeof v !== 'string' || !v) return false;",
+                  "  const d = new Date(v);",
+                  "  return !Number.isNaN(d.getTime()) && d.toISOString() === v;",
+                  "}",
+                  "function sameKeys(obj, expected, label) {",
+                  "  pm.expect(obj, label).to.be.an('object');",
+                  "  pm.expect(Object.keys(obj).sort(), label + ' keys').to.eql([...expected].sort());",
+                  "}",
+                  "function assertPage(page, label) {",
+                  "  sameKeys(page, ['id', 'name', 'logo', 'logo_fallback', 'url'], label);",
+                  "  pm.expect(page.id === null || typeof page.id === 'string', label + '.id').to.be.true;",
+                  "  pm.expect(page.name).to.be.a('string').and.not.match(/^\\s*$/);",
+                  "  pm.expect(page.logo).to.be.a('string').and.match(/^https:\\/\\//);",
+                  "  pm.expect(page.logo_fallback).to.be.a('string');",
+                  "  pm.expect(page.url).to.be.a('string').and.not.empty;",
+                  "}",
+                  "function assertPost(post) {",
+                  "  sameKeys(post, ['id', 'url', 'text', 'created_at', 'image', 'media', 'stats', 'page'], 'post');",
+                  "  pm.expect(post.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(post.url === null || typeof post.url === 'string').to.be.true;",
+                  "  if (typeof post.url === 'string') {",
+                  "    pm.expect(post.url.length > 0).to.be.true;",
+                  "  }",
+                  "  pm.expect(post.text).to.be.a('string');",
+                  "  pm.expect(post.created_at === null || isIso(post.created_at), 'created_at ISO|null').to.be.true;",
+                  "  pm.expect(post.image === null || typeof post.image === 'string').to.be.true;",
+                  "  pm.expect(post.media).to.be.an('array');",
+                  "  post.media.forEach(function (m) {",
+                  "    sameKeys(m, ['type', 'url', 'thumbnail'], 'media');",
+                  "    pm.expect(['image', 'video']).to.include(m.type);",
+                  "    pm.expect(m.url).to.be.a('string');",
+                  "    pm.expect(m.thumbnail === null || typeof m.thumbnail === 'string').to.be.true;",
+                  "  });",
+                  "  sameKeys(post.stats, ['likes', 'comments', 'shares'], 'stats');",
+                  "  ['likes', 'comments', 'shares'].forEach(function (k) {",
+                  "    pm.expect(Number.isInteger(post.stats[k]) && post.stats[k] >= 0, 'stats.' + k).to.be.true;",
+                  "  });",
+                  "  assertPage(post.page, 'post.page');",
+                  "}",
+                  "pm.test('response is JSON', function () { pm.response.to.be.json; });",
+                  "const schemaBody = pm.response.json();",
+                  "pm.test('success envelope + strict schema', function () {",
+                  "  sameKeys(schemaBody, ['success', 'data', 'meta'], 'root');",
+                  "  pm.expect(schemaBody.success).to.eql(true);",
+                  "  sameKeys(schemaBody.data, ['page', 'posts'], 'data');",
+                  "  assertPage(schemaBody.data.page, 'data.page');",
+                  "  pm.expect(schemaBody.data.posts).to.be.an('array');",
+                  "  schemaBody.data.posts.forEach(assertPost);",
+                  "  sameKeys(schemaBody.meta, ['source', 'provider', 'fetched_at', 'cache_age_seconds', 'stale', 'count', 'limit', 'warning'], 'meta');",
+                  "  pm.expect(['live', 'cache', 'stale-cache']).to.include(schemaBody.meta.source);",
+                  "  pm.expect(schemaBody.meta.provider).to.be.a('string');",
+                  "  pm.expect(isIso(schemaBody.meta.fetched_at)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.cache_age_seconds).to.be.a('number').and.at.least(0);",
+                  "  pm.expect(schemaBody.meta.stale).to.be.a('boolean');",
+                  "  pm.expect(schemaBody.meta.stale).to.eql(schemaBody.meta.source === 'stale-cache');",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.count)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.count).to.eql(schemaBody.data.posts.length);",
+                  "  pm.expect(Number.isInteger(schemaBody.meta.limit)).to.be.true;",
+                  "  pm.expect(schemaBody.meta.warning === null || typeof schemaBody.meta.warning === 'string').to.be.true;",
+                  "});",
+                  "pm.test('unique post IDs', function () {",
+                  "  const ids = schemaBody.data.posts.map(function (p) { return p.id; });",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('page identity consistent across posts', function () {",
+                  "  const page = schemaBody.data.page;",
+                  "  schemaBody.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "pm.test('newest-first when timestamps available', function () {",
+                  "  const times = schemaBody.data.posts.map(function (p) { return p.created_at; }).filter(Boolean);",
+                  "  for (let i = 1; i < times.length; i++) {",
+                  "    pm.expect(new Date(times[i - 1]).getTime()).to.be.at.least(new Date(times[i]).getTime());",
+                  "  }",
+                  "});",
+                  "pm.test('count does not exceed requested limit', function () {",
+                  "  const lim = Number(pm.environment.get('limit') || schemaBody.meta.limit);",
+                  "  pm.expect(schemaBody.data.posts.length).to.be.at.most(lim);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('IDs unchanged', function () {",
+                  "  const prev = (pm.collectionVariables.get('igRealPostIds') || '').split(',').filter(Boolean);",
+                  "  pm.expect(body.data.posts.map(function (p) { return p.id; })).to.eql(prev);",
+                  "});",
+                  "pm.test('page identity consistent', function () {",
+                  "  const page = body.data.page;",
+                  "  body.data.posts.forEach(function (p) {",
+                  "    pm.expect(p.page.name).to.eql(page.name);",
+                  "    pm.expect(p.page.logo).to.eql(page.logo);",
+                  "    pm.expect(p.page.url).to.eql(page.url);",
+                  "  });",
+                  "});",
+                  "const text = pm.response.text() || '';",
+                  "const key = pm.environment.get('apiKey') || '';",
+                  "const bad = pm.environment.get('invalidApiKey') || '';",
+                  "pm.test('response body does not contain credentials', function () {",
+                  "  if (key) pm.expect(text.includes(key)).to.eql(false);",
+                  "  if (bad) pm.expect(text.includes(bad)).to.eql(false);",
+                  "  pm.expect(/Bearer\\s+[A-Za-z0-9._-]{12,}/i.test(text)).to.eql(false);",
+                  "  pm.expect(/apify_api_/i.test(text)).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

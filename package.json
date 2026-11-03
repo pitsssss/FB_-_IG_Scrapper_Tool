@@ -17,6 +17,7 @@
     "quota:status": "node --env-file=.env scripts/quota-status.js",
     "postman:offline": "node scripts/postman-runner.js offline",
     "postman:live": "node scripts/postman-runner.js live",
+    "postman:instagram:live": "node scripts/postman-runner.js instagram-live",
     "postman:serve": "node scripts/postman-runner.js serve",
     "postman:collection": "node scripts/generate-postman-collection.mjs"
   },

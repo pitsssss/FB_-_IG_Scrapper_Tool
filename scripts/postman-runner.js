@@ -45,6 +45,7 @@ const PAGE_NASA = 'https://www.facebook.com/nasa';
 const PAGE_COLD = 'https://www.facebook.com/SomeNeverCachedPage99';
 const IG_NASA = 'https://www.instagram.com/nasa/';
 const IG_NATGEO = 'https://www.instagram.com/natgeo/';
+const IG_CAPTURE_DIR = join(localDir, 'instagram-capture');
 
 const children = [];
 const servers = [];
@@ -700,13 +701,334 @@ async function runServe() {
   await new Promise(() => {});
 }
 
+/**
+ * Instagram live acceptance against shared `.postman-local/live-cache`.
+ * At most ONE new paid Instagram Actor invocation when nasa is not yet cached.
+ * Never resets apify-quota.json. Never runs Facebook live acceptance.
+ */
+async function runInstagramLive() {
+  log('== postman:instagram:live (at most ONE Instagram Apify invocation) ==');
+  const dotenv = await readDotEnv();
+  const token = (dotenv.APIFY_TOKEN || '').trim();
+  if (!token) {
+    fail('APIFY_TOKEN missing/empty in .env — cannot run Instagram live test.');
+    return 2;
+  }
+
+  await mkdir(localDir, { recursive: true });
+  await mkdir(sharedCacheDir, { recursive: true });
+  await mkdir(IG_CAPTURE_DIR, { recursive: true });
+
+  const quotaPath = join(sharedCacheDir, 'apify-quota.json');
+  const today = new Date().toISOString().slice(0, 10);
+  let consumedBefore = 0;
+  try {
+    const q = JSON.parse(await readFile(quotaPath, 'utf8'));
+    if (q && q.utcDate === today) consumedBefore = Number(q.consumed) || 0;
+  } catch (e) {
+    if (e && e.code !== 'ENOENT') {
+      fail(`Cannot read live quota state: ${e.message}`);
+      return 3;
+    }
+  }
+
+  // Detect existing Instagram nasa cache without mutating Facebook files.
+  const { createHash } = await import('node:crypto');
+  const igCacheKey = 'instagram:nasa';
+  const igCacheFile = join(
+    sharedCacheDir,
+    `${createHash('sha1').update(igCacheKey).digest('hex')}.json`,
+  );
+  let alreadyCached = false;
+  try {
+    const entry = JSON.parse(await readFile(igCacheFile, 'utf8'));
+    alreadyCached = Boolean(entry && entry.key === igCacheKey && Array.isArray(entry.posts) && entry.posts.length);
+  } catch {
+    alreadyCached = false;
+  }
+
+  const maxCharge = resolveMaxChargeUsd(dotenv);
+  const forceLive = process.argv.includes('--force-live');
+  const needPaid = forceLive || !alreadyCached;
+
+  if (needPaid) {
+    // Authorize exactly one new reservation: process limit = consumed + 1 (does not reset file).
+    const processLimit = consumedBefore + 1;
+    log(
+      `Quota before: utcDate=${today} consumed=${consumedBefore}. ` +
+        `Authorizing ONE new Instagram run (APIFY_DAILY_RUN_LIMIT=${processLimit}, maxTotalChargeUsd=${maxCharge}).`,
+    );
+  } else {
+    log(
+      `Instagram nasa already cached at ${igCacheFile}. ` +
+        'Skipping paid Apify call; validating from shared live-cache (APIFY_DAILY_RUN_LIMIT=0).',
+    );
+  }
+
+  const keyA = `iglive${randomKey(12)}`;
+  const keyB = `igdeny${randomKey(12)}`;
+  const apiPort = await freePort();
+  const scopes = JSON.stringify({
+    liveA: [IG_NASA, PAGE_CERN],
+    liveB: [IG_NATGEO],
+  });
+
+  const child = spawnApi({
+    HOST: '127.0.0.1',
+    PORT: String(apiPort),
+    CACHE_DIR: sharedCacheDir,
+    API_KEYS: `liveA:${keyA},liveB:${keyB}`,
+    API_KEY_PAGE_SCOPES: scopes,
+    APIFY_TOKEN: token,
+    APIFY_BASE_URL: dotenv.APIFY_BASE_URL || 'https://api.apify.com',
+    APIFY_ACTOR: dotenv.APIFY_ACTOR || 'apify~facebook-posts-scraper',
+    INSTAGRAM_APIFY_ACTOR: dotenv.INSTAGRAM_APIFY_ACTOR || 'apify~instagram-post-scraper',
+    INSTAGRAM_APIFY_INPUT:
+      dotenv.INSTAGRAM_APIFY_INPUT ||
+      JSON.stringify({
+        username: [],
+        resultsLimit: 10,
+        skipPinnedPosts: true,
+        dataDetailLevel: 'basicData',
+        includeMusicData: false,
+      }),
+    INSTAGRAM_CAPTURE_DIR: needPaid ? IG_CAPTURE_DIR : '',
+    PROVIDERS: 'apify',
+    APIFY_DAILY_RUN_LIMIT: needPaid ? String(consumedBefore + 1) : '0',
+    APIFY_MAX_CHARGE_USD_PER_RUN: maxCharge,
+    UPSTREAM_RETRIES: '0',
+    WARM_PAGES: '',
+    INSTAGRAM_WARM_PROFILES: '',
+    FRESH_TTL_SECONDS: '86400',
+    RATE_LIMIT_PER_MIN: '0',
+    MAX_POSTS: '10',
+  });
+
+  const baseUrl = `http://127.0.0.1:${apiPort}`;
+  try {
+    await waitHealth(baseUrl);
+  } catch (e) {
+    fail(`API failed to start: ${e.message}`);
+    const snippet = (child.__log() || '').slice(0, 500).replace(token, '[redacted]');
+    if (snippet) console.error(snippet);
+    await cleanup();
+    return 1;
+  }
+
+  const report = {
+    paidAttemptAuthorized: needPaid,
+    paidAttemptPerformed: false,
+    httpStatus: null,
+    postCount: null,
+    source: null,
+    provider: null,
+    pageName: null,
+    pageId: null,
+    logoStatus: null,
+    images: 0,
+    videos: 0,
+    carousels: 0,
+    timestamps: 0,
+    duplicateIds: 0,
+    newestFirst: null,
+    firstTs: null,
+    lastTs: null,
+    cacheSource: null,
+    limit3Count: null,
+    quotaBefore: consumedBefore,
+    quotaAfterLive: null,
+    quotaAfterCache: null,
+    facebookCernIntact: null,
+  };
+
+  // Confirm Facebook CERN cache file still intact on disk (no HTTP — avoids burning the IG quota slot).
+  try {
+    const cernFile = join(
+      sharedCacheDir,
+      `${createHash('sha1').update('cern').digest('hex')}.json`,
+    );
+    const entry = JSON.parse(await readFile(cernFile, 'utf8'));
+    report.facebookCernIntact =
+      entry?.key === 'cern' && Array.isArray(entry.posts) && entry.posts.length === 10;
+  } catch {
+    report.facebookCernIntact = false;
+  }
+
+  try {
+    if (needPaid) {
+      log('Issuing ONE live Instagram Apify-backed GET (limit=10, nasa)…');
+    } else {
+      log('Issuing cache-only Instagram GET (limit=10, nasa)…');
+    }
+    const first = await fetch(
+      `${baseUrl}/api/v1/instagram/posts?page=${encodeURIComponent(IG_NASA)}&limit=10`,
+      { headers: { 'x-api-key': keyA } },
+    );
+    report.httpStatus = first.status;
+    const body = await first.json();
+    if (!body?.success) {
+      report.errorCode = body?.error?.code;
+      report.errorMessage = body?.error?.message;
+      fail(`Instagram GET failed: HTTP ${first.status} code=${report.errorCode || '?'}`);
+      await cleanup();
+      log('REAL INSTAGRAM ACCEPTANCE: FAIL');
+      return 1;
+    }
+
+    report.postCount = body.data.posts.length;
+    report.source = body.meta.source;
+    report.provider = body.meta.provider;
+    report.pageName = body.data.page.name;
+    report.pageId = body.data.page.id;
+    const logo = body.data.page.logo;
+    const fbLogo = body.data.page.logo_fallback;
+    report.logoStatus =
+      logo === fbLogo || /anonymousUser\.jpg/i.test(logo) ? 'fallback' : 'provider';
+    report.images = body.data.posts.filter((p) => typeof p.image === 'string' && p.image).length;
+    report.videos = body.data.posts.filter((p) => p.media.some((m) => m.type === 'video')).length;
+    report.carousels = body.data.posts.filter(
+      (p) => p.media.filter((m) => m.type === 'image').length >= 2,
+    ).length;
+    report.timestamps = body.data.posts.filter((p) => p.created_at).length;
+    const ids = body.data.posts.map((p) => p.id);
+    report.duplicateIds = ids.length - new Set(ids).size;
+    const times = body.data.posts.map((p) => p.created_at).filter(Boolean);
+    report.firstTs = times[0] || null;
+    report.lastTs = times[times.length - 1] || null;
+    report.newestFirst = times.every((t, i) => {
+      if (i === 0) return true;
+      return new Date(times[i - 1]).getTime() >= new Date(t).getTime();
+    });
+    report.sample = {
+      success: body.success,
+      page: {
+        id: body.data.page.id,
+        name: body.data.page.name,
+        logo: `${String(body.data.page.logo).slice(0, 80)}${body.data.page.logo.length > 80 ? '…' : ''}`,
+        logo_fallback: body.data.page.logo_fallback,
+        url: body.data.page.url,
+      },
+      meta: body.meta,
+      posts: body.data.posts.slice(0, 2).map((p) => ({
+        id: p.id,
+        url: p.url,
+        text: (p.text || '').slice(0, 100),
+        created_at: p.created_at,
+        image: p.image ? `${String(p.image).slice(0, 80)}…` : null,
+        mediaCount: p.media.length,
+        stats: p.stats,
+        pageName: p.page.name,
+      })),
+    };
+
+    try {
+      const q = JSON.parse(await readFile(quotaPath, 'utf8'));
+      report.quotaAfterLive = q.consumed;
+    } catch {
+      report.quotaAfterLive = null;
+    }
+
+    if (needPaid) {
+      report.paidAttemptPerformed = report.source === 'live';
+      if (report.quotaAfterLive !== consumedBefore + 1) {
+        fail(
+          `Expected quota consumed=${consumedBefore + 1} after live Instagram GET, got ${report.quotaAfterLive}`,
+        );
+      }
+      if (report.source !== 'live') {
+        fail(`Expected meta.source=live for paid seed, got ${report.source}`);
+      }
+    } else if (report.quotaAfterLive !== consumedBefore) {
+      fail(`Cache-only path must not consume quota (before=${consumedBefore}, after=${report.quotaAfterLive})`);
+    }
+  } catch (e) {
+    fail(`Instagram probe failed: ${e.message}`);
+    await cleanup();
+    log('REAL INSTAGRAM ACCEPTANCE: FAIL');
+    return 1;
+  }
+
+  // Newman folder 08 against warm cache — no additional Apify calls (limit already at ceiling or 0).
+  const environment = {
+    baseUrl,
+    apiKey: keyA,
+    apiKeyB: keyB,
+    pageUrl: PAGE_CERN,
+    unauthorizedPageUrl: PAGE_NASA,
+    instagramProfileUrl: IG_NASA,
+    limit: '10',
+    invalidApiKey: 'invalid-key-not-real',
+    fakeUpstreamUrl: '',
+  };
+
+  const { err, summary } = await runNewman({
+    folders: ['08 — Instagram Real Posts'],
+    environment,
+  });
+  const s = summarizeNewman(summary);
+
+  try {
+    const second = await fetch(
+      `${baseUrl}/api/v1/instagram/posts?page=${encodeURIComponent(IG_NASA)}&limit=10`,
+      { headers: { 'x-api-key': keyA } },
+    );
+    const body2 = await second.json();
+    report.cacheSource = body2?.meta?.source;
+
+    const third = await fetch(
+      `${baseUrl}/api/v1/instagram/posts?page=${encodeURIComponent(IG_NASA)}&limit=3`,
+      { headers: { 'x-api-key': keyA } },
+    );
+    const body3 = await third.json();
+    report.limit3Count = body3?.data?.posts?.length;
+
+    const q2 = JSON.parse(await readFile(quotaPath, 'utf8'));
+    report.quotaAfterCache = q2.consumed;
+  } catch (e) {
+    fail(`Cache follow-up failed: ${e.message}`);
+  }
+
+  log('--- INSTAGRAM LIVE ACCEPTANCE SUMMARY ---');
+  log(JSON.stringify(report, null, 2));
+
+  const newmanFailed = (s.assertions.failed || 0) > 0 || !!err || (s.requests.failed || 0) > 0;
+  log(`Newman assertions failed=${s.assertions.failed || 0} total=${s.assertions.total || 0}`);
+  if (s.failures.length) {
+    for (const f of s.failures.slice(0, 15)) fail(`${f.name}: ${f.error}`);
+  }
+
+  const exactTen = report.postCount === 10;
+  const acceptancePass =
+    !newmanFailed &&
+    report.httpStatus === 200 &&
+    exactTen &&
+    report.duplicateIds === 0 &&
+    report.cacheSource === 'cache' &&
+    report.limit3Count === 3 &&
+    report.quotaAfterCache === report.quotaAfterLive &&
+    report.facebookCernIntact === true &&
+    (needPaid ? report.source === 'live' && report.paidAttemptPerformed : true);
+
+  if (acceptancePass && exactTen) {
+    log('REAL INSTAGRAM ACCEPTANCE: PASS');
+    return 0;
+  }
+  if (report.httpStatus === 200 && report.postCount > 0 && report.postCount < 10) {
+    log('REAL INSTAGRAM ACCEPTANCE: PARTIAL (fewer than 10 genuine posts)');
+    return 1;
+  }
+  log('REAL INSTAGRAM ACCEPTANCE: FAIL');
+  return 1;
+}
+
 async function main() {
   const mode = (process.argv[2] || '').toLowerCase();
-  if (!['offline', 'live', 'serve'].includes(mode)) {
+  if (!['offline', 'live', 'instagram-live', 'serve'].includes(mode)) {
     console.error(
       'Usage:\n' +
         '  node scripts/postman-runner.js offline\n' +
         '  node scripts/postman-runner.js live\n' +
+        '  node scripts/postman-runner.js instagram-live\n' +
         '  node scripts/postman-runner.js serve\n' +
         '  node scripts/postman-runner.js serve --live\n' +
         '  node scripts/postman-runner.js serve --live --daily-limit=3',
@@ -724,6 +1046,7 @@ async function main() {
   try {
     if (mode === 'offline') code = await runOffline();
     else if (mode === 'live') code = await runLive();
+    else if (mode === 'instagram-live') code = await runInstagramLive();
     else code = await runServe();
   } catch (e) {
     fail(e?.stack || e?.message || String(e));
