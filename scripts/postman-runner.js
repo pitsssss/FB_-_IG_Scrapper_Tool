@@ -44,13 +44,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PAGE_CERN = 'https://www.facebook.com/cern';
 const PAGE_NASA = 'https://www.facebook.com/nasa';
 const PAGE_COLD = 'https://www.facebook.com/SomeNeverCachedPage99';
-const PAGE_QASIOUN = 'https://www.facebook.com/qasiounjourney1';
 const IG_NASA = 'https://www.instagram.com/nasa/';
 const IG_NATGEO = 'https://www.instagram.com/natgeo/';
-const IG_QASIOUN = 'https://www.instagram.com/qasiounjourney/';
 const IG_CAPTURE_DIR = join(localDir, 'instagram-capture');
 const GENERATED_ENV_NAME = 'Social Media Posts API — Local Generated';
 const GENERATED_ENV_FILE = 'Social-Media-Posts-Local.generated.postman_environment.json';
+
+/** Optional private overrides (runtime env only — never commit values). */
+function resolveDemoFacebookPageUrl() {
+  const raw = (process.env.POSTMAN_FACEBOOK_PAGE_URL || '').trim();
+  return raw || PAGE_CERN;
+}
+
+function resolveDemoInstagramProfileUrl() {
+  const raw = (process.env.POSTMAN_INSTAGRAM_PROFILE_URL || '').trim();
+  return raw || IG_NASA;
+}
 
 const children = [];
 const servers = [];
@@ -693,6 +702,8 @@ async function runServe() {
     return 1;
   }
 
+  const demoFacebook = resolveDemoFacebookPageUrl();
+  const demoInstagram = resolveDemoInstagramProfileUrl();
   const envPath = join(localDir, GENERATED_ENV_FILE);
   const envDoc = {
     id: 'social-media-posts-local-generated',
@@ -701,11 +712,11 @@ async function runServe() {
       baseUrl,
       apiKey: key,
       apiKeyB: '',
-      facebookPageUrl: PAGE_QASIOUN,
-      pageUrl: PAGE_QASIOUN,
+      facebookPageUrl: demoFacebook,
+      pageUrl: demoFacebook,
       unauthorizedFacebookPageUrl: PAGE_NASA,
       unauthorizedPageUrl: PAGE_NASA,
-      instagramProfileUrl: IG_QASIOUN,
+      instagramProfileUrl: demoInstagram,
       unauthorizedInstagramProfileUrl: IG_NATGEO,
       limit: '10',
       invalidApiKey: 'invalid-key-not-real',
@@ -722,8 +733,11 @@ async function runServe() {
   log(`Select environment: ${GENERATED_ENV_NAME}`);
   log('Facebook: 01 — Facebook → FB — 02 Real Posts → Get Latest 10 Facebook Posts');
   log('Instagram: 02 — Instagram → IG — 02 Real Posts → Get Latest 10 Instagram Posts');
-  log('Defaults: facebookPageUrl=qasiounjourney1, instagramProfileUrl=qasiounjourney, limit=10');
-  log('NOTE: Qasioun Instagram may be uncached — cache-only then returns 502 UPSTREAM_UNAVAILABLE (no paid scrape).');
+  log('Public demo defaults: facebookPageUrl=CERN page, instagramProfileUrl=NASA profile, limit=10');
+  log(
+    'Optional private overrides (runtime only): POSTMAN_FACEBOOK_PAGE_URL, POSTMAN_INSTAGRAM_PROFILE_URL',
+  );
+  log('NOTE: Uncached targets in cache-only mode return 502 UPSTREAM_UNAVAILABLE (no paid scrape).');
   log('meta.source=cache|stale-cache means no new Apify call; meta.source=live means a scrape ran.');
   log('Do NOT Run Collection — Real Posts / cold cache can trigger paid Apify when live mode is on.');
   log('WARNING: Importing a populated environment into a synced Postman workspace may upload variable values.');

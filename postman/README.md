@@ -7,7 +7,7 @@ One unified Collection v2.1 covering **both** platforms, plus a safe environment
 | File | Purpose |
 |------|---------|
 | `Social-Media-Posts-API.postman_collection.json` | **The** collection (exactly two top folders: Facebook + Instagram) |
-| `Social-Media-Posts-Local.postman_environment.json` | Shareable **template** — empty `apiKey`; Qasioun URLs pre-filled |
+| `Social-Media-Posts-Local.postman_environment.json` | Shareable **template** — empty `apiKey`; public demo URLs (CERN / NASA) |
 | `.postman-local/Social-Media-Posts-Local.generated.postman_environment.json` | Created by `npm run postman:serve` — real `baseUrl` + local `apiKey` (gitignored) |
 
 Do **not** create two collections. Do **not** put `APIFY_TOKEN` or production secrets in Postman.
@@ -34,13 +34,15 @@ Defaults (already set in the generated environment):
 
 | Variable | Default |
 |----------|---------|
-| `facebookPageUrl` / `pageUrl` | `https://www.facebook.com/qasiounjourney1` |
-| `instagramProfileUrl` | `https://www.instagram.com/qasiounjourney/` |
+| `facebookPageUrl` / `pageUrl` | `https://www.facebook.com/cern` (public demo) |
+| `instagramProfileUrl` | `https://www.instagram.com/nasa/` (public demo) |
 | `limit` | `10` |
 | `baseUrl` | actual listening port from serve |
 | `apiKey` | securely generated local key |
 
-**Qasioun Instagram live scrape is not assumed.** In cache-only mode, an uncached profile returns `502 UPSTREAM_UNAVAILABLE` (no Apify call). Do not “Run Collection” to seed accounts.
+Optional private overrides for serve (runtime env only, never commit): `POSTMAN_FACEBOOK_PAGE_URL`, `POSTMAN_INSTAGRAM_PROFILE_URL`.
+
+In cache-only mode, an uncached profile returns `502 UPSTREAM_UNAVAILABLE` (no Apify call). Do not “Run Collection” to seed accounts.
 
 ## Collection tree
 
