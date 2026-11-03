@@ -17,7 +17,7 @@
  */
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveSharedCacheDir, resolveMaxChargeUsd } from './postman-shared.js';
 import { createApifyQuota } from '../src/apifyQuota.js';
@@ -28,8 +28,10 @@ import { createInstagramIdentity } from '../src/instagramIdentity.js';
 import { INSTAGRAM_LOGO_FALLBACK } from '../src/instagramNormalize.js';
 import { buildApifyRunUrl } from '../src/providers/apify.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const root = join(__dirname, '..');
+const isDirectRun = Boolean(process.argv[1]) && resolve(__filename) === resolve(process.argv[1]);
 const PROFILE = 'https://www.instagram.com/nasa/';
 const ACTOR = 'apify~instagram-profile-scraper';
 const OFFICIAL_INPUT = {
@@ -102,7 +104,13 @@ async function readQuota(sharedCacheDir) {
 
 async function listPostCaches(sharedCacheDir) {
   const out = [];
-  const files = await readdir(sharedCacheDir);
+  let files;
+  try {
+    files = await readdir(sharedCacheDir);
+  } catch (e) {
+    if (e && e.code === 'ENOENT') return out;
+    throw e;
+  }
   for (const f of files) {
     if (!f.endsWith('.json') || f === 'apify-quota.json') continue;
     if (f.includes('instagram-profiles')) continue;
@@ -341,7 +349,9 @@ async function main() {
   process.exit(ok ? 0 : 1);
 }
 
-main().catch((err) => {
-  fail(err?.stack || err?.message || String(err));
-  process.exit(1);
-});
+if (isDirectRun) {
+  main().catch((err) => {
+    fail(err?.stack || err?.message || String(err));
+    process.exit(1);
+  });
+}
