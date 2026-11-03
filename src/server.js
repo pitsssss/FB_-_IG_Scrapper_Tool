@@ -2,10 +2,16 @@ import http from 'node:http';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createService } from './service.js';
 import { parsePageRef } from './pageRef.js';
+import { parseInstagramRef } from './instagramRef.js';
 import { ServiceError } from './errors.js';
 
 const sha = (s) => createHash('sha256').update(s).digest();
 const errBody = (code, message) => ({ success: false, error: { code, message } });
+
+const ROUTES = {
+  '/api/v1/facebook/posts': 'facebook',
+  '/api/v1/instagram/posts': 'instagram',
+};
 
 export function createApp(config, service = createService(config)) {
   if (!config.apiKeys.length) {
@@ -28,11 +34,17 @@ export function createApp(config, service = createService(config)) {
     return name;
   }
 
-  function pageAllowedForClient(clientName, pageKey) {
-    if (config.allowedPages.length && !config.allowedPages.includes(pageKey)) return false;
+  function pageAllowedForClient(clientName, ref) {
+    const isIg = ref.platform === 'instagram' || String(ref.key || '').startsWith('instagram:');
+    if (isIg) {
+      const allow = config.instagramAllowedProfiles || [];
+      if (allow.length && !allow.includes(ref.key)) return false;
+    } else if (config.allowedPages.length && !config.allowedPages.includes(ref.key)) {
+      return false;
+    }
     if (!config.pageScopes) return true;
     const scope = config.pageScopes.get(clientName);
-    return Boolean(scope && scope.has(pageKey));
+    return Boolean(scope && scope.has(ref.key));
   }
 
   function rateLimited(name) {
@@ -70,15 +82,7 @@ export function createApp(config, service = createService(config)) {
     res.end(payload);
   }
 
-  async function handle(req, res) {
-    applyCors(req, res);
-    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
-
-    const url = new URL(req.url, 'http://localhost');
-    if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok' });
-    if (url.pathname !== '/api/v1/facebook/posts') return send(res, 404, errBody('NOT_FOUND', 'Route not found'));
-    if (req.method !== 'GET') return send(res, 405, errBody('METHOD_NOT_ALLOWED', 'Use GET'), { allow: 'GET, OPTIONS' });
-
+  async function handlePosts(req, res, url, platform) {
     const client = authenticate(req);
     if (!client) return send(res, 401, errBody('UNAUTHORIZED', 'Missing or invalid API key'));
 
@@ -86,12 +90,20 @@ export function createApp(config, service = createService(config)) {
     if (wait) return send(res, 429, errBody('RATE_LIMITED', 'Too many requests'), { 'retry-after': String(wait) });
 
     const pageParam = url.searchParams.get('page');
-    if (!pageParam) return send(res, 400, errBody('MISSING_PAGE', 'Query parameter "page" (Facebook page URL) is required'));
-    if (pageParam.length > 500) return send(res, 400, errBody('INVALID_PAGE_URL', 'Not a valid Facebook page URL'));
-    const ref = parsePageRef(pageParam);
-    if (!ref) return send(res, 400, errBody('INVALID_PAGE_URL', 'Not a valid Facebook page URL'));
-    // Global allowlist + optional per-client scopes (before cache/upstream).
-    if (!pageAllowedForClient(client, ref.key)) {
+    const label = platform === 'instagram' ? 'Instagram profile URL' : 'Facebook page URL';
+    if (!pageParam) {
+      return send(res, 400, errBody('MISSING_PAGE', `Query parameter "page" (${label}) is required`));
+    }
+    if (pageParam.length > 500) {
+      return send(res, 400, errBody('INVALID_PAGE_URL', `Not a valid ${label}`));
+    }
+
+    const ref = platform === 'instagram' ? parseInstagramRef(pageParam) : parsePageRef(pageParam);
+    if (!ref) {
+      return send(res, 400, errBody('INVALID_PAGE_URL', `Not a valid ${label}`));
+    }
+
+    if (!pageAllowedForClient(client, ref)) {
       return send(res, 403, errBody('PAGE_NOT_ALLOWED', 'This page is not allowed on this server'));
     }
 
@@ -100,6 +112,21 @@ export function createApp(config, service = createService(config)) {
 
     const result = await service.getPosts(ref, limit);
     return send(res, 200, result, { 'cache-control': 'private, max-age=60' });
+  }
+
+  async function handle(req, res) {
+    applyCors(req, res);
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+    const url = new URL(req.url, 'http://localhost');
+    if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok' });
+
+    const platform = ROUTES[url.pathname];
+    if (!platform) return send(res, 404, errBody('NOT_FOUND', 'Route not found'));
+    if (req.method !== 'GET') {
+      return send(res, 405, errBody('METHOD_NOT_ALLOWED', 'Use GET'), { allow: 'GET, OPTIONS' });
+    }
+    return handlePosts(req, res, url, platform);
   }
 
   return http.createServer((req, res) => {

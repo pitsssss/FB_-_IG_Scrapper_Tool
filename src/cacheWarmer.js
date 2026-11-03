@@ -1,4 +1,5 @@
 import { parsePageRef } from './pageRef.js';
+import { parseInstagramRef } from './instagramRef.js';
 
 const toList = (v) => String(v ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -27,8 +28,34 @@ export function parseWarmPageList(raw, { allowedPages = [] } = {}) {
 }
 
 /**
+ * Parse INSTAGRAM_WARM_PROFILES. Deduplicates by `instagram:<user>` key.
+ */
+export function parseInstagramWarmProfileList(raw, { instagramAllowedProfiles = [] } = {}) {
+  const urls = toList(raw);
+  if (!urls.length) return [];
+  const seen = new Set();
+  const refs = [];
+  for (const url of urls) {
+    const ref = parseInstagramRef(url) || (/^[A-Za-z0-9._]{1,30}$/.test(url)
+      ? parseInstagramRef(`https://www.instagram.com/${url}/`)
+      : null);
+    if (!ref) {
+      throw new Error(`INSTAGRAM_WARM_PROFILES contains an invalid Instagram profile URL: ${url}`);
+    }
+    if (instagramAllowedProfiles.length && !instagramAllowedProfiles.includes(ref.key)) {
+      throw new Error(`INSTAGRAM_WARM_PROFILES profile "${ref.key}" is not in INSTAGRAM_ALLOWED_PROFILES`);
+    }
+    if (seen.has(ref.key)) continue;
+    seen.add(ref.key);
+    refs.push(ref);
+  }
+  return refs;
+}
+
+/**
  * Background cache warmer. Uses the shared service refresh path (quota, cooldown,
  * single-flight, never-overwrite-empty). Does not touch HTTP auth/CORS/rate limits.
+ * May include Facebook and/or Instagram refs.
  */
 export function createCacheWarmer({
   config,
