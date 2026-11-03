@@ -109,6 +109,18 @@ Profile logo tips (API server `.env`, not Postman):
 - Do **not** enable `INSTAGRAM_PROFILE_ENRICHMENT` for Desktop unless you intentionally budget an extra shared-quota Actor run  
 - `ig_logo_status=fallback` in folder 08 means the generic placeholder is in use (not a verified account photo)  
 
+Controlled profile Actor validation (separate from Post Scraper):
+
+```bash
+npm run postman:instagram:profile
+# dry-run only — prints quota, input, USD cap, and the paid command
+
+# PAID — requires explicit dual flags after human approval (ONE profile Actor call):
+npm run postman:instagram:profile -- --execute-paid --confirm-cost
+```
+
+Never put `APIFY_TOKEN` or profile enrichment flags into Postman environment variables.  
+
 
 ## Minimum Desktop workflow
 
