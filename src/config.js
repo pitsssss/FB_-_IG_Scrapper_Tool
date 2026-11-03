@@ -11,7 +11,8 @@ const DEFAULT_APIFY_INPUT = '{"startUrls":[{"url":"{{PAGE_URL}}"}],"resultsLimit
 const DEFAULT_INSTAGRAM_APIFY_INPUT = JSON.stringify({
   username: [],
   resultsLimit: 10,
-  skipPinnedPosts: false,
+  // Newest accessible NON-PINNED posts (pinned-but-recent may be excluded).
+  skipPinnedPosts: true,
   dataDetailLevel: 'basicData',
   includeMusicData: false,
 });
@@ -226,6 +227,8 @@ export function loadConfig(env = process.env) {
       actor: (env.INSTAGRAM_APIFY_ACTOR || 'apify~instagram-post-scraper').replace('/', '~'),
       input: instagramApifyInput,
       timeoutMs: toInt(env.INSTAGRAM_APIFY_TIMEOUT_MS, toInt(env.APIFY_TIMEOUT_MS, 150000)),
+      // Optional gitignored capture dir for controlled live acceptance (never commit raw).
+      captureDir: (env.INSTAGRAM_CAPTURE_DIR || '').trim() || null,
     },
     graph: {
       tokens: graphTokens,
