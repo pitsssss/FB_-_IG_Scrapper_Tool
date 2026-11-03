@@ -44,10 +44,12 @@ Unsupported Instagram paths (`/p/`, `/reel/`, `/stories/`, …) → `400 INVALID
 ### Instagram notes
 
 - Actor: `apify/instagram-post-scraper` (official input: `username`, `resultsLimit`, `skipPinnedPosts`, `dataDetailLevel`).
-- Default input uses `dataDetailLevel=basicData` and `includeMusicData=false` (avoid paid extras).
-- `stats.shares` is always `0` (not provided by the Actor).
-- Hidden likes may appear as `0` (Actor returns `-1`).
-- Owner profile photo: used when present on posts; otherwise a documented generic HTTPS fallback. Live coverage is **UNVERIFIED** until a real scrape.
+- Default input uses `skipPinnedPosts=true`, `dataDetailLevel=basicData`, `includeMusicData=false` (avoid paid extras).
+  With `skipPinnedPosts=true`, results are newest accessible **non-pinned** posts (a recently pinned post may be excluded).
+- `stats.shares` is always `0` (not provided by the Actor). Zero likes/comments may also mean unavailable (`-1` mapped to `0`).
+- Owner profile photo: used when `ownerProfilePicUrl` (or equivalent) is present. Live NASA/`basicData` acceptance returned **no** owner pic fields → documented generic HTTPS fallback (`logo === logo_fallback`). Do not treat fallback as a real profile photo.
+- Sidecar/`basicData`: type may be `Sidecar` without `childPosts` — carousel children are **not** expanded unless the Actor provides them (do not enable `detailedData` without explicit approval).
+- Controlled live: `npm run postman:instagram:live` (shared `.postman-local/live-cache`, at most one new paid run).
 
 ## Success response shape
 

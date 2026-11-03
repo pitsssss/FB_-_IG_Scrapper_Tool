@@ -63,7 +63,12 @@ invocation budget. Cache keys are platform-isolated (`cern` vs `instagram:nasa`)
   `INSTAGRAM_APIFY_INPUT` (نفس `APIFY_TOKEN` ونفس `APIFY_DAILY_RUN_LIMIT`).
 - `graph`: Meta Graph API (Facebook فقط) عبر `GRAPH_PAGE_TOKENS`.
 
-Instagram notes: `stats.shares` دائماً `0`؛ likes المخفية قد تظهر `0`؛ صورة البروفايل تُستخدم إن وُجدت في مخرجات الـ Actor وإلا fallback موثّق. تغطية الصورة الحقيقية **غير مثبتة** حتى تشغيل live واحد.
+Instagram notes:
+- Default Actor input: `skipPinnedPosts=true`, `dataDetailLevel=basicData`, `includeMusicData=false`.
+- `stats.shares` دائماً `0`؛ likes المخفية قد تظهر `0`.
+- Live NASA acceptance (`basicData`): 10 genuine posts; **no** `ownerProfilePicUrl` → documented logo fallback (not a real profile photo).
+- Sidecar rows may lack `childPosts` under `basicData` (carousel children NOT expanded without paid `detailedData`).
+- Controlled live: `npm run postman:instagram:live` (shared `.postman-local/live-cache`; never resets quota).
 
 ## ربط الموقع (الأفضل من السيرفر مو من المتصفح عشان ما ينكشف المفتاح)
 PHP:
@@ -140,4 +145,4 @@ When Apify is unavailable or the daily quota is exhausted: cached pages keep ser
 - `ALLOWED_PAGES` (Facebook) و `INSTAGRAM_ALLOWED_PROFILES` و `API_KEY_PAGE_SCOPES` يحمون الرصيد.
 - الـ scraping لصفحات عامة قد يخالف شروط المنصات؛ للصفحات اللي بتملكها استعمل Graph API حيث ينطبق.
 - Run **one** API container/replica while using the filesystem Apify quota (Facebook + Instagram share it).
-- Live Instagram acceptance (real Actor run) is a **separate phase** — offline tests use synthetic data only.
+- Offline tests use synthetic + sanitized fixtures; paid Instagram proof is via `npm run postman:instagram:live` only.

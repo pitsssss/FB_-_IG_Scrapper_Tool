@@ -1,5 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   normalizeInstagramItems,
   extractInstagramMedia,
@@ -10,6 +13,7 @@ import { syntheticInstagramItems } from '../scripts/fake-upstream.js';
 import { assertResponseShape, assertPageShape, assertPostShape } from './schema.js';
 
 const ref = parseInstagramRef('https://www.instagram.com/nasa/');
+const fixturePath = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'instagram-nasa-basicdata.json');
 
 describe('Instagram normalizer', () => {
   it('maps Actor fields into public schema with Arabic + empty captions', () => {
@@ -183,5 +187,30 @@ describe('Instagram normalizer', () => {
         warning: null,
       },
     });
+  });
+
+  it('maps sanitized live basicData fixture (nasa) with fallback logo', () => {
+    const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
+    assert.equal(fixture.items.length, 10);
+    const { page, posts } = normalizeInstagramItems(fixture.items, ref, 10);
+    assertPageShape(page);
+    assert.equal(page.name, 'NASA');
+    assert.equal(page.id, '528817151');
+    assert.equal(page.logo, INSTAGRAM_LOGO_FALLBACK);
+    assert.equal(posts.length, 10);
+    posts.forEach(assertPostShape);
+    assert.equal(new Set(posts.map((p) => p.id)).size, 10);
+    assert.ok(posts.every((p) => /instagram\.com\/(p|reel)\//i.test(p.url)));
+    assert.ok(posts.every((p) => p.created_at));
+    assert.ok(posts.every((p) => p.stats.shares === 0));
+    assert.ok(posts.every((p) => p.page.name === 'NASA'));
+    const times = posts.map((p) => Date.parse(p.created_at));
+    for (let i = 1; i < times.length; i++) assert.ok(times[i - 1] >= times[i]);
+    assert.ok(posts.some((p) => p.media.some((m) => m.type === 'video')), 'videos present in live sample');
+    // basicData Sidecar rows had no childPosts — carousel children not claimed here.
+    assert.ok(
+      fixture.items.some((it) => it.type === 'Sidecar'),
+      'fixture includes Sidecar type for documentation',
+    );
   });
 });

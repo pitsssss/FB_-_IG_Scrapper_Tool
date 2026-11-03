@@ -12,9 +12,10 @@ Importable Postman Collection v2.1 and local environment template for fb-posts-a
 Automated runners (from repo root):
 
 ```bash
-npm run postman:offline   # fake upstream, zero Apify cost
-npm run postman:live      # ONE controlled real Apify call (needs APIFY_TOKEN in .env)
-npm run postman:serve     # Desktop API — cache-only (recommended default)
+npm run postman:offline          # fake upstream, zero Apify cost (folders 01–07)
+npm run postman:live             # ONE controlled Facebook Apify call (CERN)
+npm run postman:instagram:live   # at most ONE Instagram Apify call (nasa); then cache-only
+npm run postman:serve            # Desktop API — cache-only (FB + IG from shared live-cache)
 npm run postman:serve -- --live
 npm run postman:serve -- --live --daily-limit=3
 ```
@@ -91,6 +92,17 @@ Headers only:
 4. **04 — Validation & Error Handling** — 400/401/403/404/405; limit clamping (not 400)  
 5. **05 — Multi-Site Authorization** — synthetic client A/B scopes (offline runner only)  
 6. **06 — Offline Resilience (synthetic)** — fake upstream 500/empty/502; never real Apify  
+7. **07 — Instagram Posts (offline)** — synthetic IG schema/auth/cache (included in `postman:offline`)  
+8. **08 — Instagram Real Posts** — real nasa acceptance against shared live-cache (`postman:instagram:live` only; **not** offline)
+
+### Instagram Desktop (after live seed)
+
+1. `npm run postman:instagram:live` once (or use existing IG cache)  
+2. `npm run postman:serve` (cache-only)  
+3. Set `instagramProfileUrl=https://www.instagram.com/nasa/`  
+4. Open **08 — Instagram Real Posts → Get Latest 10 Instagram Posts** → Send  
+5. Expect `meta.source=cache` and `meta.provider=instagram-apify` when seeded  
+
 
 ## Minimum Desktop workflow
 
