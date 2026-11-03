@@ -1,13 +1,13 @@
-# Postman — Facebook Posts API
+# Postman — Facebook & Instagram Posts API
 
-Importable Postman Collection v2.1 and local environment template for the Facebook Posts API.
+Importable Postman Collection v2.1 and local environment template for fb-posts-api.
 
 ## What this is
 
 | File | Purpose |
 |------|---------|
-| `Facebook-Posts-API.postman_collection.json` | Full integration & acceptance suite (folders 01–06) |
-| `Facebook-Posts-Local.postman_environment.json` | **Template** only — empty `apiKey`, no secrets |
+| `Facebook-Posts-API.postman_collection.json` | Full suite (folders 01–06 Facebook + 07 Instagram offline) |
+| `Facebook-Posts-Local.postman_environment.json` | **Template** — empty `apiKey`; includes `instagramProfileUrl` |
 
 Automated runners (from repo root):
 

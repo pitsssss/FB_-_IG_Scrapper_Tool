@@ -635,14 +635,47 @@ async function main() {
   check('scopes: authorized repeat is cache', saCache.status === 200 && saCache.body?.meta?.source === 'cache', `source=${saCache.body?.meta?.source}`);
   await stopChild(scopeChild);
 
-  // ---- 9. security ----
-  console.log('\n== 9. security ==');
+  // ---- 9. Instagram (synthetic) ----
+  console.log('\n== 9. Instagram (synthetic) ==');
+  await setMode(upstreamBase, 'ok');
+  const igUrl = 'https://www.instagram.com/nasa/';
+  const igPath = `/api/v1/instagram/posts?page=${encodeURIComponent(igUrl)}&limit=10`;
+  const igBefore = await getStats(upstreamBase);
+  const igLive = await fetchJson(baseUrl, igPath, { key: apiKey });
+  let igShape = false;
+  try { assertResponseShape(igLive.body); igShape = true; } catch (e) { fail('instagram shape', e.message); }
+  check('instagram: live 200 + schema', igLive.status === 200 && igShape, `status=${igLive.status} source=${igLive.body?.meta?.source}`);
+  check('instagram: page url is instagram', /instagram\.com\/nasa/i.test(igLive.body?.data?.page?.url || ''), `url=${igLive.body?.data?.page?.url}`);
+  const igIds = (igLive.body?.data?.posts || []).map((p) => p.id).join(',');
+  const igCache = await fetchJson(baseUrl, igPath, { key: apiKey });
+  check('instagram: repeat is cache', igCache.status === 200 && igCache.body?.meta?.source === 'cache', `source=${igCache.body?.meta?.source}`);
+  check('instagram: cache IDs stable', (igCache.body?.data?.posts || []).map((p) => p.id).join(',') === igIds, 'ids match');
+  const igParallel = await Promise.all(
+    Array.from({ length: 5 }, () => fetchJson(baseUrl, `/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/natgeo/')}&limit=5`, { key: apiKey, timeoutMs: 60_000 })),
+  );
+  const igAfter = await getStats(upstreamBase);
+  const igAll200 = igParallel.every((r) => r.status === 200);
+  const igDelta = igAfter.calls - igBefore.calls;
+  check(
+    'instagram: 5 parallel single-flight (+1 live nasa)',
+    igAll200 && igDelta === 2,
+    `all200=${igAll200} upstreamDelta=${igDelta} (expect 2: nasa live + natgeo live)`,
+  );
+  const igBad = await fetchJson(baseUrl, `/api/v1/instagram/posts?page=${encodeURIComponent('https://www.instagram.com/p/ABC/')}`, { key: apiKey });
+  check('instagram: post URL rejected 400', igBad.status === 400 && igBad.body?.error?.code === 'INVALID_PAGE_URL', `status=${igBad.status}`);
+  // Cross-platform isolation: FB cache key must not satisfy IG
+  const fbCern = await fetchJson(baseUrl, `/api/v1/facebook/posts?page=${encodeURIComponent(pageOne)}`, { key: apiKey });
+  check('instagram: facebook still works', fbCern.status === 200, `status=${fbCern.status}`);
+  check('instagram: shares non-negative', (igLive.body?.data?.posts || []).every((p) => Number.isInteger(p.stats?.shares) && p.stats.shares >= 0), 'shares ok');
+
+  // ---- 10. security ----
+  console.log('\n== 10. security ==');
   check('API key never in API logs', !apiLog.includes(apiKey) && !apiLog.includes(scopeKeyA) && !apiLog.includes(scopeKeyB), `logBytes=${apiLog.length}`);
   check('dummy token never in API logs', !apiLog.includes(FAKE_TOKEN), 'checked api stdout/stderr');
 
   // sample a few response bodies for "dummy"
   const bodies = [
-    ...[baseLive, live3, stale, back, slow, persisted, q1, qCached, warmed, preserved, sa, sb].map((r) => r?.text || JSON.stringify(r?.body || '')),
+    ...[baseLive, live3, stale, back, slow, persisted, q1, qCached, warmed, preserved, sa, sb, igLive, igCache].map((r) => r?.text || JSON.stringify(r?.body || '')),
     noOriginText,
   ];
   const dummyInBody = bodies.some((t) => t && t.includes(FAKE_TOKEN));
