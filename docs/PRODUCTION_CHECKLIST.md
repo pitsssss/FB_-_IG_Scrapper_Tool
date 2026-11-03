@@ -104,9 +104,10 @@ If disk writes fail, the process may still serve from memory until restart; thos
 ## Still NOT proven by this repository alone
 
 - Live Apify spend / actor reliability in production beyond controlled local acceptance
-- Instagram **real profile photo** via `basicData` (verified absent for nasa live seed — fallback only)
-- Instagram **carousel child expansion** under `basicData` (Sidecar without `childPosts`)
-- Exact Apify USD billed amount for the Instagram run (only `maxTotalChargeUsd=0.15` cap verified on request URL)
+- Instagram **real profile photo** via `basicData` (verified absent for nasa — use `INSTAGRAM_PROFILE_LOGOS` or optional enrichment)
+- Optional `INSTAGRAM_PROFILE_ENRICHMENT` against **real** Apify profile Actor (offline/synthetic only so far)
+- Instagram **carousel child expansion** under `basicData` (Sidecar without `childPosts` in live capture)
+- Exact Apify USD billed amount for Instagram post/profile runs (only `maxTotalChargeUsd` request cap verified)
 - Live hosting/CDN/TLS configuration
 - Multi-region failover
 - Long-term disk integrity under platform outages

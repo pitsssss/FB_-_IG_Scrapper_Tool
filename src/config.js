@@ -1,5 +1,6 @@
 import { parsePageRef } from './pageRef.js';
 import { parseInstagramRef } from './instagramRef.js';
+import { parseInstagramProfileLogos } from './instagramLogo.js';
 
 const toInt = (v, d) => {
   const n = Number.parseInt(v ?? '', 10);
@@ -193,6 +194,14 @@ export function loadConfig(env = process.env) {
     WARM_CONCURRENCY_MAX,
   );
 
+  const instagramProfileLogos = parseInstagramProfileLogos(env.INSTAGRAM_PROFILE_LOGOS);
+  const enrichmentRaw = String(env.INSTAGRAM_PROFILE_ENRICHMENT || '').trim().toLowerCase();
+  const instagramProfileEnrichmentEnabled =
+    enrichmentRaw === '1' || enrichmentRaw === 'true' || enrichmentRaw === 'yes';
+  // Default 7 days. Profile metadata is separate from post cache.
+  const instagramProfileTtlMs =
+    requireNonNegInt(env.INSTAGRAM_PROFILE_TTL_SECONDS, 'INSTAGRAM_PROFILE_TTL_SECONDS', 604800) * 1000;
+
   return {
     port: toInt(env.PORT, 3000),
     host: env.HOST || '0.0.0.0',
@@ -229,6 +238,14 @@ export function loadConfig(env = process.env) {
       timeoutMs: toInt(env.INSTAGRAM_APIFY_TIMEOUT_MS, toInt(env.APIFY_TIMEOUT_MS, 150000)),
       // Optional gitignored capture dir for controlled live acceptance (never commit raw).
       captureDir: (env.INSTAGRAM_CAPTURE_DIR || '').trim() || null,
+    },
+    instagramProfileLogos,
+    instagramProfileTtlMs,
+    instagramProfileEnrichment: {
+      // Disabled by default — separate Actor (apify/instagram-profile-scraper), shared quota + USD cap.
+      enabled: instagramProfileEnrichmentEnabled,
+      actor: (env.INSTAGRAM_PROFILE_ACTOR || 'apify~instagram-profile-scraper').replace('/', '~'),
+      timeoutMs: toInt(env.INSTAGRAM_PROFILE_TIMEOUT_MS, 60000),
     },
     graph: {
       tokens: graphTokens,
