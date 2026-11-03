@@ -63,6 +63,67 @@ function syntheticItems() {
   }));
 }
 
+/** Synthetic dataset matching Apify Instagram Post Scraper field names (basicData). */
+export function syntheticInstagramItems(username = 'nasa') {
+  const ownerId = '232192182';
+  const ownerFullName = username.toUpperCase() === 'NASA' ? 'NASA' : username;
+  const texts = [
+    'Launch day 🚀',
+    'مرحبا من الفضاء ✨',
+    'Carousel science 🧪',
+    'Empty caption allowed',
+    'Reel preview 🎥',
+    'Arabic: تحديث مهم 🌟',
+    'Pinned-looking but dated',
+    'Post eight',
+    'Post nine 📚',
+    'Post ten 🔭',
+    'Post eleven',
+    'Post twelve',
+  ];
+  return texts.map((caption, i) => {
+    const shortCode = `IgSyn${i}AbCd`;
+    const ts = new Date(Date.UTC(2026, 9, 20 - i)).toISOString();
+    const base = {
+      inputUrl: `https://www.instagram.com/${username}/`,
+      id: `370000000000000000${i}`,
+      type: i === 2 ? 'Sidecar' : i === 4 ? 'Video' : 'Image',
+      shortCode,
+      caption: i === 3 ? '' : caption,
+      url: `https://www.instagram.com/p/${shortCode}/`,
+      commentsCount: i,
+      likesCount: i === 7 ? -1 : 100 + i,
+      timestamp: ts,
+      ownerFullName,
+      ownerUsername: username,
+      ownerId,
+      ownerProfilePicUrl: i % 3 === 0
+        ? `https://cdn.example/ig/${username}.jpg`
+        : undefined,
+      isPinned: i === 6,
+      displayUrl: `https://cdn.example/ig/img${i}.jpg`,
+      images: [],
+      childPosts: [],
+      videoUrl: undefined,
+    };
+    if (i === 2) {
+      base.childPosts = [
+        { displayUrl: `https://cdn.example/ig/car${i}a.jpg` },
+        { displayUrl: `https://cdn.example/ig/car${i}b.jpg` },
+      ];
+    }
+    if (i === 4) {
+      base.videoUrl = `https://cdn.example/ig/vid${i}.mp4`;
+      base.productType = 'clips';
+    }
+    // Error-shaped junk must be ignored by normalizer
+    if (i === 11) {
+      return { error: 'private_profile', errorDescription: 'skip me' };
+    }
+    return base;
+  });
+}
+
 function readJson(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -83,11 +144,18 @@ function send(res, status, body) {
   res.end(payload);
 }
 
-export function startFakeUpstream({ port = 0, host = '127.0.0.1', fixturePath = null } = {}) {
+export function startFakeUpstream({
+  port = 0,
+  host = '127.0.0.1',
+  fixturePath = null,
+  instagramItems = null,
+} = {}) {
   const items = loadFixtureItems(fixturePath);
+  const igItems = Array.isArray(instagramItems) ? instagramItems : syntheticInstagramItems('nasa');
   let mode = 'ok';
   let calls = 0;
   let lastUrl = '';
+  let lastActor = '';
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', 'http://127.0.0.1');
@@ -102,16 +170,17 @@ export function startFakeUpstream({ port = 0, host = '127.0.0.1', fixturePath = 
         return send(res, 200, { mode });
       }
       if (req.method === 'GET' && url.pathname === '/__stats') {
-        return send(res, 200, { calls });
+        return send(res, 200, { calls, lastActor });
       }
       if (req.method === 'GET' && url.pathname === '/__last') {
-        return send(res, 200, { url: lastUrl });
+        return send(res, 200, { url: lastUrl, actor: lastActor });
       }
       if (req.method === 'POST' && url.pathname === '/__reset') {
         await readJson(req).catch(() => ({}));
         mode = 'ok';
         calls = 0;
         lastUrl = '';
+        lastActor = '';
         return send(res, 200, { mode, calls });
       }
 
@@ -123,6 +192,8 @@ export function startFakeUpstream({ port = 0, host = '127.0.0.1', fixturePath = 
         }
 
         lastUrl = req.url || '';
+        const isInstagram = /instagram-post-scraper/i.test(url.pathname);
+        lastActor = isInstagram ? 'instagram-post-scraper' : 'facebook-posts-scraper';
         calls += 1;
         let body = {};
         try { body = await readJson(req); }
@@ -130,7 +201,16 @@ export function startFakeUpstream({ port = 0, host = '127.0.0.1', fixturePath = 
 
         const limitRaw = body?.resultsLimit;
         const limit = Number.parseInt(limitRaw, 10);
-        const sliced = Number.isFinite(limit) && limit > 0 ? items.slice(0, limit) : items;
+        const pool = isInstagram ? igItems : items;
+        // For Instagram, optionally filter by requested username in body.username[0]
+        let working = pool;
+        if (isInstagram && Array.isArray(body.username) && body.username[0]) {
+          const raw = String(body.username[0]);
+          const m = /instagram\.com\/([A-Za-z0-9._]+)/i.exec(raw);
+          const user = (m ? m[1] : raw).toLowerCase().replace(/\/$/, '');
+          working = syntheticInstagramItems(user);
+        }
+        const sliced = Number.isFinite(limit) && limit > 0 ? working.slice(0, limit) : working;
 
         if (mode === 'fail') return send(res, 500, { error: 'boom' });
         if (mode === 'empty') return send(res, 201, []);

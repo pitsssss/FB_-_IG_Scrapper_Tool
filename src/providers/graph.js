@@ -1,5 +1,6 @@
 import { ProviderError, isRetryableStatus } from '../errors.js';
 import { normalizeItems } from '../normalize.js';
+import { isInstagramRef } from '../instagramRef.js';
 
 const POST_FIELDS = [
   'id', 'message', 'created_time', 'permalink_url', 'full_picture',
@@ -44,7 +45,7 @@ export function createGraphProvider(config) {
 
   return {
     name: 'graph',
-    supports: (ref) => Boolean(tokenFor(ref)),
+    supports: (ref) => !isInstagramRef(ref) && Boolean(tokenFor(ref)),
 
     async fetch(ref, limit) {
       const token = tokenFor(ref);
