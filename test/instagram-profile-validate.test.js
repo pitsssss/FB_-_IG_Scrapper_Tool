@@ -30,6 +30,32 @@ describe('instagram-profile-validate helpers', () => {
     assert.equal(r.status, 2);
     assert.match(r.stderr || '', /requires --confirm-cost/i);
   });
+
+  it('importing the module does not run CLI main (CI-safe without live-cache)', () => {
+    const r = spawnSync(
+      process.execPath,
+      [
+        '-e',
+        "import { resolveProfileChargeCap } from './scripts/instagram-profile-validate.js'; console.log(resolveProfileChargeCap({}));",
+      ],
+      { cwd: root, encoding: 'utf8', env: { ...process.env } },
+    );
+    assert.equal(r.status, 0, r.stderr || r.stdout);
+    assert.match(r.stdout || '', /0\.15/);
+    assert.equal(/ENOENT|ERROR:/i.test(r.stderr || ''), false);
+  });
+
+  it('dry-run CLI succeeds when .postman-local/live-cache is missing', () => {
+    const r = spawnSync(process.execPath, [validateScript], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env },
+    });
+    // Exit 0 (plan printed) or 3 (hard blockers like missing token/quota) — never crash on ENOENT.
+    assert.ok([0, 3].includes(r.status), `unexpected status=${r.status} stderr=${r.stderr}`);
+    assert.equal(/ENOENT/i.test(r.stderr || ''), false);
+    assert.match(r.stdout || '', /DRY_RUN|DRY RUN/i);
+  });
 });
 
 describe('profile logo overlays every post.page (synthetic meta)', () => {
