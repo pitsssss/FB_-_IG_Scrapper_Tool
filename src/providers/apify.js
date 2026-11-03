@@ -1,6 +1,7 @@
 import { ProviderError, isRetryableStatus } from '../errors.js';
 import { normalizeItems } from '../normalize.js';
 import { createApifyQuota } from '../apifyQuota.js';
+import { isInstagramRef } from '../instagramRef.js';
 
 export function fillTemplate(node, vars) {
   if (typeof node === 'string') {
@@ -78,7 +79,8 @@ export function createApifyProvider(config, { quota } = {}) {
 
   return {
     name: 'apify',
-    supports: () => Boolean(cfg.token),
+    // Facebook Actor only — Instagram refs are handled by createInstagramApifyProvider.
+    supports: (ref) => Boolean(cfg.token) && !isInstagramRef(ref),
     quota: quotaManager,
     fetchRaw,
     async fetch(ref, limit) {

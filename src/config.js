@@ -1,4 +1,5 @@
 import { parsePageRef } from './pageRef.js';
+import { parseInstagramRef } from './instagramRef.js';
 
 const toInt = (v, d) => {
   const n = Number.parseInt(v ?? '', 10);
@@ -7,13 +8,19 @@ const toInt = (v, d) => {
 const toList = (v) => String(v ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
 const DEFAULT_APIFY_INPUT = '{"startUrls":[{"url":"{{PAGE_URL}}"}],"resultsLimit":"{{LIMIT}}"}';
+const DEFAULT_INSTAGRAM_APIFY_INPUT = JSON.stringify({
+  username: [],
+  resultsLimit: 10,
+  skipPinnedPosts: false,
+  dataDetailLevel: 'basicData',
+  includeMusicData: false,
+});
 export const WARM_CONCURRENCY_MAX = 8;
 
 /**
  * Parse API_KEYS. Rejects duplicate names and duplicate secret values.
- * Note: page authorization uses parsePageRef() canonical keys (slug OR numeric id).
- * A slug and a numeric id for the "same" Facebook page are NOT treated as equivalent
- * unless both appear explicitly in a client's scope list.
+ * Note: page authorization uses parsePageRef() / parseInstagramRef() canonical keys.
+ * Facebook slug and numeric id for the "same" page are NOT auto-equated.
  */
 export function parseApiKeys(raw) {
   const apiKeys = toList(raw).map((entry) => {
@@ -34,9 +41,15 @@ export function parseApiKeys(raw) {
   return apiKeys;
 }
 
+/** Resolve a scope URL to a cache key (Facebook or Instagram). */
+export function parseScopeRef(url) {
+  return parsePageRef(url) || parseInstagramRef(url);
+}
+
 /**
  * Optional per-client page scopes. Absent/empty => backward-compatible unscoped mode.
  * When present, every configured API key name must have an explicit array entry.
+ * Entries may be Facebook page URLs and/or Instagram profile URLs (mixed arrays OK).
  */
 export function parseApiKeyPageScopes(raw, apiKeys) {
   if (raw === undefined || raw === null || String(raw).trim() === '') return null;
@@ -65,7 +78,7 @@ export function parseApiKeyPageScopes(raw, apiKeys) {
   const scopes = new Map();
   for (const [name, urls] of Object.entries(obj)) {
     if (!Array.isArray(urls)) {
-      throw new Error(`API_KEY_PAGE_SCOPES["${name}"] must be an array of Facebook page URLs`);
+      throw new Error(`API_KEY_PAGE_SCOPES["${name}"] must be an array of Facebook/Instagram URLs`);
     }
     const keys = new Set();
     for (const url of urls) {
@@ -75,7 +88,7 @@ export function parseApiKeyPageScopes(raw, apiKeys) {
       if (url.includes('*')) {
         throw new Error('API_KEY_PAGE_SCOPES does not support wildcards');
       }
-      const ref = parsePageRef(url.trim());
+      const ref = parseScopeRef(url.trim());
       if (!ref) {
         throw new Error(`API_KEY_PAGE_SCOPES["${name}"] has unsupported page URL`);
       }
@@ -84,6 +97,22 @@ export function parseApiKeyPageScopes(raw, apiKeys) {
     scopes.set(name, keys);
   }
   return scopes;
+}
+
+/** Parse INSTAGRAM_ALLOWED_PROFILES → Set of cache keys `instagram:user`. */
+export function parseInstagramAllowedProfiles(raw) {
+  const urls = toList(raw);
+  const keys = [];
+  for (const url of urls) {
+    const ref = parseInstagramRef(url) || (/^[A-Za-z0-9._]{1,30}$/.test(url)
+      ? parseInstagramRef(`https://www.instagram.com/${url}/`)
+      : null);
+    if (!ref) {
+      throw new Error(`INSTAGRAM_ALLOWED_PROFILES contains an invalid Instagram profile: ${url}`);
+    }
+    keys.push(ref.key);
+  }
+  return keys;
 }
 
 /** Non-negative integer; empty/undefined -> default. Invalid -> throw. */
@@ -135,7 +164,15 @@ export function loadConfig(env = process.env) {
     throw new Error('APIFY_INPUT must be valid JSON');
   }
 
+  let instagramApifyInput;
+  try {
+    instagramApifyInput = JSON.parse(env.INSTAGRAM_APIFY_INPUT || DEFAULT_INSTAGRAM_APIFY_INPUT);
+  } catch {
+    throw new Error('INSTAGRAM_APIFY_INPUT must be valid JSON');
+  }
+
   // 12 is an example operational invocation limit, not a guaranteed financial budget.
+  // Shared across Facebook + Instagram Apify Actors.
   const dailyRunLimit = requireNonNegInt(env.APIFY_DAILY_RUN_LIMIT, 'APIFY_DAILY_RUN_LIMIT', 12);
   const maxChargeUsdPerRun = requireOptionalPositiveDecimal(
     env.APIFY_MAX_CHARGE_USD_PER_RUN,
@@ -161,6 +198,7 @@ export function loadConfig(env = process.env) {
     apiKeys,
     pageScopes,
     allowedPages: toList(env.ALLOWED_PAGES).map((s) => s.toLowerCase()),
+    instagramAllowedProfiles: parseInstagramAllowedProfiles(env.INSTAGRAM_ALLOWED_PROFILES),
     allowedOrigins: toList(env.ALLOWED_ORIGINS),
     rateLimitPerMin: toInt(env.RATE_LIMIT_PER_MIN, 120),
     cacheDir: env.CACHE_DIR || './data/cache',
@@ -171,6 +209,7 @@ export function loadConfig(env = process.env) {
     retries: toInt(env.UPSTREAM_RETRIES, 2),
     backoffMs: toInt(env.RETRY_BACKOFF_MS, 2000),
     warmPagesRaw: env.WARM_PAGES || '',
+    instagramWarmProfilesRaw: env.INSTAGRAM_WARM_PROFILES || '',
     warmIntervalMs: warmIntervalSeconds * 1000,
     warmStartupDelayMs: warmStartupDelaySeconds * 1000,
     warmConcurrency,
@@ -182,6 +221,11 @@ export function loadConfig(env = process.env) {
       timeoutMs: toInt(env.APIFY_TIMEOUT_MS, 150000),
       dailyRunLimit,
       maxChargeUsdPerRun,
+    },
+    instagramApify: {
+      actor: (env.INSTAGRAM_APIFY_ACTOR || 'apify~instagram-post-scraper').replace('/', '~'),
+      input: instagramApifyInput,
+      timeoutMs: toInt(env.INSTAGRAM_APIFY_TIMEOUT_MS, toInt(env.APIFY_TIMEOUT_MS, 150000)),
     },
     graph: {
       tokens: graphTokens,
