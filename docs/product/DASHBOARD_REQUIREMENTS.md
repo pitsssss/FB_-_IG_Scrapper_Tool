@@ -1,7 +1,7 @@
 # Dashboard requirements
 
-**Phase:** 7A design only  
-**Stack target:** Next.js App Router, React, TypeScript (see ADR-001). UI libraries evaluated in 7B before install.
+**Phase:** 7A design; **7B UI foundation implemented** in `apps/dashboard` (local preview only — see `apps/dashboard/README.md`).  
+**Stack:** Next.js App Router 16.4.5, React 19, TypeScript strict, Tailwind 4, Lucide, hand-rolled shadcn-style primitives (see ADR-001).
 
 ---
 
