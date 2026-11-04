@@ -30,23 +30,24 @@ Dependencies are hard unless noted. No calendar estimates.
 
 ## 7B — Dashboard foundation
 
-**Depends on:** 7A.
+**Depends on:** 7A.  
+**Status:** Implemented in `apps/dashboard` (Next.js 16.4.5). Local preview only via `DASHBOARD_DEV_PREVIEW=1` in development; production builds fail closed. See `apps/dashboard/README.md`.
 
 **Work**
 
 - Create `apps/dashboard` Next.js App Router + TypeScript skeleton (no scrape logic).
-- Pin stable versions of Tailwind / shadcn / Lucide / RHF / Zod after compatibility check.
+- Pin stable versions of Tailwind / shadcn-style primitives / Lucide (RHF/Zod deferred — unused in 7B).
 - App shell: nav, light/dark tokens, responsive layout, empty placeholders for screens.
 - Server-only API client stub pointing at configurable `API_INTERNAL_URL`.
 - ESLint/tsconfig; ensure no secrets in `NEXT_PUBLIC_*`.
-- Root scripts optional (`workspace` or documented `npm run` from subdirectory).
+- Root convenience scripts: `dashboard:dev`, `dashboard:build`, `dashboard:test`, etc.
 
 **Acceptance**
 
-- [ ] `next build` succeeds for dashboard
-- [ ] Placeholder routes for Overview, Playground, Keys, Providers, Cache, Usage, Settings, Docs
-- [ ] Existing API package tests unchanged / still green
-- [ ] No runtime behavior change to posts API
+- [x] `next build` succeeds for dashboard
+- [x] Placeholder routes for Overview, Playground, Keys, Providers, Cache, Usage, Settings, Docs
+- [x] Existing API package tests unchanged / still green
+- [x] No runtime behavior change to posts API
 
 **Risks:** Monorepo tooling sprawl — keep minimal.
 

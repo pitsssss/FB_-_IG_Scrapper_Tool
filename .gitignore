@@ -9,3 +9,8 @@ handoff/
 *.generated.postman_environment.json
 credentials*.json
 **/secrets/
+apps/dashboard/.next/
+apps/dashboard/out/
+apps/dashboard/coverage/
+apps/dashboard/.env
+apps/dashboard/.env.local

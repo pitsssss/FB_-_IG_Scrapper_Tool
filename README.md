@@ -562,10 +562,11 @@ No external security audit or compliance certification is claimed.
 ```text
 ├── src/                 # HTTP server, service, cache, quota, normalizers
 │   └── providers/       # Apify (FB/IG), Graph, optional IG profile Actor
+├── apps/dashboard/      # Next.js admin UI foundation (Phase 7B — local preview only)
 ├── test/                # Unit / integration tests
 ├── scripts/             # E2E, Postman runner, quota status, Docker smoke
 ├── postman/             # Unified collection + env template
-├── docs/                # API contract + production checklist
+├── docs/                # API contract, production checklist, product architecture
 ├── examples/            # PHP / Next.js integration sketches
 ├── .github/workflows/   # CI
 ├── Dockerfile
@@ -573,6 +574,8 @@ No external security audit or compliance certification is claimed.
 ├── .env.example
 └── package.json
 ```
+
+> **Dashboard status:** `apps/dashboard` is a UI foundation for the future self-hosted admin experience. It is **not** production-ready and must not be exposed publicly until Phase 7C authentication. See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
 
 ## License & support
 

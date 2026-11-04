@@ -20,7 +20,12 @@
     "postman:instagram:live": "node scripts/postman-runner.js instagram-live",
     "postman:instagram:profile": "node scripts/instagram-profile-validate.js",
     "postman:serve": "node scripts/postman-runner.js serve",
-    "postman:collection": "node scripts/generate-postman-collection.mjs"
+    "postman:collection": "node scripts/generate-postman-collection.mjs",
+    "dashboard:dev": "npm --prefix apps/dashboard run dev",
+    "dashboard:build": "npm --prefix apps/dashboard run build",
+    "dashboard:lint": "npm --prefix apps/dashboard run lint",
+    "dashboard:typecheck": "npm --prefix apps/dashboard run typecheck",
+    "dashboard:test": "npm --prefix apps/dashboard run test"
   },
   "devDependencies": {
     "newman": "6.2.1"

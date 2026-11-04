@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6f7f8;
+  --foreground: #121417;
+  --muted: #eef0f2;
+  --muted-foreground: #5c6570;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --border: #d8dde3;
+  --primary: #0f766e;
+  --primary-foreground: #f8fffe;
+  --primary-muted: #d9f3ef;
+  --secondary: #334155;
+  --success: #15803d;
+  --success-muted: #dcfce7;
+  --warning: #b45309;
+  --warning-muted: #ffedd5;
+  --danger: #b91c1c;
+  --danger-muted: #fee2e2;
+  --ring: #0f766e;
+  --code-bg: #f1f5f9;
+  --radius: 0.5rem;
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.04);
+}
+
+.dark {
+  --background: #0c0f12;
+  --foreground: #e8eaed;
+  --muted: #171b21;
+  --muted-foreground: #9aa3ad;
+  --surface: #12161c;
+  --surface-elevated: #171c23;
+  --border: #2a313b;
+  --primary: #2dd4bf;
+  --primary-foreground: #042f2e;
+  --primary-muted: #134e4a;
+  --secondary: #94a3b8;
+  --success: #4ade80;
+  --success-muted: #14532d;
+  --warning: #fbbf24;
+  --warning-muted: #78350f;
+  --danger: #f87171;
+  --danger-muted: #7f1d1d;
+  --ring: #2dd4bf;
+  --code-bg: #0b1220;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

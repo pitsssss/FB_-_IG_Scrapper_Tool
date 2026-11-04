@@ -1,0 +1,24 @@
+/**
+ * Pure preview policy (testable without Next server runtime).
+ * Production always fails closed — DASHBOARD_DEV_PREVIEW alone is never enough.
+ */
+export function evaluateDashboardPreview(env: {
+  NODE_ENV?: string;
+  DASHBOARD_DEV_PREVIEW?: string;
+}): boolean {
+  if (env.NODE_ENV !== "development") return false;
+  return env.DASHBOARD_DEV_PREVIEW === "1";
+}
+
+export function evaluatePreviewDeniedReason(env: {
+  NODE_ENV?: string;
+  DASHBOARD_DEV_PREVIEW?: string;
+}): string {
+  if (env.NODE_ENV !== "development") {
+    return "This dashboard foundation is not available in production until Phase 7C authentication is implemented.";
+  }
+  if (env.DASHBOARD_DEV_PREVIEW !== "1") {
+    return "Set DASHBOARD_DEV_PREVIEW=1 in the dashboard server environment to enable the local development UI preview.";
+  }
+  return "Dashboard preview is disabled.";
+}
