@@ -53,12 +53,14 @@ export function validateOrigin(headers, allowedOrigins) {
 export function resolveClientIp(req, { trustProxy = false } = {}) {
   const socketIp = req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
   if (!trustProxy) return socketIp;
-  const xf = req.headers['x-forwarded-for'];
-  if (typeof xf === 'string' && xf.trim()) {
-    // Right-most / first depending on proxy; use left-most only when operator opted in.
-    return xf.split(',')[0].trim() || socketIp;
-  }
+  // Prefer X-Real-IP from the immediate reverse proxy (Caddy). For X-Forwarded-For,
+  // use the right-most hop (added by the trusted proxy) — left-most is client-spoofable.
   const realIp = req.headers['x-real-ip'];
   if (typeof realIp === 'string' && realIp.trim()) return realIp.trim();
+  const xf = req.headers['x-forwarded-for'];
+  if (typeof xf === 'string' && xf.trim()) {
+    const parts = xf.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
   return socketIp;
 }

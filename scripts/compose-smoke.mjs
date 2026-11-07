@@ -81,6 +81,7 @@ services:
   dashboard:
     environment:
       ADMIN_INTERNAL_SECRET: ${JSON.stringify(internal)}
+      ADMIN_ALLOWED_ORIGINS: ${JSON.stringify(base)}
       ADMIN_COOKIE_SECURE: "0"
   caddy:
     ports: !override
