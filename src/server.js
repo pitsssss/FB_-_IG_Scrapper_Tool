@@ -26,6 +26,9 @@ export function createApp(config, service = createService(config), options = {})
   let hub = options.hub || null;
   let hubInitError = null;
   let keyAuth = null;
+  if (hub && typeof hub.bindService === 'function') {
+    hub.bindService(service);
+  }
 
   function getHub() {
     if (hub) return hub;
@@ -36,6 +39,7 @@ export function createApp(config, service = createService(config), options = {})
     }
     try {
       hub = createManagementHub(config, options.hubOptions || {});
+      hub.bindService(service);
       keyAuth?.refreshManaged();
       return hub;
     } catch (err) {

@@ -6,6 +6,7 @@ import { createApiKeyService } from './apiKeys.js';
 import { createAuditLogger } from './audit.js';
 import { createKeyAuthenticator } from './keyAuthenticator.js';
 import { listCacheEntries, sanitizeQuotaStatus } from './opsInspect.js';
+import { createPlaygroundService } from './playground.js';
 
 /**
  * Single management hub: shared SQLite + auth + provider + API keys.
@@ -85,6 +86,9 @@ export function createManagementHub(config, {
 
   providers.loadIntoRuntime();
 
+  /** Playground is bound later via bindService(service) once HTTP app has createService(). */
+  let playground = null;
+
   return {
     auth,
     db,
@@ -94,6 +98,19 @@ export function createManagementHub(config, {
     providers,
     apiKeys,
     keyAuth,
+    get playground() {
+      return playground;
+    },
+    bindService(service) {
+      playground = createPlaygroundService({
+        db,
+        service,
+        config,
+        getProviderStatus: () => providers.status(),
+        audit,
+      });
+      return playground;
+    },
     async cacheSummary() {
       return listCacheEntries({
         cacheDir: config.cacheDir,

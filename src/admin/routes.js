@@ -298,6 +298,25 @@ export async function handleAdminRoutes(req, res, url, { auth, hub, service, con
       const r = await mgmt.healthDetail(req);
       return send(res, r.http, r.body);
     };
+    routes['GET /api/v1/admin/playground/cache'] = async () => {
+      const r = await mgmt.playgroundCache(req, Object.fromEntries(url.searchParams.entries()));
+      return send(res, r.http, r.body);
+    };
+    routes['POST /api/v1/admin/playground/prepare'] = async () => {
+      const body = await readJsonBody(req);
+      const r = await mgmt.playgroundPrepare(req, body);
+      return send(res, r.http, r.body);
+    };
+    routes['POST /api/v1/admin/playground/confirm'] = async () => {
+      const body = await readJsonBody(req);
+      const r = await mgmt.playgroundConfirm(req, body);
+      return send(res, r.http, r.body);
+    };
+    routes['POST /api/v1/admin/playground/cancel'] = async () => {
+      const body = await readJsonBody(req);
+      const r = await mgmt.playgroundCancel(req, body);
+      return send(res, r.http, r.body);
+    };
   }
 
   // Pattern routes for key id
