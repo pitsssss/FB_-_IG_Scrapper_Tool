@@ -1,0 +1,154 @@
+{
+  "summary": {
+    "pass": 27,
+    "fail": 0,
+    "notVerified": 2
+  },
+  "results": [
+    {
+      "name": "compose_stack_healthy",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "security_origin_reject",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "name": "browser_admin_setup",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "responsive_360",
+      "status": "PASS",
+      "detail": "chars=700"
+    },
+    {
+      "name": "responsive_390",
+      "status": "PASS",
+      "detail": "chars=700"
+    },
+    {
+      "name": "responsive_768",
+      "status": "PASS",
+      "detail": "chars=728"
+    },
+    {
+      "name": "responsive_1024",
+      "status": "PASS",
+      "detail": "chars=1051"
+    },
+    {
+      "name": "responsive_1440",
+      "status": "PASS",
+      "detail": "chars=1051"
+    },
+    {
+      "name": "browser_totp_enroll",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_recovery_codes_display",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_logout",
+      "status": "PASS",
+      "detail": "http://127.0.0.1:18204/login"
+    },
+    {
+      "name": "browser_invalid_password",
+      "status": "PASS",
+      "detail": "http://127.0.0.1:18204/login"
+    },
+    {
+      "name": "browser_mfa_challenge_required",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_mfa_totp_success",
+      "status": "PASS",
+      "detail": "retry"
+    },
+    {
+      "name": "browser_provider_mock_connect",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_api_key_create",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_playground_cache_only",
+      "status": "PASS",
+      "detail": "cache-only read invoked (miss OK)"
+    },
+    {
+      "name": "browser_playground_prepare_cancel",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_playground_confirm_mock",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_playground_json_view",
+      "status": "NOT VERIFIED",
+      "detail": ""
+    },
+    {
+      "name": "browser_playground_instagram_mock",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_cache_page",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_settings_page",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_usage_page",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_api_key_rotate",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_api_key_revoke",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "browser_post_logout_protect",
+      "status": "PASS",
+      "detail": "http://127.0.0.1:18204/login"
+    },
+    {
+      "name": "browser_session_idle_expiry",
+      "status": "NOT VERIFIED",
+      "detail": "idle window is 2h; covered by unit tests"
+    },
+    {
+      "name": "browser_recovery_code_login",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}

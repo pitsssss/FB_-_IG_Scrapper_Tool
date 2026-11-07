@@ -1,0 +1,40 @@
+# Isolated acceptance overlay — mocked Apify only. Never use for operator production.
+# Usage is driven by scripts/browser-acceptance.mjs (unique project + ports + volumes).
+
+services:
+  mock-apify:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.mock-apify
+    restart: "no"
+    environment:
+      PORT: "4099"
+      MOCK_GOOD_TOKEN: ${MOCK_GOOD_TOKEN:-mock-apify-token-acceptance-xx}
+    expose:
+      - "4099"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4099/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - smp_net
+
+  api:
+    depends_on:
+      mock-apify:
+        condition: service_healthy
+    environment:
+      APIFY_BASE_URL: http://mock-apify:4099
+      APIFY_VERIFY_BASE_URL: http://mock-apify:4099
+      APIFY_TOKEN: ""
+      APIFY_DAILY_RUN_LIMIT: "5"
+      UPSTREAM_RETRIES: "0"
+      PROVIDERS: apify

@@ -1,6 +1,6 @@
 # Owner decisions required before public release
 
-These items **block** calling the project a completed public open-source release. Technical Phase 7F.1 can still produce a **release candidate**.
+These items **block** calling the project a completed public open-source release. Technical Phase **7F.2** produced a **CONDITIONAL GO** (see [FINAL_ACCEPTANCE_REPORT.md](./FINAL_ACCEPTANCE_REPORT.md)).
 
 ## 1. LICENSE_DECISION_REQUIRED
 
@@ -18,13 +18,18 @@ Owner must reply with the SPDX id (e.g. `Apache-2.0`) before a `LICENSE` file is
 
 ## 2. Security reporting channel
 
-`SECURITY.md` references GitHub Security Advisories. Owner must **enable private vulnerability reporting** on the GitHub repository (or publish an authorized contact). Until then, mark security-reporting readiness incomplete.
+`SECURITY.md` references GitHub Security Advisories. Owner must **enable private vulnerability reporting** on the GitHub repository (or publish an authorized contact).
+
+Acceptance status: **PRIVATE_REPORTING_NOT_VERIFIED** (no authorized API confirmation in the 7F.2 environment).
+
+Until then, mark security-reporting readiness incomplete for a fully public launch.
 
 ## 3. Historical Git privacy
 
-Sanitized audit result (`npm run privacy:history`, 41 commits scanned):
+Sanitized audit result (`npm run privacy:history`):
 
-- Pattern hits (counts only; **values omitted**): `apify_token_prefix` commits > 0; `meta_page_token_prefix` commits > 0; env assignment pickaxe hits for `APIFY_TOKEN=` / `API_KEYS=` / bootstrap / encryption keys (may include placeholders and test harnesses).
+- Pattern hits exist (counts only; **values omitted**). At HEAD, `apify_api_` occurrences inspected in tracked Postman artifacts are **negative-assertion needles**, not live token values. Env assignment hits include `.env.example` empty placeholders and synthetic test harness writers.
+- Historical commits (including retired Postman artifacts) still require **owner private review**.
 - Status: **HISTORICAL_PRIVACY: REVIEW_REQUIRED**
 
 **Owner actions:**
@@ -34,7 +39,7 @@ Sanitized audit result (`npm run privacy:history`, 41 commits scanned):
 3. Decide whether to authorize a **separate**, planned history-remediation procedure (filter-repo / BFG). This requires explicit approval, coordination with forks/clones, and is **not** performed automatically.
 4. Understand that rewritten objects may remain in forks, CI caches, and mirrors.
 
-Unresolved **real** credential exposure is a **release blocker** until rotation is confirmed.
+Unresolved **real** credential exposure is a **release blocker** until rotation is confirmed (or owner records that matches were never production-real).
 
 ## 4. Repository rename (optional)
 
@@ -42,8 +47,9 @@ GitHub repository name may still be the historical scraper name. Product name is
 
 ## 5. Live HTTPS & paid Apify acceptance
 
-- `LIVE_HTTPS_NOT_VERIFIED` until the owner points a real DNS name at a deployment and confirms certificates + Secure cookies.
+- `LIVE_HTTPS_NOT_VERIFIED` until the owner points a real DNS name at a deployment and confirms certificates + Secure cookies (checklist in FINAL_ACCEPTANCE_REPORT).
 - Controlled live Apify runs remain optional acceptance, never part of default CI.
+- Browser acceptance established **MOCKED PROVIDER VERIFIED** only.
 
 ## 6. Public GitHub Release / tag
 

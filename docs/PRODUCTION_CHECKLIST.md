@@ -119,13 +119,13 @@ If disk writes fail, the process may still serve from memory until restart; thos
 
 See `postman/README.md`.
 
-## Release candidate (Phase 7F.1)
+## Release candidate (Phase 7F.2)
 
 - [ ] Owner license decision recorded; `LICENSE` file present
 - [ ] GitHub private vulnerability reporting enabled
 - [ ] Historical privacy: real credentials rotated if ever present; rewrite decision recorded
-- [ ] `npm run release:acceptance` green on the release commit
-- [ ] `docs/release/RELEASE_CHECKLIST.md` completed before tagging
+- [ ] `npm run release:acceptance` and `npm run browser:acceptance` green on the release commit
+- [ ] `docs/release/RELEASE_CHECKLIST.md` / `FINAL_ACCEPTANCE_REPORT.md` reviewed before tagging
 
 ## Still NOT proven by this repository alone
 
@@ -136,7 +136,8 @@ See `postman/README.md`.
 - Exact Apify USD billed amount for Instagram post/profile runs (only `maxTotalChargeUsd` request cap verified)
 - Arbitrary Instagram profile live scrape / cache beyond controlled provider integration testing
 - Live hosting/CDN/TLS configuration (`LIVE_HTTPS_NOT_VERIFIED` until operator DNS acceptance)
+- Real Apify paid runs (optional; default CI and `browser:acceptance` use mocks only — **MOCKED PROVIDER VERIFIED**)
+- Playground raw JSON view + wall-clock 2h session idle browser waits (unit-covered; marked NOT VERIFIED in browser summary)
 - Multi-region failover
 - Long-term disk integrity under platform outages
 - Postman Desktop GUI import (Newman/offline automation covers the suite; GUI is manual)
-- Full interactive browser MFA/Playground responsive matrix (HTTP acceptance + unit/E2E cover critical paths)

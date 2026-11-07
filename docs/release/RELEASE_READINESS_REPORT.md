@@ -1,18 +1,20 @@
-# Release readiness report — Phase 7F.1
+# Release readiness report — Phase 7F.2
 
 **Product:** Social Media Posts API  
 **Classification:** Release candidate (`0.1.0-beta.1`) — **not** a published public release  
-**Baseline:** `5b53d8b`  
-**Ending commit:** `83446bb`  
-**Report date:** 2026-11-07
+**Baseline:** `a723114`  
+**Report date:** 2026-11-07  
+**Companion:** [FINAL_ACCEPTANCE_REPORT.md](./FINAL_ACCEPTANCE_REPORT.md)
 
 ## Verdict
 
-**PASS** for technical release-candidate hardening, with **owner blockers** still open (license, historical privacy rotation/rewrite decision, security reporting channel, live HTTPS / live Apify).
+**CONDITIONAL GO** for owner-gated open-source beta.
 
-A PASS here does **not** authorize tagging a GitHub Release or claiming a completed open-source launch.
+Technical acceptance (including isolated Playwright browser journeys with mocked Apify) **passed**. Mandatory owner blockers remain: **license**, **historical privacy rotation confirmation**, **private vulnerability reporting**. Live HTTPS and live Apify are recommended/optional and were not claimed as verified.
 
-## Automated verification (executed)
+A CONDITIONAL GO does **not** authorize tagging a GitHub Release or claiming a completed open-source launch.
+
+## Automated verification (executed in 7F.2)
 
 | Check | Result |
 | --- | --- |
@@ -22,29 +24,28 @@ A PASS here does **not** authorize tagging a GitHub Release or claiming a comple
 | Dashboard lint/typecheck/test/build | pass (**23** vitest) |
 | `npm run compose:smoke` | **PASS** |
 | `npm run release:acceptance` | **PASS** |
-| `.\scripts\init-selfhost.ps1` | **PASS** (Docker Node generator) |
+| `npm run browser:acceptance` | **27 PASS**, 0 FAIL, **2 NOT VERIFIED** (JSON view; 2h idle expiry) |
 | `npm run privacy:history` | **REVIEW_REQUIRED** (sanitized; owner) |
-| Backup `VACUUM INTO` unit test | **PASS** |
+| `npm audit --omit=dev` | **0** vulnerabilities (API + dashboard) |
 | Live public HTTPS | **LIVE_HTTPS_NOT_VERIFIED** |
-| Full GUI MFA + Playground + responsive matrix | **NOT VERIFIED** (HTTP/API + unit coverage; no full browser automation matrix) |
-| Paid Apify | **not run** (required) |
+| Paid / real Apify | **not run** — **MOCKED PROVIDER VERIFIED** only |
 
 ## Security findings (summary)
 
 | Sev | Finding | Status |
 | --- | --- | --- |
-| High | BFF used `ADMIN_INTERNAL_SECRET` and skipped browser Origin — cross-site setup/login possible with stolen bootstrap/credentials | **Fixed** — `assertBrowserOrigin` on auth mutations; Compose injects `ADMIN_ALLOWED_ORIGINS` |
-| Medium | BFF logout cleared cookies even when CSRF invalid | **Fixed** |
-| Medium | `TRUST_PROXY` used left-most `X-Forwarded-For` (spoofable) | **Fixed** — prefer `X-Real-IP` / right-most hop; Caddy sets `X-Real-IP` |
-| Info | Newman/Vitest npm audit noise (dev/test toolchain only; not in production API image) | Documented; Newman → 6.2.3; no forced major Vitest bump |
-| Critical (history) | Historical pickaxe hits for `apify_api_` / Meta token prefix patterns | **Owner** — rotate if real; no history rewrite without approval |
+| High | BFF Origin skip (7F.1) | **Fixed** — revalidated in browser Origin reject |
+| Medium | Logout CSRF (7F.1 server + 7F.2 dashboard Sign-out header) | **Fixed** — browser logout PASS |
+| Medium | Spoofable `X-Forwarded-For` (7F.1) | **Fixed** — unit + Caddy `X-Real-IP` |
+| Info | Newman/Vitest npm audit noise (dev toolchain) | Documented; no `audit fix --force` |
+| Critical (history) | Historical pickaxe hits | **Owner** — rotate if real; no rewrite without approval |
 
 ## Owner blockers
 
 See [OWNER_DECISIONS.md](./OWNER_DECISIONS.md):
 
 1. `LICENSE_DECISION_REQUIRED`
-2. Enable GitHub private vulnerability reporting
+2. Enable GitHub private vulnerability reporting (`PRIVATE_REPORTING_NOT_VERIFIED`)
 3. Historical privacy rotation / remediation decision
 4. Optional: live HTTPS + live Apify acceptance
 5. Explicit approval before GitHub Release/tag

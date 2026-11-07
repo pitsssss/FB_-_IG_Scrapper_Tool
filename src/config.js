@@ -271,6 +271,11 @@ export function loadConfig(env = process.env) {
       dailyRunLimit,
       maxChargeUsdPerRun,
     },
+    /**
+     * Test/isolated only: override Apify token verification base (GET /v2/users/me).
+     * Leave unset in production so verification stays on api.apify.com.
+     */
+    apifyVerifyBaseUrl: (env.APIFY_VERIFY_BASE_URL || '').trim() || '',
     instagramApify: {
       actor: (env.INSTAGRAM_APIFY_ACTOR || 'apify~instagram-post-scraper').replace('/', '~'),
       input: instagramApifyInput,

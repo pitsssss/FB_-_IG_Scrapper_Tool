@@ -1,6 +1,7 @@
 # Draft release notes — v0.1.0-beta.1
 
-**Status:** Draft only. Do not publish a GitHub Release until owner checklist items are complete.
+**Status:** Draft only. Do not publish a GitHub Release until owner checklist items are complete.  
+**Acceptance:** Phase 7F.2 **CONDITIONAL GO** — see [FINAL_ACCEPTANCE_REPORT.md](./FINAL_ACCEPTANCE_REPORT.md).
 
 ## Highlights
 
@@ -12,6 +13,7 @@ Self-hosted **Social Media Posts API**: Node.js posts engine + Next.js admin das
 - Interactive Playground (cache-only default; confirmed live refresh)
 - Settings, cache inspection/delete, local usage telemetry
 - Single-replica Compose stack with persistent `/data`
+- Isolated browser acceptance harness (`npm run browser:acceptance`) with mocked Apify for release QA
 
 ## Install (Docker-first)
 
