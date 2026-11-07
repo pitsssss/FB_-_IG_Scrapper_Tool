@@ -18,6 +18,7 @@ export function createService(config, providers) {
   const cache = new Cache(config.cacheDir);
   const inflight = new Map();   // key -> Promise  (one upstream call per page at a time)
   const failures = new Map();   // key -> { at, message }
+  const cacheGenerations = new Map(); // key -> number (invalidates in-flight writes after delete)
 
   const coolingDown = (key) => {
     const f = failures.get(key);
@@ -76,6 +77,7 @@ export function createService(config, providers) {
 
   function refresh(ref) {
     if (inflight.has(ref.key)) return inflight.get(ref.key);
+    const startGen = cacheGenerations.get(ref.key) || 0;
     const promise = (async () => {
       try {
         const result = await fetchFromProviders(ref);
@@ -88,6 +90,10 @@ export function createService(config, providers) {
         };
         // Enrichment may run once here; post cache is written with resolved page when possible.
         entry = await withInstagramIdentity(entry, ref, { allowEnrichment: true });
+        // Skip disk/memory write if the entry was deleted while this refresh ran.
+        if ((cacheGenerations.get(ref.key) || 0) !== startGen) {
+          return entry;
+        }
         await cache.set(ref.key, entry); // only ever called with a NON-EMPTY result
         failures.delete(ref.key);
         return entry;
@@ -189,11 +195,39 @@ export function createService(config, providers) {
     }
   }
 
+  /**
+   * Admin cache delete for one account. Conflicts when a refresh is in flight.
+   * Bumps generation so a finishing refresh cannot repopulate the deleted key.
+   */
+  async function deleteCacheEntry(cacheKey) {
+    if (!cacheKey || typeof cacheKey !== 'string') {
+      return { ok: false, code: 'INVALID_CACHE_KEY', message: 'Invalid cache key' };
+    }
+    if (inflight.has(cacheKey)) {
+      return {
+        ok: false,
+        code: 'REFRESH_IN_PROGRESS',
+        message: 'A refresh is in progress for this account; retry delete shortly',
+      };
+    }
+    cacheGenerations.set(cacheKey, (cacheGenerations.get(cacheKey) || 0) + 1);
+    const result = await cache.delete(cacheKey);
+    if (!result.ok) return result;
+    failures.delete(cacheKey);
+    return result;
+  }
+
+  function isRefreshInflight(cacheKey) {
+    return inflight.has(cacheKey);
+  }
+
   return {
     getPosts,
     peekCachedPosts,
     forceRefresh,
     warm,
+    deleteCacheEntry,
+    isRefreshInflight,
     quota,
     cache,
     config,

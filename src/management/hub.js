@@ -7,13 +7,18 @@ import { createAuditLogger } from './audit.js';
 import { createKeyAuthenticator } from './keyAuthenticator.js';
 import { listCacheEntries, sanitizeQuotaStatus } from './opsInspect.js';
 import { createPlaygroundService } from './playground.js';
+import { createSettingsService } from './settings.js';
+import { createTelemetry } from './telemetry.js';
+import { parseFacebookUsername } from '../pageRef.js';
+import { parseInstagramUsername } from '../instagramRef.js';
 
 /**
- * Single management hub: shared SQLite + auth + provider + API keys.
+ * Single management hub: shared SQLite + auth + provider + API keys + settings + telemetry.
  */
 export function createManagementHub(config, {
   verifyOpts,
   getEncryptionKey,
+  getQuota,
 } = {}) {
   const opened = openManagementDb(config.managementDir);
   integrityCheck(opened.db);
@@ -31,12 +36,12 @@ export function createManagementHub(config, {
 
   const db = auth.db;
   const audit = createAuditLogger(db);
+  const telemetry = createTelemetry(db);
   const runtime = createCredentialRuntime({ envToken: config.apify?.token || '' });
 
   // Bind runtime token onto config.apify so existing providers see hot updates.
   if (config.apify && typeof config.apify === 'object') {
     const envSnapshot = config.apify.token || '';
-    // Preserve env for runtime constructor already captured; redefine getter.
     runtime.applyManagedState({ status: 'none' });
     Object.defineProperty(config.apify, 'token', {
       configurable: true,
@@ -44,11 +49,8 @@ export function createManagementHub(config, {
       get() {
         return runtime.getApifyToken();
       },
-      // Allow tests that assign token directly before hub — ignored after defineProperty
       set() { /* no-op: use provider service */ },
     });
-    // Re-seed env into runtime (constructor used pre-redefine value)
-    // createCredentialRuntime already received envToken string copy — OK.
     void envSnapshot;
   }
 
@@ -63,8 +65,8 @@ export function createManagementHub(config, {
     envKeys: config.apiKeys || [],
     envPageScopes: config.pageScopes,
     getManagedSnapshot: () => apiKeys.activeSnapshot(),
-    allowedPages: config.allowedPages || [],
-    instagramAllowedProfiles: config.instagramAllowedProfiles || [],
+    getAllowedPages: () => config.allowedPages || [],
+    getInstagramAllowedProfiles: () => config.instagramAllowedProfiles || [],
     onManagedUse(id) {
       apiKeys.markUsed(id);
     },
@@ -86,14 +88,31 @@ export function createManagementHub(config, {
 
   providers.loadIntoRuntime();
 
-  /** Playground is bound later via bindService(service) once HTTP app has createService(). */
   let playground = null;
+  let boundService = null;
+  /** Optional external keyAuth (server request authenticator) synced on settings apply. */
+  let externalKeyAuth = null;
+
+  const settings = createSettingsService(db, {
+    config,
+    getQuota: () => (typeof getQuota === 'function' ? getQuota() : boundService?.quota) || null,
+    audit,
+    onApplied({ allowedPages, instagramAllowedProfiles }) {
+      keyAuth?.setAllowlists(allowedPages, instagramAllowedProfiles);
+      externalKeyAuth?.setAllowlists?.(allowedPages, instagramAllowedProfiles);
+    },
+  });
+
+  // Apply managed overrides at hub start (before serving traffic when possible).
+  settings.applyToRuntime();
 
   return {
     auth,
     db,
     path: opened.path,
     audit,
+    telemetry,
+    settings,
     runtime,
     providers,
     apiKeys,
@@ -102,6 +121,7 @@ export function createManagementHub(config, {
       return playground;
     },
     bindService(service) {
+      boundService = service;
       playground = createPlaygroundService({
         db,
         service,
@@ -109,7 +129,13 @@ export function createManagementHub(config, {
         getProviderStatus: () => providers.status(),
         audit,
       });
+      settings.applyToRuntime();
       return playground;
+    },
+    /** Sync allowlists into the public request authenticator in server.js */
+    bindPublicKeyAuth(ka) {
+      externalKeyAuth = ka;
+      ka?.setAllowlists?.(config.allowedPages || [], config.instagramAllowedProfiles || []);
     },
     async cacheSummary() {
       return listCacheEntries({
@@ -118,12 +144,75 @@ export function createManagementHub(config, {
         limit: 200,
       });
     },
+    async deleteCacheEntry({ platform, username, currentPassword, confirm, adminUsername }) {
+      if (confirm !== true) {
+        return {
+          ok: false,
+          http: 400,
+          code: 'CONFIRMATION_REQUIRED',
+          message: 'Set confirm=true to delete this cache entry',
+        };
+      }
+      const pwd = await auth.accountSecurity.assertCurrentPassword(currentPassword);
+      if (!pwd.ok) {
+        return { ok: false, http: 401, code: pwd.code, message: pwd.message };
+      }
+      const plat = String(platform || '').toLowerCase();
+      if (plat !== 'facebook' && plat !== 'instagram') {
+        return { ok: false, http: 400, code: 'INVALID_PLATFORM', message: 'platform must be facebook or instagram' };
+      }
+      const ref = plat === 'instagram'
+        ? parseInstagramUsername(String(username || '').trim())
+        : parseFacebookUsername(String(username || '').trim());
+      if (!ref) {
+        return { ok: false, http: 400, code: 'INVALID_USERNAME', message: 'Invalid username' };
+      }
+      if (!boundService || typeof boundService.deleteCacheEntry !== 'function') {
+        return { ok: false, http: 503, code: 'SERVICE_UNAVAILABLE', message: 'Cache service unavailable' };
+      }
+      const result = await boundService.deleteCacheEntry(ref.key);
+      if (!result.ok) {
+        const http = result.code === 'REFRESH_IN_PROGRESS' ? 409 : 400;
+        return { ok: false, http, code: result.code, message: result.message };
+      }
+      audit.record({
+        event: 'cache_entry_deleted',
+        adminUsername: adminUsername || null,
+        targetType: 'cache',
+        targetId: ref.key,
+        outcome: 'ok',
+        meta: { platform: plat, username: ref.username || ref.key, memoryDeleted: result.memoryDeleted, diskDeleted: result.diskDeleted },
+      });
+      telemetry.record({
+        category: 'cache_delete',
+        outcome: 'ok',
+        platform: plat,
+        meta: { username: ref.username || String(ref.key).replace(/^instagram:/, '') },
+      });
+      return {
+        ok: true,
+        http: 200,
+        data: {
+          platform: plat,
+          username: ref.username || String(ref.key).replace(/^instagram:/, ''),
+          memoryDeleted: result.memoryDeleted,
+          diskDeleted: result.diskDeleted,
+          note: 'Entry removed from memory and disk. Future public requests may re-fetch subject to quota; no automatic refetch was triggered.',
+        },
+      };
+    },
     async quotaStatus(quota) {
       const raw = quota && typeof quota.getStatus === 'function' ? await quota.getStatus() : null;
       return sanitizeQuotaStatus(raw, {
         dailyLimit: config.apify?.dailyRunLimit,
         maxChargeUsdPerRun: config.apify?.maxChargeUsdPerRun,
       });
+    },
+    usageSummary(period) {
+      return telemetry.summarize(period);
+    },
+    usageEvents(opts) {
+      return telemetry.listEvents(opts);
     },
     close() {
       auth.close();

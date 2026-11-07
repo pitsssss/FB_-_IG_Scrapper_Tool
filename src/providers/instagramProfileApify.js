@@ -14,7 +14,7 @@ import { isVerifiedHttpsLogoUrl } from '../instagramLogo.js';
 export function createInstagramProfileEnricher(config, { quota } = {}) {
   const fbCfg = config.apify || {};
   const igCfg = config.instagramProfileEnrichment || {};
-  const enabled = Boolean(igCfg.enabled);
+  const isEnabled = () => Boolean(config.instagramProfileEnrichment?.enabled);
   const getToken = () => fbCfg.token || '';
   const actor = (igCfg.actor || 'apify~instagram-profile-scraper').replace('/', '~');
   const timeoutMs = igCfg.timeoutMs || 60000;
@@ -101,7 +101,7 @@ export function createInstagramProfileEnricher(config, { quota } = {}) {
    * Single-flight fetch for one username. Never retries (retryable:false) — one reservation only.
    */
   async function fetchProfile(ref) {
-    if (!enabled) return null;
+    if (!isEnabled()) return null;
     if (!getToken()) return null;
     if (!ref?.username) return null;
     if (inflight.has(ref.username)) return inflight.get(ref.username);
@@ -112,7 +112,7 @@ export function createInstagramProfileEnricher(config, { quota } = {}) {
 
   return {
     name: 'instagram-profile-apify',
-    enabled,
+    get enabled() { return isEnabled(); },
     quota: quotaManager,
     fetchProfile,
   };

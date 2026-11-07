@@ -270,5 +270,96 @@ export function createManagementHandlers({ hub, service, config }) {
       if (!result.ok) return { http: result.http, body: err(result.code, result.message) };
       return { http: 200, body: { success: true, data: result.data || { cancelled: true } } };
     },
+
+    async getSettings(req) {
+      const gate = requireAdmin(req, { csrf: false });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      if (!hub.settings) return { http: 503, body: err('SETTINGS_UNAVAILABLE', 'Settings service unavailable') };
+      return { http: 200, body: { success: true, data: hub.settings.getSnapshot() } };
+    },
+
+    async patchSettings(req, body) {
+      const gate = requireAdmin(req, { csrf: true });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      if (!hub.settings) return { http: 503, body: err('SETTINGS_UNAVAILABLE', 'Settings service unavailable') };
+      const result = hub.settings.patch(body?.settings || body, {
+        adminUsername: gate.admin.username,
+        confirmWarmEnable: Boolean(body?.confirmWarmEnable),
+      });
+      if (!result.ok) return { http: result.http, body: err(result.code, result.message) };
+      hub.telemetry?.record({
+        category: 'settings_change',
+        outcome: 'ok',
+        meta: { applied: result.applied, pendingRestart: result.pendingRestart },
+      });
+      return {
+        http: 200,
+        body: {
+          success: true,
+          data: {
+            ...result.snapshot,
+            applied: result.applied,
+            pendingRestart: result.pendingRestart,
+          },
+        },
+      };
+    },
+
+    async clearSetting(req, body) {
+      const gate = requireAdmin(req, { csrf: true });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      if (!hub.settings) return { http: 503, body: err('SETTINGS_UNAVAILABLE', 'Settings service unavailable') };
+      const result = hub.settings.clearOverride(body?.key, { adminUsername: gate.admin.username });
+      if (!result.ok) return { http: result.http, body: err(result.code, result.message) };
+      return { http: 200, body: { success: true, data: result.snapshot } };
+    },
+
+    async deleteCacheEntry(req, body) {
+      const gate = requireAdmin(req, { csrf: true });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const result = await hub.deleteCacheEntry({
+        platform: body?.platform,
+        username: body?.username || body?.page,
+        currentPassword: body?.currentPassword,
+        confirm: body?.confirm,
+        adminUsername: gate.admin.username,
+      });
+      if (!result.ok) return { http: result.http, body: err(result.code, result.message) };
+      return { http: 200, body: { success: true, data: result.data } };
+    },
+
+    async usageSummary(req, query) {
+      const gate = requireAdmin(req, { csrf: false });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const period = ['today', '7d', '30d'].includes(query?.period) ? query.period : 'today';
+      const summary = hub.usageSummary(period);
+      const quota = service?.quota || null;
+      const quotaData = await hub.quotaStatus(quota);
+      return {
+        http: 200,
+        body: {
+          success: true,
+          data: {
+            ...summary,
+            quota: quotaData,
+          },
+        },
+      };
+    },
+
+    async usageEvents(req, query) {
+      const gate = requireAdmin(req, { csrf: false });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const period = ['today', '7d', '30d'].includes(query?.period) ? query.period : 'today';
+      const limit = Number.parseInt(query?.limit || '50', 10);
+      const offset = Number.parseInt(query?.offset || '0', 10);
+      return {
+        http: 200,
+        body: {
+          success: true,
+          data: hub.usageEvents({ period, limit, offset }),
+        },
+      };
+    },
   };
 }

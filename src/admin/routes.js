@@ -317,6 +317,39 @@ export async function handleAdminRoutes(req, res, url, { auth, hub, service, con
       const r = await mgmt.playgroundCancel(req, body);
       return send(res, r.http, r.body);
     };
+    routes['GET /api/v1/admin/settings'] = async () => {
+      const r = await mgmt.getSettings(req);
+      return send(res, r.http, r.body);
+    };
+    routes['PATCH /api/v1/admin/settings'] = async () => {
+      const body = await readJsonBody(req);
+      const r = await mgmt.patchSettings(req, body);
+      return send(res, r.http, r.body);
+    };
+    routes['POST /api/v1/admin/settings/clear'] = async () => {
+      const body = await readJsonBody(req);
+      const r = await mgmt.clearSetting(req, body);
+      return send(res, r.http, r.body);
+    };
+    routes['DELETE /api/v1/admin/cache/entry'] = async () => {
+      const body = await readJsonBody(req);
+      const r = await mgmt.deleteCacheEntry(req, body);
+      return send(res, r.http, r.body);
+    };
+    routes['POST /api/v1/admin/cache/delete'] = async () => {
+      // Alias for clients that cannot send DELETE bodies reliably
+      const body = await readJsonBody(req);
+      const r = await mgmt.deleteCacheEntry(req, body);
+      return send(res, r.http, r.body);
+    };
+    routes['GET /api/v1/admin/usage/summary'] = async () => {
+      const r = await mgmt.usageSummary(req, Object.fromEntries(url.searchParams.entries()));
+      return send(res, r.http, r.body);
+    };
+    routes['GET /api/v1/admin/usage/events'] = async () => {
+      const r = await mgmt.usageEvents(req, Object.fromEntries(url.searchParams.entries()));
+      return send(res, r.http, r.body);
+    };
   }
 
   // Pattern routes for key id
@@ -348,7 +381,7 @@ export async function handleAdminRoutes(req, res, url, { auth, hub, service, con
           return;
         }
         send(res, 405, errBody('METHOD_NOT_ALLOWED', 'Method not allowed'), {
-          allow: 'GET, POST, PUT, OPTIONS',
+          allow: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         });
         return;
       }

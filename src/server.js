@@ -38,9 +38,14 @@ export function createApp(config, service = createService(config), options = {})
       return null;
     }
     try {
-      hub = createManagementHub(config, options.hubOptions || {});
+      hub = createManagementHub(config, {
+        ...(options.hubOptions || {}),
+        getQuota: () => service?.quota || null,
+      });
       hub.bindService(service);
+      hub.bindPublicKeyAuth?.(keyAuth);
       keyAuth?.refreshManaged();
+      keyAuth?.refreshAllowlists?.();
       return hub;
     } catch (err) {
       hubInitError = err;
@@ -53,8 +58,8 @@ export function createApp(config, service = createService(config), options = {})
     envKeys: config.apiKeys || [],
     envPageScopes: config.pageScopes,
     getManagedSnapshot: () => getHub()?.apiKeys.activeSnapshot() || [],
-    allowedPages: config.allowedPages || [],
-    instagramAllowedProfiles: config.instagramAllowedProfiles || [],
+    getAllowedPages: () => config.allowedPages || [],
+    getInstagramAllowedProfiles: () => config.instagramAllowedProfiles || [],
     onManagedUse(id) {
       getHub()?.apiKeys.markUsed(id);
     },
@@ -113,12 +118,33 @@ export function createApp(config, service = createService(config), options = {})
     res.end(payload);
   }
 
+  function recordTelemetry( partial) {
+    try {
+      getHub()?.telemetry?.record(partial);
+    } catch {
+      /* never break requests */
+    }
+  }
+
   async function handlePosts(req, res, url, platform) {
+    const started = Date.now();
     const client = authenticate(req);
-    if (!client) return send(res, 401, errBody('UNAUTHORIZED', 'Missing or invalid API key'));
+    if (!client) {
+      recordTelemetry({ category: 'unauthorized', outcome: 'denied', platform, httpStatus: 401 });
+      return send(res, 401, errBody('UNAUTHORIZED', 'Missing or invalid API key'));
+    }
 
     const wait = rateLimited(client.name);
-    if (wait) return send(res, 429, errBody('RATE_LIMITED', 'Too many requests'), { 'retry-after': String(wait) });
+    if (wait) {
+      recordTelemetry({
+        category: 'rate_limited',
+        outcome: 'denied',
+        platform,
+        clientName: client.name,
+        httpStatus: 429,
+      });
+      return send(res, 429, errBody('RATE_LIMITED', 'Too many requests'), { 'retry-after': String(wait) });
+    }
 
     const pageParam = url.searchParams.get('page');
     const label = platform === 'instagram' ? 'Instagram username' : 'Facebook page username';
@@ -137,14 +163,61 @@ export function createApp(config, service = createService(config), options = {})
     }
 
     if (!pageAllowedForClient(client, ref)) {
+      recordTelemetry({
+        category: 'forbidden',
+        outcome: 'denied',
+        platform,
+        clientName: client.name,
+        httpStatus: 403,
+      });
       return send(res, 403, errBody('PAGE_NOT_ALLOWED', 'This page is not allowed on this server'));
     }
 
     const parsed = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), config.maxPosts) : config.maxPosts;
 
-    const result = await service.getPosts(ref, limit);
-    return send(res, 200, result, { 'cache-control': 'private, max-age=60' });
+    try {
+      const result = await service.getPosts(ref, limit);
+      const durationMs = Date.now() - started;
+      const source = result?.meta?.source || null;
+      recordTelemetry({
+        category: 'public_request',
+        outcome: 'ok',
+        platform,
+        clientName: client.name,
+        httpStatus: 200,
+        durationMs,
+        source,
+      });
+      if (source === 'cache') {
+        recordTelemetry({ category: 'cache_hit', outcome: 'ok', platform, clientName: client.name, source });
+      } else if (source === 'stale-cache') {
+        recordTelemetry({ category: 'stale_cache', outcome: 'ok', platform, clientName: client.name, source });
+      } else if (source === 'live') {
+        recordTelemetry({ category: 'live_response', outcome: 'ok', platform, clientName: client.name, source });
+        recordTelemetry({ category: 'provider_attempt', outcome: 'ok', platform, clientName: client.name, source: 'live' });
+      }
+      return send(res, 200, result, { 'cache-control': 'private, max-age=60' });
+    } catch (err) {
+      if (err instanceof ServiceError && (err.status === 502 || err.code === 'UPSTREAM_UNAVAILABLE')) {
+        recordTelemetry({
+          category: 'provider_failure',
+          outcome: 'error',
+          platform,
+          clientName: client.name,
+          httpStatus: err.status,
+          durationMs: Date.now() - started,
+        });
+        recordTelemetry({
+          category: 'provider_attempt',
+          outcome: 'error',
+          platform,
+          clientName: client.name,
+          httpStatus: err.status,
+        });
+      }
+      throw err;
+    }
   }
 
   async function handle(req, res) {

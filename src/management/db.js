@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const MANAGEMENT_SCHEMA_VERSION = 4;
+export const MANAGEMENT_SCHEMA_VERSION = 5;
 
 const MIGRATIONS = [
   {
@@ -177,6 +177,33 @@ CREATE TABLE IF NOT EXISTS playground_confirmations (
 
 CREATE INDEX IF NOT EXISTS idx_playground_confirmations_admin
   ON playground_confirmations(admin_id, consumed_at);
+`,
+  },
+  {
+    version: 5,
+    sql: `
+CREATE TABLE IF NOT EXISTS management_settings (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by TEXT
+);
+
+CREATE TABLE IF NOT EXISTS operational_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  category TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  platform TEXT,
+  client_name TEXT,
+  http_status INTEGER,
+  duration_ms INTEGER,
+  source TEXT,
+  meta_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_operational_events_at ON operational_events(at);
+CREATE INDEX IF NOT EXISTS idx_operational_events_category ON operational_events(category, at);
 `,
   },
 ];
