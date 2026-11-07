@@ -2,7 +2,8 @@
 /**
  * Management SQLite backup/restore helpers.
  *
- * Prefer stopping the API (or using this while idle) for strongest consistency when WAL files exist.
+ * Preferred consistency: open the DB and run VACUUM INTO (online-safe snapshot).
+ * Fallback: copy app.sqlite + WAL/SHM after an explicit API stop.
  * Does NOT include DATA_ENCRYPTION_KEY — escrow that separately.
  *
  * Backup:
@@ -13,6 +14,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 function arg(name, fallback = null) {
   const i = process.argv.indexOf(name);
@@ -24,12 +26,34 @@ const restorePath = arg('--restore');
 const managementDir = arg('--management-dir', process.env.MANAGEMENT_DIR || './data/management');
 const outDir = arg('--out', './backups');
 const force = process.argv.includes('--force');
+const copyOnly = process.argv.includes('--copy-only');
 
 function copyDbBundle(srcDb, destDb) {
   fs.copyFileSync(srcDb, destDb);
   for (const suffix of ['-wal', '-shm']) {
     const side = `${srcDb}${suffix}`;
     if (fs.existsSync(side)) fs.copyFileSync(side, `${destDb}${suffix}`);
+  }
+}
+
+function verifySqlite(filePath) {
+  const db = new DatabaseSync(filePath, { readOnly: true });
+  try {
+    const row = db.prepare('PRAGMA integrity_check').get();
+    const ok = row && String(Object.values(row)[0]).toLowerCase() === 'ok';
+    if (!ok) throw new Error(`integrity_check failed: ${JSON.stringify(row)}`);
+  } finally {
+    db.close();
+  }
+}
+
+function vacuumInto(srcDb, destDb) {
+  const destSql = path.resolve(destDb).replaceAll('\\', '/');
+  const db = new DatabaseSync(srcDb);
+  try {
+    db.exec(`VACUUM INTO '${destSql.replaceAll("'", "''")}'`);
+  } finally {
+    db.close();
   }
 }
 
@@ -44,6 +68,7 @@ if (restorePath) {
     console.error('Refusing to overwrite existing', dest, '(pass --force)');
     process.exit(1);
   }
+  verifySqlite(restorePath);
   copyDbBundle(restorePath, dest);
   console.log('Restored management DB to', dest);
   console.log('Ensure DATA_ENCRYPTION_KEY matches the backup era before starting API.');
@@ -60,11 +85,26 @@ if (!fs.existsSync(src)) {
 fs.mkdirSync(outDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const dest = path.join(outDir, `mgmt-${stamp}.sqlite`);
-copyDbBundle(src, dest);
 
+let method = 'copy';
+if (!copyOnly) {
+  try {
+    vacuumInto(src, dest);
+    method = 'vacuum-into';
+  } catch (err) {
+    console.warn('VACUUM INTO unavailable, falling back to file copy:', err?.message || err);
+    copyDbBundle(src, dest);
+    method = 'copy-fallback';
+  }
+} else {
+  copyDbBundle(src, dest);
+}
+
+verifySqlite(dest);
 console.log('Backup written:', dest);
-if (fs.existsSync(`${src}-wal`)) {
-  console.warn('WAL present — for strongest consistency stop the API, re-run backup, then start again.');
+console.log('Method:', method);
+if (method !== 'vacuum-into' && fs.existsSync(`${src}-wal`)) {
+  console.warn('WAL present — prefer VACUUM INTO, or stop the API then re-run backup.');
 }
 console.log('Also archive CACHE_DIR (posts JSON + apify-quota.json).');
 console.log('Escrow DATA_ENCRYPTION_KEY outside the same unencrypted archive.');
