@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const MANAGEMENT_SCHEMA_VERSION = 3;
+export const MANAGEMENT_SCHEMA_VERSION = 4;
 
 const MIGRATIONS = [
   {
@@ -156,6 +156,27 @@ CREATE TABLE IF NOT EXISTS totp_used_steps (
   used_at TEXT NOT NULL,
   PRIMARY KEY (admin_id, step)
 );
+`,
+  },
+  {
+    version: 4,
+    sql: `
+CREATE TABLE IF NOT EXISTS playground_confirmations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash TEXT NOT NULL UNIQUE,
+  admin_id INTEGER NOT NULL REFERENCES admin_users(id),
+  session_id INTEGER NOT NULL,
+  platform TEXT NOT NULL,
+  username TEXT NOT NULL,
+  cache_key TEXT NOT NULL,
+  limit_n INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  consumed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_playground_confirmations_admin
+  ON playground_confirmations(admin_id, consumed_at);
 `,
   },
 ];

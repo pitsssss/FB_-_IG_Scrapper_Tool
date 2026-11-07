@@ -140,6 +140,36 @@ export function createService(config, providers) {
   }
 
   /**
+   * Side-effect-free cache read for admin playground (Cache Only mode).
+   * Never schedules background refresh, never reserves quota, never mutates cache.
+   */
+  async function peekCachedPosts(ref, limit) {
+    let entry;
+    try {
+      entry = await cache.get(ref.key);
+    } catch {
+      throw new ServiceError(500, 'CACHE_READ_ERROR', 'Could not read cache safely');
+    }
+    if (!entry) {
+      throw new ServiceError(404, 'CACHE_MISS', 'No cached posts for this account');
+    }
+    const ageMs = Math.max(0, Date.now() - entry.fetchedAt);
+    const fresh = ageMs < config.freshTtlMs;
+    const source = fresh ? 'cache' : 'stale-cache';
+    // Identity resolution without enrichment (no Apify).
+    return respond(entry, source, limit, ref);
+  }
+
+  /**
+   * Explicit admin force-refresh. Always invokes the provider pipeline (subject to
+   * single-flight), even when cache is still fresh. Does not change public getPosts.
+   */
+  async function forceRefresh(ref, limit) {
+    const fresh = await refresh(ref);
+    return respond(fresh, 'live', limit, ref);
+  }
+
+  /**
    * Internal cache warming entrypoint (not HTTP). Skips fresh entries and cooldown;
    * reuses single-flight refresh; never clears existing cache on failure.
    */
@@ -159,5 +189,17 @@ export function createService(config, providers) {
     }
   }
 
-  return { getPosts, warm, quota, cache };
+  return {
+    getPosts,
+    peekCachedPosts,
+    forceRefresh,
+    warm,
+    quota,
+    cache,
+    config,
+    providerNames: () => providerList.map((p) => p.name),
+    hasProviderFor(ref) {
+      return providerList.some((p) => p.supports(ref));
+    },
+  };
 }

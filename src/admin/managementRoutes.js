@@ -203,5 +203,72 @@ export function createManagementHandlers({ hub, service, config }) {
         },
       };
     },
+
+    async playgroundCache(req, query) {
+      const gate = requireAdmin(req, { csrf: false });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const pg = hub.playground;
+      if (!pg) return { http: 503, body: err('PLAYGROUND_UNAVAILABLE', 'Playground service is not bound') };
+      const result = await pg.readCache({
+        platform: query?.platform,
+        username: query?.username || query?.page,
+        limit: query?.limit,
+      });
+      if (!result.ok) return { http: result.http, body: err(result.code, result.message) };
+      return { http: 200, body: result.body };
+    },
+
+    async playgroundPrepare(req, body) {
+      const gate = requireAdmin(req, { csrf: true });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const pg = hub.playground;
+      if (!pg) return { http: 503, body: err('PLAYGROUND_UNAVAILABLE', 'Playground service is not bound') };
+      const result = await pg.prepareRefresh({
+        platform: body?.platform,
+        username: body?.username || body?.page,
+        limit: body?.limit,
+        adminId: gate.admin.id,
+        sessionId: gate.sessionId,
+      });
+      if (!result.ok) {
+        const bodyOut = err(result.code, result.message);
+        if (result.quota) bodyOut.error.quota = result.quota;
+        return { http: result.http, body: bodyOut };
+      }
+      return { http: 200, body: { success: true, data: result.data } };
+    },
+
+    async playgroundConfirm(req, body) {
+      const gate = requireAdmin(req, { csrf: true });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const pg = hub.playground;
+      if (!pg) return { http: 503, body: err('PLAYGROUND_UNAVAILABLE', 'Playground service is not bound') };
+      const result = await pg.confirmRefresh({
+        confirmationToken: body?.confirmationToken,
+        adminId: gate.admin.id,
+        sessionId: gate.sessionId,
+        adminUsername: gate.admin.username,
+      });
+      if (!result.ok) {
+        const bodyOut = err(result.code, result.message);
+        if (result.quota) bodyOut.error.quota = result.quota;
+        return { http: result.http, body: bodyOut };
+      }
+      return { http: 200, body: result.body };
+    },
+
+    async playgroundCancel(req, body) {
+      const gate = requireAdmin(req, { csrf: true });
+      if (!gate.ok) return { http: gate.http, body: err(gate.code, gate.message) };
+      const pg = hub.playground;
+      if (!pg) return { http: 503, body: err('PLAYGROUND_UNAVAILABLE', 'Playground service is not bound') };
+      const result = await pg.cancelConfirmation({
+        confirmationToken: body?.confirmationToken,
+        adminId: gate.admin.id,
+        sessionId: gate.sessionId,
+      });
+      if (!result.ok) return { http: result.http, body: err(result.code, result.message) };
+      return { http: 200, body: { success: true, data: result.data || { cancelled: true } } };
+    },
   };
 }
