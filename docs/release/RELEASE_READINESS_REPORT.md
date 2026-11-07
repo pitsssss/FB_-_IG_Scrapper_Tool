@@ -3,7 +3,7 @@
 **Product:** Social Media Posts API  
 **Classification:** Release candidate (`0.1.0-beta.1`) — **not** a published public release  
 **Baseline:** `5b53d8b`  
-**Ending commit:** `995b552`  
+**Ending commit:** `83446bb`  
 **Report date:** 2026-11-07
 
 ## Verdict
