@@ -575,7 +575,7 @@ No external security audit or compliance certification is claimed.
 └── package.json
 ```
 
-> **Dashboard status:** `apps/dashboard` supports secure first-time setup and administrator login (Phase 7C.1). Apify token and API key management ship in 7C.2. See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
+> **Dashboard status:** `apps/dashboard` supports admin setup/login, encrypted Apify connection, and managed API keys (Phase 7C.2). Live playground scrape controls ship in 7D. See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
 
 ## License & support
 

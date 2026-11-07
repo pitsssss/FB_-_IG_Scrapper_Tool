@@ -69,21 +69,22 @@ Dependencies are hard unless noted. No calendar estimates.
 - [x] Host-only recovery CLI (`npm run admin:recover`)
 - [x] Security tests (`test/admin-auth.test.js`, `test/management-db.test.js`)
 
-### 7C.2 — Secrets & keys (not started)
+### 7C.2 — Secrets & keys (implemented)
 
-- Encrypted Apify token save/validate/disconnect + runtime config holder.
-- API key CRUD (hash at rest, one-time plaintext), scopes hot-reload.
-- Read APIs: quota status, cache listing, health detail.
-- Admin **force refresh** endpoint wrapping existing `refresh()` + quota (for playground).
-- Import/overlay path for existing `API_KEYS` / `APIFY_TOKEN` env.
+- [x] Encrypted Apify token save/validate/disconnect + runtime config holder
+- [x] API key CRUD (hash at rest, one-time plaintext), scopes hot-reload
+- [x] Read APIs: quota status, cache listing, health detail
+- [x] Dual-read env + managed API keys; disconnect suppresses env Apify fallback
+- [ ] Admin **force refresh** / playground live scrape (7D)
+- [ ] Forced import of env keys into SQLite (optional; dual-read remains)
 
-**Acceptance (7C.1)**
+**Acceptance (7C.1 + 7C.2)**
 
 - [x] Setup takeover tests pass
 - [x] Admin session cannot be used as `x-api-key`; API key cannot hit admin routes
 - [x] Public posts contract tests still pass
 - [x] Cache/quota files not wiped by migrations
-- [ ] Apify token never returned after save (7C.2)
+- [x] Apify token never returned after save
 
 ---
 

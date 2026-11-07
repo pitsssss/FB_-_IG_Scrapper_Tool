@@ -1,6 +1,6 @@
 # Storage and configuration design
 
-**Phase:** 7A design; **7C.1 management SQLite implemented** (`MANAGEMENT_DIR`, default `./data/management/app.sqlite`). Provider credentials / API key tables reserved for 7C.2.  
+**Phase:** 7A design; **7C.1 + 7C.2 management SQLite implemented** (`MANAGEMENT_DIR`, schema v2: credentials, managed keys, scopes, audit).  
 **Related:** [ADR-006](./decisions/ADR-006-management-storage.md), [ADR-004](./decisions/ADR-004-apify-token.md), [ADR-005](./decisions/ADR-005-api-keys.md), [ADR-008](./decisions/ADR-008-usage-and-quota.md)
 
 ---
@@ -61,7 +61,8 @@ flowchart TB
 1. **Keep** post cache + quota + Instagram profile files exactly as today.
 2. **Management DB:** `MANAGEMENT_DIR/app.sqlite` (Docker: `/data/management`).
 3. **Driver:** Node.js built-in **`node:sqlite` (`DatabaseSync`)** — no npm native addon. Requires **Node ≥ 22.5** (`engines` updated; CI already on 22/24). Still emits `ExperimentalWarning`; acceptable for single-instance self-host MVP. `better-sqlite3` rejected to preserve zero-runtime-deps / Alpine Docker copy-only image.
-4. Schema versioned via `schema_migrations`. Tables in v1: `admin_users`, `admin_sessions`, `bootstrap_state`, `auth_events`, `auth_rate_limits`. Future: `provider_credentials`, `managed_api_keys`, `management_settings`.
+4. Schema versioned via `schema_migrations`. **v1:** auth tables. **v2:** `provider_credentials`, `managed_api_keys`, `api_key_scopes`, `management_audit_events`. Future: `management_settings`.
+5. **Encryption:** Apify tokens stored as AES-256-GCM ciphertext (`DATA_ENCRYPTION_KEY` = base64 32 bytes). Back up the key separately from `MANAGEMENT_DIR`.
 
 ---
 
