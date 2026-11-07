@@ -1,27 +1,93 @@
-# Single-replica only: filesystem Apify quota in CACHE_DIR is not multi-replica safe.
+# Three-service self-hosted stack: caddy + api + dashboard.
+# Single API replica only — filesystem Apify quota is not multi-replica safe.
+#
+# Production:
+#   1. Copy .env.example → .env and set secrets + API_DOMAIN + ADMIN_ALLOWED_ORIGINS
+#   2. docker compose up -d --build
+#
+# Local HTTP (loopback):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: .env
+    # Override with an absolute path for isolated smoke (COMPOSE_ENV_FILE).
+    env_file:
+      - ${COMPOSE_ENV_FILE:-.env}
     environment:
       CACHE_DIR: /data/cache
+      MANAGEMENT_DIR: /data/management
       HOST: 0.0.0.0
       PORT: "3000"
+      NODE_ENV: production
+      # Trust Caddy's forwarded proto/host for Secure cookies behind TLS.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
     volumes:
       - api_data:/data
-    # Do not publish host ports here; Caddy terminates TLS. Secrets come from env_file at runtime.
-    # Keep a single api replica: filesystem quota is not multi-replica safe.
     expose:
       - "3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 20s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - smp_net
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    restart: unless-stopped
+    # Same env file as api so ADMIN_INTERNAL_SECRET always matches without relying only on interpolation.
+    env_file:
+      - ${COMPOSE_ENV_FILE:-.env}
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: 0.0.0.0
+      API_INTERNAL_URL: http://api:3000
+      ADMIN_INTERNAL_SECRET: ${ADMIN_INTERNAL_SECRET}
+      ADMIN_COOKIE_SECURE: ${ADMIN_COOKIE_SECURE:-1}
+    expose:
+      - "3001"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health',{redirect:'manual'}).then((r)=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - smp_net
 
   caddy:
     image: caddy:2
@@ -36,9 +102,23 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+      dashboard:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - smp_net
 
 volumes:
   api_data:
   caddy_data:
   caddy_config:
+
+networks:
+  smp_net:
+    driver: bridge

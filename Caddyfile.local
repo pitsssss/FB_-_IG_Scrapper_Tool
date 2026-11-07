@@ -1,0 +1,42 @@
+# Local / loopback HTTP only — no HSTS, no public bind assumption.
+# Browser origin must match ADMIN_ALLOWED_ORIGINS (e.g. http://127.0.0.1:8080).
+
+:80 {
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Frame-Options DENY
+		-Server
+	}
+
+	handle /health {
+		reverse_proxy api:3000
+	}
+
+	handle /api/v1/* {
+		reverse_proxy api:3000 {
+			transport http {
+				response_header_timeout 200s
+			}
+		}
+	}
+
+	handle /api/auth/* {
+		reverse_proxy dashboard:3001
+	}
+
+	handle /api/management/* {
+		reverse_proxy dashboard:3001
+	}
+
+	handle /api/health {
+		reverse_proxy dashboard:3001
+	}
+
+	handle {
+		reverse_proxy dashboard:3001
+	}
+}

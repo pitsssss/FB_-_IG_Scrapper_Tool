@@ -1,8 +1,50 @@
+# Production / public domain (automatic HTTPS via Caddy).
+# Set API_DOMAIN to your DNS name (e.g. posts.example.com).
+# Local HTTP uses Caddyfile.local via docker compose -f docker-compose.yml -f docker-compose.local.yml
+
 {$API_DOMAIN} {
 	encode gzip
-	reverse_proxy api:3000 {
-		transport http {
-			response_header_timeout 200s
+
+	# Security headers (CSP kept permissive enough for Next.js + theme + media preview).
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Frame-Options DENY
+		# HSTS only meaningful on real HTTPS domains (Caddy serves HTTPS for non-localhost).
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Node.js posts API + admin management HTTP
+	handle /health {
+		reverse_proxy api:3000
+	}
+
+	handle /api/v1/* {
+		reverse_proxy api:3000 {
+			transport http {
+				response_header_timeout 200s
+			}
 		}
+	}
+
+	# Next.js BFF (auth + management proxy) — must NOT go to Node catch-all
+	handle /api/auth/* {
+		reverse_proxy dashboard:3001
+	}
+
+	handle /api/management/* {
+		reverse_proxy dashboard:3001
+	}
+
+	# Dashboard readiness (optional; also used by compose health via internal net)
+	handle /api/health {
+		reverse_proxy dashboard:3001
+	}
+
+	# Next.js UI, assets, and remaining routes
+	handle {
+		reverse_proxy dashboard:3001
 	}
 }
