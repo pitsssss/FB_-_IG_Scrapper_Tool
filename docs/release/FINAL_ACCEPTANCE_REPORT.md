@@ -3,6 +3,7 @@
 **Product:** Social Media Posts API  
 **Version:** `0.1.0-beta.1` (release candidate; not a published GitHub Release)  
 **Baseline inspected:** `a723114`  
+**Ending commit:** `df8c4fc`  
 **Report date:** 2026-11-07  
 **Verdict:** **CONDITIONAL GO**
 
@@ -15,6 +16,7 @@ This document is evidence-based. A CONDITIONAL GO means technical release-candid
 | Item | Value |
 | --- | --- |
 | Baseline SHA | `a723114` |
+| Ending SHA | `df8c4fc` |
 | Expected product version | `0.1.0-beta.1` |
 | License file | **Absent** — `LICENSE_DECISION_REQUIRED` |
 | Tag / GitHub Release | **Not created** (owner-gated) |
