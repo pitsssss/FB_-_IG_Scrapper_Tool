@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const MANAGEMENT_SCHEMA_VERSION = 2;
+export const MANAGEMENT_SCHEMA_VERSION = 3;
 
 const MIGRATIONS = [
   {
@@ -114,7 +114,82 @@ CREATE TABLE IF NOT EXISTS management_audit_events (
 );
 `,
   },
+  {
+    version: 3,
+    sql: `
+-- Additive admin identity / MFA columns (SQLite ignores IF NOT EXISTS on ADD COLUMN;
+-- applyColumnMigrations runs defensive ALTERs before/after this block).
+CREATE TABLE IF NOT EXISTS email_otp_challenges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER NOT NULL REFERENCES admin_users(id),
+  purpose TEXT NOT NULL,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  consumed_at TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS totp_pending (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  admin_id INTEGER NOT NULL REFERENCES admin_users(id),
+  ciphertext BLOB NOT NULL,
+  nonce BLOB NOT NULL,
+  auth_tag BLOB NOT NULL,
+  format_version INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recovery_code_hashes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER NOT NULL REFERENCES admin_users(id),
+  code_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  used_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS totp_used_steps (
+  admin_id INTEGER NOT NULL,
+  step INTEGER NOT NULL,
+  used_at TEXT NOT NULL,
+  PRIMARY KEY (admin_id, step)
+);
+`,
+  },
 ];
+
+/** Columns added in v3 — applied idempotently via PRAGMA table_info. */
+const V3_ADMIN_USER_COLUMNS = [
+  ['email', 'TEXT'],
+  ['email_verified_at', 'TEXT'],
+  ['email_pending', 'TEXT'],
+  ['totp_enabled', 'INTEGER NOT NULL DEFAULT 0'],
+  ['totp_ciphertext', 'BLOB'],
+  ['totp_nonce', 'BLOB'],
+  ['totp_auth_tag', 'BLOB'],
+  ['totp_format_version', 'INTEGER'],
+  ['totp_confirmed_at', 'TEXT'],
+  ['recovery_codes_generated_at', 'TEXT'],
+];
+
+const V3_SESSION_COLUMNS = [
+  ['auth_level', "TEXT NOT NULL DEFAULT 'full'"],
+  ['mfa_pending', 'INTEGER NOT NULL DEFAULT 0'],
+];
+
+function tableColumns(db, table) {
+  return new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name));
+}
+
+function ensureColumns(db, table, columns) {
+  const existing = tableColumns(db, table);
+  for (const [name, typeSql] of columns) {
+    if (existing.has(name)) continue;
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${typeSql}`);
+  }
+}
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -173,7 +248,17 @@ export function applyMigrations(db) {
     if (applied.has(migration.version)) continue;
     db.exec('BEGIN IMMEDIATE;');
     try {
+      if (migration.version === 3) {
+        ensureColumns(db, 'admin_users', V3_ADMIN_USER_COLUMNS);
+        ensureColumns(db, 'admin_sessions', V3_SESSION_COLUMNS);
+      }
       db.exec(migration.sql);
+      if (migration.version === 3) {
+        db.exec(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_email
+          ON admin_users(email) WHERE email IS NOT NULL;
+        `);
+      }
       db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
         migration.version,
         new Date().toISOString(),
@@ -183,6 +268,20 @@ export function applyMigrations(db) {
       try { db.exec('ROLLBACK;'); } catch { /* ignore */ }
       throw err;
     }
+  }
+
+  // Idempotent column ensure (safe no-ops when columns already exist).
+  try {
+    if (tableColumns(db, 'admin_users').has('id')) {
+      ensureColumns(db, 'admin_users', V3_ADMIN_USER_COLUMNS);
+      ensureColumns(db, 'admin_sessions', V3_SESSION_COLUMNS);
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_email
+        ON admin_users(email) WHERE email IS NOT NULL;
+      `);
+    }
+  } catch {
+    /* ignore */
   }
 }
 

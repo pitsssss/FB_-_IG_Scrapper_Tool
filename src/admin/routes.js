@@ -67,11 +67,31 @@ function isInternalCaller(req, config) {
 function sessionResponseData(result, { includeSessionToken }) {
   const data = {
     admin: result.admin,
-    csrfToken: result.session.csrf,
+    csrfToken: result.session?.csrf,
   };
   if (result.message) data.message = result.message;
-  if (includeSessionToken) data.sessionToken = result.session.token;
+  if (result.mfaRequired != null) data.mfaRequired = Boolean(result.mfaRequired);
+  if (result.verificationRequired != null) data.verificationRequired = Boolean(result.verificationRequired);
+  if (result.smtpConfigured != null) data.smtpConfigured = Boolean(result.smtpConfigured);
+  if (result.recoveryCodes) data.recoveryCodes = result.recoveryCodes;
+  if (result.secret) data.secret = result.secret;
+  if (result.otpauthUrl) data.otpauthUrl = result.otpauthUrl;
+  if (includeSessionToken && result.session?.token) data.sessionToken = result.session.token;
   return data;
+}
+
+function mutationResult(res, result, { secure, includeSessionToken, send }) {
+  if (!result.ok) {
+    const headers = result.retryAfterSec ? { 'retry-after': String(result.retryAfterSec) } : {};
+    return send(res, result.http, errBody(result.code, result.message), headers);
+  }
+  if (result.session) {
+    setSessionCookies(res, result.session, { secure });
+  }
+  return send(res, result.http || 200, {
+    success: true,
+    data: sessionResponseData(result, { includeSessionToken }),
+  });
 }
 
 /**
@@ -100,31 +120,39 @@ export async function handleAdminRoutes(req, res, url, { auth, hub, service, con
     'POST /api/v1/admin/setup': async () => {
       const body = await readJsonBody(req);
       const result = await authSvc.setup(body, req);
-      if (!result.ok) {
-        const headers = result.retryAfterSec ? { 'retry-after': String(result.retryAfterSec) } : {};
-        return send(res, result.http, errBody(result.code, result.message), headers);
-      }
-      setSessionCookies(res, result.session, { secure });
-      return send(res, result.http, {
-        success: true,
-        data: sessionResponseData(result, { includeSessionToken: isInternalCaller(req, config) }),
+      return mutationResult(res, result, {
+        secure,
+        includeSessionToken: isInternalCaller(req, config),
+        send,
       });
     },
     'POST /api/v1/admin/login': async () => {
       const body = await readJsonBody(req);
       const result = await authSvc.login(body, req);
+      return mutationResult(res, result, {
+        secure,
+        includeSessionToken: isInternalCaller(req, config),
+        send,
+      });
+    },
+    'POST /api/v1/admin/mfa/verify': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.mfaVerify(body, req);
       if (!result.ok) {
         const headers = result.retryAfterSec ? { 'retry-after': String(result.retryAfterSec) } : {};
         return send(res, result.http, errBody(result.code, result.message), headers);
       }
-      setSessionCookies(res, result.session, { secure });
-      return send(res, result.http, {
+      return send(res, 200, {
         success: true,
-        data: sessionResponseData(result, { includeSessionToken: isInternalCaller(req, config) }),
+        data: {
+          admin: result.admin,
+          mfaRequired: false,
+          alreadyComplete: Boolean(result.alreadyComplete),
+        },
       });
     },
     'POST /api/v1/admin/logout': async () => {
-      const gate = authSvc.requireSession(req, { requireCsrf: true });
+      const gate = authSvc.requireSession(req, { requireCsrf: true, allowMfaPending: true });
       if (!gate.ok && gate.code === 'CSRF_REJECTED') {
         return send(res, gate.http, errBody(gate.code, gate.message));
       }
@@ -135,24 +163,98 @@ export async function handleAdminRoutes(req, res, url, { auth, hub, service, con
     'GET /api/v1/admin/me': async () => {
       const result = authSvc.me(req);
       if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
-      return send(res, 200, { success: true, data: { admin: result.admin } });
+      return send(res, 200, {
+        success: true,
+        data: {
+          admin: result.admin,
+          mfaPending: Boolean(result.mfaPending),
+          authLevel: result.authLevel || 'full',
+        },
+      });
     },
     'POST /api/v1/admin/password': async () => {
       const body = await readJsonBody(req);
       const result = await authSvc.changePassword(body, req);
-      if (!result.ok) {
-        return send(res, result.http, errBody(result.code, result.message));
-      }
-      setSessionCookies(res, result.session, { secure });
-      return send(res, 200, {
-        success: true,
-        data: sessionResponseData(result, { includeSessionToken: isInternalCaller(req, config) }),
+      return mutationResult(res, result, {
+        secure,
+        includeSessionToken: isInternalCaller(req, config),
+        send,
       });
     },
     'GET /api/v1/admin/session': async () => {
       const result = authSvc.me(req);
       if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
-      return send(res, 200, { success: true, data: { authenticated: true, admin: result.admin } });
+      return send(res, 200, {
+        success: true,
+        data: {
+          authenticated: !result.mfaPending,
+          mfaPending: Boolean(result.mfaPending),
+          authLevel: result.authLevel || 'full',
+          admin: result.admin,
+        },
+      });
+    },
+    'GET /api/v1/admin/security': async () => {
+      const result = authSvc.securityStatus(req);
+      if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
+      return send(res, 200, { success: true, data: result.data });
+    },
+    'POST /api/v1/admin/security/email': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.enrollEmail(body, req);
+      return mutationResult(res, result, {
+        secure,
+        includeSessionToken: isInternalCaller(req, config),
+        send,
+      });
+    },
+    'POST /api/v1/admin/security/email/verify': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.verifyEmail(body, req);
+      if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
+      return send(res, 200, { success: true, data: { admin: result.admin } });
+    },
+    'POST /api/v1/admin/security/email/resend': async () => {
+      const result = await authSvc.resendEmailOtp(req);
+      if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
+      return send(res, 200, { success: true, data: { message: result.message } });
+    },
+    'POST /api/v1/admin/security/totp/start': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.totpStart(body, req);
+      if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
+      return send(res, 200, {
+        success: true,
+        data: {
+          secret: result.secret,
+          otpauthUrl: result.otpauthUrl,
+          message: result.message,
+        },
+      });
+    },
+    'POST /api/v1/admin/security/totp/confirm': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.totpConfirm(body, req);
+      return mutationResult(res, result, {
+        secure,
+        includeSessionToken: isInternalCaller(req, config),
+        send,
+      });
+    },
+    'POST /api/v1/admin/security/totp/disable': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.totpDisable(body, req);
+      return mutationResult(res, result, {
+        secure,
+        includeSessionToken: isInternalCaller(req, config),
+        send,
+      });
+    },
+    'POST /api/v1/admin/security/recovery-codes': async () => {
+      const body = await readJsonBody(req);
+      const result = await authSvc.recoveryCodesRegen(body, req);
+      if (!result.ok) return send(res, result.http, errBody(result.code, result.message));
+      return send(res, 200, { success: true, data: { recoveryCodes: result.recoveryCodes } });
     },
   };
 

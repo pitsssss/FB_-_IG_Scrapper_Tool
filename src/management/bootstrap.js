@@ -1,10 +1,10 @@
 import { safeEqualSecret, isoNow } from './cryptoUtil.js';
 import { hashPassword, validatePassword, validateUsername } from './passwords.js';
+import { validateEmail, usernameFromEmail } from './email.js';
 
 /**
  * Bootstrap / first-admin setup using BOOTSTRAP_SETUP_TOKEN.
- * Completed state is persisted in bootstrap_state and survives restarts
- * even if the env var remains set.
+ * New installs use email (+ derived username). Legacy username-only still supported via migration path.
  */
 export function createBootstrapService(db, { getSetupToken } = {}) {
   const getState = db.prepare('SELECT * FROM bootstrap_state WHERE id = 1');
@@ -17,8 +17,10 @@ export function createBootstrapService(db, { getSetupToken } = {}) {
   `);
   const countAdmins = db.prepare('SELECT COUNT(*) AS c FROM admin_users');
   const insertAdmin = db.prepare(`
-    INSERT INTO admin_users (id, username, password_hash, password_algo, password_params, created_at, updated_at)
-    VALUES (1, ?, ?, ?, ?, ?, ?)
+    INSERT INTO admin_users (
+      id, username, password_hash, password_algo, password_params,
+      email, email_verified_at, created_at, updated_at
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   function ensureRow() {
@@ -43,9 +45,16 @@ export function createBootstrapService(db, { getSetupToken } = {}) {
 
     /**
      * Atomically create the sole administrator.
-     * @returns {{ ok: true, admin: { id, username } } | { ok: false, code: string, message: string }}
+     * Accepts email (preferred) and optional username; derives username from email when omitted.
      */
-    async complete({ setupToken, username, password, confirmPassword }) {
+    async complete({
+      setupToken,
+      email,
+      username,
+      password,
+      confirmPassword,
+      emailVerified = false,
+    }) {
       ensureRow();
 
       if (this.isCompleted()) {
@@ -64,8 +73,20 @@ export function createBootstrapService(db, { getSetupToken } = {}) {
         return { ok: false, code: 'INVALID_SETUP_TOKEN', message: 'Invalid setup token' };
       }
 
-      const u = validateUsername(username);
-      if (!u.ok) return { ok: false, code: 'VALIDATION_ERROR', message: u.message };
+      const e = validateEmail(email);
+      if (!e.ok) return { ok: false, code: 'VALIDATION_ERROR', message: e.message };
+
+      let u;
+      if (username && String(username).trim()) {
+        u = validateUsername(username);
+        if (!u.ok) return { ok: false, code: 'VALIDATION_ERROR', message: u.message };
+      } else {
+        u = validateUsername(usernameFromEmail(e.email));
+        if (!u.ok) {
+          u = { ok: true, username: 'administrator' };
+        }
+      }
+
       const p = validatePassword(password);
       if (!p.ok) return { ok: false, code: 'VALIDATION_ERROR', message: p.message };
       if (password !== confirmPassword) {
@@ -77,21 +98,37 @@ export function createBootstrapService(db, { getSetupToken } = {}) {
 
       db.exec('BEGIN IMMEDIATE;');
       try {
-        // Re-check inside lock
         const admins = countAdmins.get().c;
         const state = getState.get();
         if (admins > 0 || state?.setup_completed_at) {
           db.exec('ROLLBACK;');
           return { ok: false, code: 'SETUP_COMPLETED', message: 'Initial setup is already complete' };
         }
-        insertAdmin.run(u.username, hashed.hash, hashed.algo, JSON.stringify(hashed.params), now, now);
+        insertAdmin.run(
+          u.username,
+          hashed.hash,
+          hashed.algo,
+          JSON.stringify(hashed.params),
+          e.email,
+          emailVerified ? now : null,
+          now,
+          now,
+        );
         const updated = completeState.run(now);
         if (updated.changes !== 1) {
           db.exec('ROLLBACK;');
           return { ok: false, code: 'SETUP_COMPLETED', message: 'Initial setup is already complete' };
         }
         db.exec('COMMIT;');
-        return { ok: true, admin: { id: 1, username: u.username } };
+        return {
+          ok: true,
+          admin: {
+            id: 1,
+            username: u.username,
+            email: e.email,
+            emailVerified: Boolean(emailVerified),
+          },
+        };
       } catch (err) {
         try { db.exec('ROLLBACK;'); } catch { /* ignore */ }
         if (String(err?.message || '').includes('UNIQUE')) {

@@ -5,9 +5,11 @@ import { setAuthCookies } from "@/lib/auth/cookies";
 export const dynamic = "force-dynamic";
 
 type SetupData = {
-  admin: { id: number; username: string };
+  admin: { id: number; username: string; email?: string | null };
   csrfToken: string;
   sessionToken?: string;
+  verificationRequired?: boolean;
+  smtpConfigured?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -26,6 +28,7 @@ export async function POST(request: Request) {
       method: "POST",
       body: JSON.stringify({
         setupToken: body.setupToken,
+        email: body.email,
         username: body.username,
         password: body.password,
         confirmPassword: body.confirmPassword,
@@ -40,6 +43,8 @@ export async function POST(request: Request) {
           data: {
             admin: result.body.data.admin,
             csrfToken: result.body.data.csrfToken,
+            verificationRequired: Boolean(result.body.data.verificationRequired),
+            smtpConfigured: Boolean(result.body.data.smtpConfigured),
           },
         },
         { status: result.status },

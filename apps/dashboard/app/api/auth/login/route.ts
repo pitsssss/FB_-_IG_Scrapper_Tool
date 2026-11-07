@@ -5,9 +5,10 @@ import { setAuthCookies } from "@/lib/auth/cookies";
 export const dynamic = "force-dynamic";
 
 type LoginData = {
-  admin: { id: number; username: string };
+  admin: { id: number; username: string; email?: string | null };
   csrfToken: string;
   sessionToken?: string;
+  mfaRequired?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -25,7 +26,9 @@ export async function POST(request: Request) {
     const result = await adminApiFetch<LoginData>("/api/v1/admin/login", {
       method: "POST",
       body: JSON.stringify({
+        email: body.email,
         username: body.username,
+        login: body.login,
         password: body.password,
       }),
     });
@@ -38,6 +41,7 @@ export async function POST(request: Request) {
           data: {
             admin: result.body.data.admin,
             csrfToken: result.body.data.csrfToken,
+            mfaRequired: Boolean(result.body.data.mfaRequired),
           },
         },
         { status: result.status },

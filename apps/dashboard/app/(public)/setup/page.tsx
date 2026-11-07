@@ -14,6 +14,7 @@ export default async function SetupPage() {
   let status = {
     setupAvailable: false,
     setupRequired: true,
+    smtpConfigured: false,
     message: "Unable to reach the management API.",
   };
   try {
@@ -22,6 +23,7 @@ export default async function SetupPage() {
       status = {
         setupAvailable: Boolean(result.body.data.setupAvailable),
         setupRequired: Boolean(result.body.data.setupRequired),
+        smtpConfigured: Boolean(result.body.data.smtpConfigured),
         message: result.body.data.message || status.message,
       };
     }
@@ -32,7 +34,7 @@ export default async function SetupPage() {
   return (
     <div>
       <PageHeader
-        title="Initial administrator setup"
+        title="Create administrator account"
         description="One-time bootstrap with BOOTSTRAP_SETUP_TOKEN. No public registration."
       />
       {!status.setupRequired ? (
@@ -47,6 +49,7 @@ export default async function SetupPage() {
       <SetupForm
         setupAvailable={status.setupAvailable}
         setupRequired={status.setupRequired}
+        smtpConfigured={status.smtpConfigured}
         message={status.message}
       />
     </div>

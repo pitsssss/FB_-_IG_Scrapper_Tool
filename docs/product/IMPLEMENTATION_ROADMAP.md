@@ -69,6 +69,16 @@ Dependencies are hard unless noted. No calendar estimates.
 - [x] Host-only recovery CLI (`npm run admin:recover`)
 - [x] Security tests (`test/admin-auth.test.js`, `test/management-db.test.js`)
 
+### 7C.1B — Email identity, OTP, TOTP MFA (implemented)
+
+- [x] Additive management schema v3 (email, OTP, TOTP, recovery, session auth_level)
+- [x] Email-based setup + legacy username login compatibility
+- [x] Optional SMTP verification OTPs (fail closed when SMTP absent)
+- [x] TOTP MFA + recovery codes; MFA-gated sessions before full admin access
+- [x] Account security UI (Settings) + `/mfa` challenge
+- [x] Interactive CLI recovery (MFA cleared on host reset)
+- [x] Tests: `test/admin-auth-mfa.test.js`
+
 ### 7C.2 — Secrets & keys (implemented)
 
 - [x] Encrypted Apify token save/validate/disconnect + runtime config holder
@@ -78,13 +88,15 @@ Dependencies are hard unless noted. No calendar estimates.
 - [ ] Admin **force refresh** / playground live scrape (7D)
 - [ ] Forced import of env keys into SQLite (optional; dual-read remains)
 
-**Acceptance (7C.1 + 7C.2)**
+**Acceptance (7C.1 + 7C.1B + 7C.2)**
 
 - [x] Setup takeover tests pass
 - [x] Admin session cannot be used as `x-api-key`; API key cannot hit admin routes
 - [x] Public posts contract tests still pass
 - [x] Cache/quota files not wiped by migrations
 - [x] Apify token never returned after save
+- [x] MFA pending sessions cannot call management APIs
+- [x] SMTP-absent deployments never claim email verification success
 
 ---
 

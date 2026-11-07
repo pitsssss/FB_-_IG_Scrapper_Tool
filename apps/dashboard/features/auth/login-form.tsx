@@ -9,7 +9,7 @@ import { Input, Label } from "@/components/ui/input";
 
 export function LoginForm() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,11 +22,16 @@ export function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email: login, username: login, password }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(body?.error?.message || "Sign in failed");
+        return;
+      }
+      if (body?.data?.mfaRequired) {
+        router.replace("/mfa");
+        router.refresh();
         return;
       }
       router.replace("/overview");
@@ -42,7 +47,7 @@ export function LoginForm() {
     <Card>
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
-        <CardDescription>Separate from public x-api-key integrations</CardDescription>
+        <CardDescription>Administrator email or username · separate from public x-api-key clients</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit} noValidate>
@@ -52,14 +57,14 @@ export function LoginForm() {
             </Alert>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="login">Email or username</Label>
             <Input
-              id="username"
-              name="username"
+              id="login"
+              name="login"
               autoComplete="username"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
               disabled={loading}
             />
           </div>

@@ -99,6 +99,7 @@ async function start({ envToken = '', verifyImpl } = {}) {
   const setup = await json(base, 'POST', '/api/v1/admin/setup', {
     body: {
       setupToken: BOOT,
+      email: 'admin@example.com',
       username: 'admin',
       password: 'correct-horse-battery',
       confirmPassword: 'correct-horse-battery',
@@ -249,6 +250,7 @@ test('missing encryption key fails closed on connect', async () => {
     const setup = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: BOOT,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',

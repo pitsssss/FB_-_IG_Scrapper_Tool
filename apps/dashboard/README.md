@@ -2,13 +2,15 @@
 
 Next.js App Router administrator UI for the self-hosted Social Media Posts API.
 
-**Phase 7C.2:** Apify provider connection, managed API keys, and read-only cache/quota inspection are wired to the authenticated management API.
+**Phases 7C.1B / 7C.2:** Email administrator setup/login, optional SMTP verification, TOTP MFA, Apify provider connection, managed API keys, and read-only cache/quota inspection.
 
 ## Prerequisites
 
 - Node.js **≥ 22.5** on the API host
-- Running posts API with management auth + `DATA_ENCRYPTION_KEY` (for provider save)
+- Running posts API with management auth
+- `DATA_ENCRYPTION_KEY` on the API (provider credentials + TOTP secrets)
 - Matching `ADMIN_INTERNAL_SECRET` on API and dashboard
+- Optional `SMTP_*` on the API for email verification OTPs (not required)
 
 ## Install
 
@@ -24,6 +26,13 @@ ADMIN_INTERNAL_SECRET=<same-as-api>
 ```
 
 ## Operator flows
+
+### Create administrator / sign in
+
+1. Set `BOOTSTRAP_SETUP_TOKEN` on the API → open `/setup` → email + password + token.
+2. Sign in at `/login` with email (or legacy username).
+3. If MFA is enabled, complete `/mfa` before the dashboard unlocks.
+4. Manage email, authenticator MFA, recovery codes, and password under **Settings**.
 
 ### Connect Apify
 
@@ -48,9 +57,9 @@ Environment `API_KEYS` appear as read-only rows.
 
 ## Recovery
 
-Password recovery remains host-only: `npm run admin:recover` on the API.
+Password recovery remains host-only: `npm run admin:recover` on the API (interactive password preferred). Host recovery also clears TOTP MFA and recovery codes so the operator can regain access.
 
-Encryption key loss: encrypted Apify tokens cannot be recovered — reconnect with a new token after restoring/setting `DATA_ENCRYPTION_KEY`.
+Encryption key loss: encrypted Apify tokens and TOTP secrets cannot be recovered — reconnect Apify and re-enroll MFA after restoring/setting `DATA_ENCRYPTION_KEY`.
 
 ## Commands
 
