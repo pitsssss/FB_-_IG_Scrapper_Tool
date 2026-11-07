@@ -8,24 +8,33 @@ Complete Docker Compose deployment for the Social Media Posts API (API + Next.js
 - ~1 GB free disk for images/volumes
 - For production HTTPS: a DNS name pointing at your server and ports 80/443 available
 
-You do **not** need a host Node.js install for normal Docker operation.
+You do **not** need a host Node.js install for normal Docker operation. Initialization uses Docker to run the secret generator.
 
 ## 1. Clone
 
 ```bash
 git clone <your-fork-or-repo-url>
-cd fb-posts-api
+cd Facebook_Scrapper_Tool   # or your local folder name
 ```
 
-## 2. Configure secrets
+## 2. Configure secrets (Docker-first)
+
+**Linux / macOS**
 
 ```bash
-# PowerShell or bash
-cp .env.example .env
-npm run secrets:generate
+chmod +x scripts/init-selfhost.sh
+./scripts/init-selfhost.sh
 ```
 
-`secrets:generate` fills **missing** values only (`BOOTSTRAP_SETUP_TOKEN`, `ADMIN_INTERNAL_SECRET`, `DATA_ENCRYPTION_KEY`, safe local defaults). It never overwrites existing secrets.
+**Windows PowerShell**
+
+```powershell
+.\scripts\init-selfhost.ps1
+```
+
+This copies `.env.example` → `.env` when missing, then runs `node:22-alpine` with `scripts/generate-compose-secrets.mjs`. It fills **missing** values only (`BOOTSTRAP_SETUP_TOKEN`, `ADMIN_INTERNAL_SECRET`, `DATA_ENCRYPTION_KEY`, safe local defaults) and **never** overwrites existing secrets or regenerates keys on restart.
+
+Developers who already have Node ≥ 22 may instead run `npm run secrets:generate`.
 
 Edit `.env`:
 

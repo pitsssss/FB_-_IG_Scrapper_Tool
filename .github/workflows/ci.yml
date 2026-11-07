@@ -31,29 +31,80 @@ jobs:
       - name: End-to-end tests
         run: npm run e2e
 
-      # No install step: this package has zero runtime dependencies.
-      # No APIFY_TOKEN / production secrets are required; e2e uses fake upstream.
+      # Zero runtime dependencies. No APIFY_TOKEN; e2e uses fake upstream.
 
-  docker-smoke:
-    name: docker build + smoke (ubuntu)
+  postman-offline:
+    name: postman offline (ubuntu / Node 22)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install Newman (devDependency)
+        run: npm install
+      - name: Postman offline
+        run: npm run postman:offline
 
+  dashboard:
+    name: dashboard (ubuntu / Node 22)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  docker-smoke:
+    name: docker API smoke (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Make smoke script executable
         run: chmod +x scripts/docker-smoke.sh
-
       - name: Docker build, health, auth, volume persistence
         env:
           IMAGE_TAG: fb-posts-api:ci-${{ github.sha }}
           API_PORT: "18080"
         run: ./scripts/docker-smoke.sh
 
-      # Uses only synthetic API_KEYS / dummy APIFY_TOKEN and the local fake upstream.
-      # No deployment and no real Apify network calls.
+  compose-smoke:
+    name: compose full-stack smoke (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compose config
+        run: docker compose -f docker-compose.yml -f docker-compose.local.yml config -q
+      - name: Isolated compose smoke
+        run: npm run compose:smoke
+
+  audit-dev:
+    name: npm audit (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Root audit (Newman toolchain)
+        run: npm install && npm audit --audit-level=high || true
+      - name: Dashboard audit
+        working-directory: apps/dashboard
+        run: npm ci && npm audit --audit-level=high || true
