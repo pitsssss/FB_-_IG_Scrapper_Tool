@@ -409,6 +409,19 @@ export function createAccountSecurityService(db, {
       };
     },
 
+    /** Re-authenticate for destructive admin actions (cache delete, etc.). */
+    async assertCurrentPassword(currentPassword) {
+      const admin = getAdmin.get();
+      if (!admin) {
+        return { ok: false, code: 'NO_ADMIN', message: 'Administrator not found' };
+      }
+      const valid = await verifyCurrentPassword(admin, currentPassword);
+      if (!valid) {
+        return { ok: false, code: 'INVALID_PASSWORD', message: 'Current password is incorrect' };
+      }
+      return { ok: true };
+    },
+
     /** Test helper */
     _peekTotpCode() {
       const admin = getAdmin.get();

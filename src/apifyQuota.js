@@ -28,6 +28,8 @@ export function createApifyQuota({
   let queue = Promise.resolve();
   let untrusted = false;
   let memory = null; // { schemaVersion, utcDate, consumed } | null after load
+  /** Effective daily limit — may be lowered at runtime without resetting consumed. */
+  let effectiveDailyLimit = dailyLimit;
 
   const enqueue = (fn) => {
     const run = queue.then(fn, fn);
@@ -102,11 +104,12 @@ export function createApifyQuota({
     return enqueue(async () => {
       const today = utcDateOf(now());
 
+      const limit = effectiveDailyLimit;
       if (untrusted) {
         return {
           ok: false,
           reason: 'quota_untrusted',
-          consumed: dailyLimit,
+          consumed: limit,
           remaining: 0,
           utcDate: today,
         };
@@ -117,7 +120,7 @@ export function createApifyQuota({
         return {
           ok: false,
           reason: 'quota_untrusted',
-          consumed: dailyLimit,
+          consumed: limit,
           remaining: 0,
           utcDate: today,
         };
@@ -128,12 +131,12 @@ export function createApifyQuota({
         state.consumed = 0;
       }
 
-      if (dailyLimit === 0 || state.consumed >= dailyLimit) {
+      if (limit === 0 || state.consumed >= limit) {
         return {
           ok: false,
-          reason: dailyLimit === 0 ? 'quota_disabled' : 'quota_exhausted',
+          reason: limit === 0 ? 'quota_disabled' : 'quota_exhausted',
           consumed: state.consumed,
-          remaining: Math.max(0, dailyLimit - state.consumed),
+          remaining: Math.max(0, limit - state.consumed),
           utcDate: today,
         };
       }
@@ -154,7 +157,7 @@ export function createApifyQuota({
           ok: false,
           reason: 'quota_persist_failed',
           consumed: state.consumed,
-          remaining: Math.max(0, dailyLimit - state.consumed),
+          remaining: Math.max(0, limit - state.consumed),
           utcDate: today,
         };
       }
@@ -162,7 +165,7 @@ export function createApifyQuota({
       return {
         ok: true,
         consumed: next.consumed,
-        remaining: Math.max(0, dailyLimit - next.consumed),
+        remaining: Math.max(0, limit - next.consumed),
         utcDate: today,
       };
     });
@@ -199,13 +202,14 @@ export function createApifyQuota({
 
     if (untrusted) readable = false;
 
-    const remaining = readable ? Math.max(0, dailyLimit - effectiveConsumed) : 0;
-    const allowed = readable && dailyLimit > 0 && effectiveConsumed < dailyLimit;
+    const limit = effectiveDailyLimit;
+    const remaining = readable ? Math.max(0, limit - effectiveConsumed) : 0;
+    const allowed = readable && limit > 0 && effectiveConsumed < limit;
 
     return {
       todayUtc: today,
       stateUtcDate: stateDate,
-      dailyLimit,
+      dailyLimit: limit,
       consumed: effectiveConsumed,
       rawConsumed,
       remaining,
@@ -216,9 +220,23 @@ export function createApifyQuota({
     };
   }
 
+  /**
+   * Lower or raise the effective daily limit without resetting consumed counters.
+   * Callers must enforce any hard ceiling before invoking.
+   */
+  function setDailyLimit(next) {
+    if (!Number.isInteger(next) || next < 0) {
+      throw new Error('apifyQuota: dailyLimit must be a non-negative integer');
+    }
+    effectiveDailyLimit = next;
+    return effectiveDailyLimit;
+  }
+
   return {
     reserve,
     getStatus,
+    setDailyLimit,
+    getDailyLimit: () => effectiveDailyLimit,
     filePath,
     /** Test helper: mark store untrusted without writing. */
     _markUntrusted() { untrusted = true; },

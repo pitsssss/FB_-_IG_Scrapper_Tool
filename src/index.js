@@ -8,21 +8,43 @@ import {
 } from './cacheWarmer.js';
 
 const config = loadConfig();
-const warmFacebook = parseWarmPageList(config.warmPagesRaw, { allowedPages: config.allowedPages });
-const warmInstagram = parseInstagramWarmProfileList(config.instagramWarmProfilesRaw, {
-  instagramAllowedProfiles: config.instagramAllowedProfiles,
-});
-const warmPages = [...warmFacebook, ...warmInstagram];
 const service = createService(config);
 const server = createApp(config, service);
-// Activate management hub (encrypted Apify token + managed API keys) without waiting for an admin request.
+// Activate management hub early so settings overrides apply before warmer start.
+let hub = null;
 try {
-  server.getHub?.();
+  hub = server.getHub?.() || null;
+  hub?.settings?.applyToRuntime?.();
 } catch (err) {
   console.error('[admin] management hub failed to start:', err?.message || err);
 }
 let warmer = null;
 let shuttingDown = false;
+
+function resolveWarmPages() {
+  const warmCfg = hub?.settings?.resolvedWarmConfig?.();
+  if (warmCfg) {
+    if (!warmCfg.enabled) return { pages: [], facebook: [], instagram: [], warmCfg };
+    const facebook = parseWarmPageList(warmCfg.facebook.join(','), {
+      allowedPages: config.allowedPages,
+    });
+    const instagram = parseInstagramWarmProfileList(warmCfg.instagram.join(','), {
+      instagramAllowedProfiles: config.instagramAllowedProfiles,
+    });
+    if (Number.isInteger(warmCfg.intervalSeconds)) {
+      config.warmIntervalMs = warmCfg.intervalSeconds * 1000;
+    }
+    if (Number.isInteger(warmCfg.concurrency)) {
+      config.warmConcurrency = warmCfg.concurrency;
+    }
+    return { pages: [...facebook, ...instagram], facebook, instagram, warmCfg };
+  }
+  const facebook = parseWarmPageList(config.warmPagesRaw, { allowedPages: config.allowedPages });
+  const instagram = parseInstagramWarmProfileList(config.instagramWarmProfilesRaw, {
+    instagramAllowedProfiles: config.instagramAllowedProfiles,
+  });
+  return { pages: [...facebook, ...instagram], facebook, instagram, warmCfg: null };
+}
 
 server.listen(config.port, config.host, () => {
   console.log(`fb-posts-api listening on http://${config.host}:${config.port}`);
@@ -34,12 +56,20 @@ server.listen(config.port, config.host, () => {
   }
   console.log('NOTE: filesystem Apify quota is single-process only — run one API replica until a shared quota store exists.');
 
-  if (warmPages.length) {
-    warmer = createCacheWarmer({ config, service, pages: warmPages });
-    warmer.start();
-    console.log(`cache warmer: ${warmPages.length} page(s) (fb=${warmFacebook.length}, ig=${warmInstagram.length}), startup delay ${config.warmStartupDelayMs / 1000}s, interval ${config.warmIntervalMs / 1000}s, concurrency ${config.warmConcurrency}`);
-  } else {
-    console.log('cache warmer: disabled (WARM_PAGES / INSTAGRAM_WARM_PROFILES empty)');
+  try {
+    const { pages, facebook, instagram, warmCfg } = resolveWarmPages();
+    if (pages.length && (warmCfg ? warmCfg.enabled : true)) {
+      warmer = createCacheWarmer({ config, service, pages });
+      warmer.start();
+      console.log(`cache warmer: ${pages.length} page(s) (fb=${facebook.length}, ig=${instagram.length}), startup delay ${config.warmStartupDelayMs / 1000}s, interval ${config.warmIntervalMs / 1000}s, concurrency ${config.warmConcurrency}`);
+      if (warmCfg) {
+        console.log('cache warmer: lists loaded from managed settings + env (restart required after dashboard warm changes)');
+      }
+    } else {
+      console.log('cache warmer: disabled (empty warm lists or warm_enabled=false)');
+    }
+  } catch (err) {
+    console.error('[warm] failed to start warmer:', err?.message || err);
   }
 });
 

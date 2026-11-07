@@ -54,4 +54,34 @@ export class Cache {
     this.mem.set(key, value);
     return { persisted };
   }
+
+  hasMemory(key) {
+    return this.mem.has(key);
+  }
+
+  /**
+   * Remove one account from memory and disk. Never touches quota files.
+   * @returns {{ ok: true, memoryDeleted: boolean, diskDeleted: boolean }
+   *         | { ok: false, code: string, message: string }}
+   */
+  async delete(key) {
+    if (!key || typeof key !== 'string' || key.includes('..') || key.includes('/') || key.includes('\\')) {
+      return { ok: false, code: 'INVALID_CACHE_KEY', message: 'Invalid cache key' };
+    }
+    const memoryDeleted = this.mem.delete(key);
+    let diskDeleted = false;
+    try {
+      await fs.unlink(this.file(key));
+      diskDeleted = true;
+    } catch (err) {
+      if (err && err.code !== 'ENOENT') {
+        return {
+          ok: false,
+          code: 'CACHE_DELETE_FAILED',
+          message: 'Could not delete cache file',
+        };
+      }
+    }
+    return { ok: true, memoryDeleted, diskDeleted };
+  }
 }

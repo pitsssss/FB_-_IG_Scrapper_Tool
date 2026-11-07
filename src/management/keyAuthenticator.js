@@ -12,6 +12,8 @@ export function createKeyAuthenticator({
   getManagedSnapshot,
   allowedPages = [],
   instagramAllowedProfiles = [],
+  getAllowedPages,
+  getInstagramAllowedProfiles,
   onManagedUse,
 } = {}) {
   const env = envKeys.map((k) => ({
@@ -24,12 +26,22 @@ export function createKeyAuthenticator({
   }));
 
   let managed = [];
+  let pages = Array.isArray(allowedPages) ? allowedPages : [];
+  let igProfiles = Array.isArray(instagramAllowedProfiles) ? instagramAllowedProfiles : [];
 
   function refreshManaged() {
     managed = typeof getManagedSnapshot === 'function' ? getManagedSnapshot() : [];
   }
 
+  function refreshAllowlists() {
+    if (typeof getAllowedPages === 'function') pages = getAllowedPages() || [];
+    if (typeof getInstagramAllowedProfiles === 'function') {
+      igProfiles = getInstagramAllowedProfiles() || [];
+    }
+  }
+
   refreshManaged();
+  refreshAllowlists();
 
   function authenticate(req) {
     const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
@@ -63,11 +75,12 @@ export function createKeyAuthenticator({
 
   function pageAllowedForClient(client, ref) {
     if (!client) return false;
+    refreshAllowlists();
     const isIg = ref.platform === 'instagram' || String(ref.key || '').startsWith('instagram:');
     if (isIg) {
-      const allow = instagramAllowedProfiles || [];
+      const allow = igProfiles || [];
       if (allow.length && !allow.includes(ref.key)) return false;
-    } else if (allowedPages.length && !allowedPages.includes(ref.key)) {
+    } else if (pages.length && !pages.includes(ref.key)) {
       return false;
     }
 
@@ -103,6 +116,11 @@ export function createKeyAuthenticator({
     authenticate,
     pageAllowedForClient,
     refreshManaged,
+    refreshAllowlists,
+    setAllowlists(nextPages, nextIg) {
+      if (Array.isArray(nextPages)) pages = nextPages;
+      if (Array.isArray(nextIg)) igProfiles = nextIg;
+    },
     listEnvironmentMeta,
     envClientNames: () => env.map((k) => k.name),
   };
