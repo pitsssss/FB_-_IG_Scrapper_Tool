@@ -11,6 +11,9 @@ handoff/
 *.generated.postman_environment.json
 credentials*.json
 **/secrets/
+backups/
+docs/release/private/
+*.privacy-history.json
 apps/dashboard/.next/
 apps/dashboard/out/
 apps/dashboard/coverage/

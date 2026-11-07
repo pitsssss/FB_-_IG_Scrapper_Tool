@@ -19,20 +19,26 @@ Self-hosted deployments store durable state in the Docker volume mounted at `/da
 
 While the API is running, SQLite may use WAL (`app.sqlite-wal`, `app.sqlite-shm`). Copying only `app.sqlite` mid-write can produce a corrupt snapshot.
 
-### Recommended: Node backup helper
+### Recommended: consistent SQLite snapshot (`VACUUM INTO`)
 
 ```bash
-# Prefer stopping the API first when WAL files may exist.
-docker compose stop api   # or: docker compose -f docker-compose.yml -f docker-compose.local.yml stop api
-
-# From the repo (host Node ≥ 22), pointing at a local copy of MANAGEMENT_DIR or a volume extract:
+# From the repo (host Node ≥ 22), against MANAGEMENT_DIR (API may stay up):
 npm run backup:management -- --management-dir ./data/management --out ./backups
 
 # Restore into an isolated directory (refuses overwrite unless --force):
 npm run backup:management -- --restore ./backups/mgmt-....sqlite --management-dir ./data/management-restore
 ```
 
-`scripts/backup-management.mjs` copies `app.sqlite` plus `-wal`/`-shm` sidecars when present. It does **not** include `DATA_ENCRYPTION_KEY`.
+`scripts/backup-management.mjs` prefers SQLite **`VACUUM INTO`** (verified online-consistent snapshot + `PRAGMA integrity_check`). If that fails, it falls back to copying `app.sqlite` plus `-wal`/`-shm` and warns. It does **not** include `DATA_ENCRYPTION_KEY`.
+
+Docker-only operators can copy the script invocation via:
+
+```bash
+docker run --rm -v "${PWD}:/work" -w /work node:22-alpine \
+  node scripts/backup-management.mjs --management-dir /work/data/management --out /work/backups
+```
+
+(Adjust volume mounts when backing up from a named Docker volume.)
 
 ### Alternative: clean shutdown + volume archive
 
