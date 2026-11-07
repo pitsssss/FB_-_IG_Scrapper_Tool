@@ -1,6 +1,6 @@
 # Security architecture
 
-**Phase:** 7A design only  
+**Phase:** 7A design; **7C.1 implemented** (admin bootstrap, sessions, CSRF, rate limits). Apify/API-key management remains 7C.2.  
 **Companion ADRs:** [ADR-003](./decisions/ADR-003-admin-auth.md), [ADR-004](./decisions/ADR-004-apify-token.md), [ADR-005](./decisions/ADR-005-api-keys.md)
 
 ---
@@ -59,20 +59,19 @@ flowchart LR
 | **D. Docker-provided default admin password** | Convenient | Default/shared passwords get scanned; violates “no default admin password” | **Rejected** |
 | **E. Public open registration until first user** | Simple | Classic setup-takeover on public internet | **Rejected** |
 
-### 3.2 Selected model
+### 3.2 Selected model (7C.1)
 
-**Primary:** Operator generates a high-entropy setup token (≥128 bits) and injects it as `BOOTSTRAP_SETUP_TOKEN` (or equivalent Compose secret) **before** opening ports to the internet.
+**Primary (implemented):** Operator generates a high-entropy setup token (≥128 bits) and injects it as `BOOTSTRAP_SETUP_TOKEN` **before** exposing the dashboard. If the token is unset and no admin exists, setup **fails closed** with actionable guidance (no auto-generated public token in MVP).
 
-**Secondary:** If unset and no admin exists, API may generate a token, store **only the hash**, and write plaintext **once** to a volume path with restrictive permissions. Printing to stdout is **opt-in** (`BOOTSTRAP_PRINT_TOKEN=1`) to avoid log scrapers.
+**Password KDF (implemented):** Node.js `crypto.scrypt` (memory-hard). Parameters stored beside the hash for future Argon2id migration. Argon2id was deferred to avoid native addons in the zero-npm Docker image.
 
-**Rules:**
+**Rules (enforced in code + tests):**
 
-- No default admin password.
-- Setup completes atomically: create admin credential record + mark bootstrap consumed in one transaction/file replace.
-- Concurrent setup attempts: only one wins; others get `409` / `SETUP_ALREADY_COMPLETED` or `INVALID_BOOTSTRAP_TOKEN`.
-- Setup token invalid after success; optional absolute TTL (e.g. 24h) while unused.
-- Interrupted setup (process crash mid-write): store must fail closed (no half-created admin with open bootstrap). Use atomic write / SQLite transaction.
-- Recovery: documented “reset admin” procedure requiring filesystem access (delete admin record + re-issue bootstrap) — never a public “forgot setup” endpoint without proof of host access.
+- No default admin password / no public registration.
+- Setup completes atomically in SQLite (`BEGIN IMMEDIATE`).
+- Concurrent setup: only one admin (`id=1`); losers get `409 SETUP_COMPLETED`.
+- Completed setup stays completed across restarts even if `BOOTSTRAP_SETUP_TOKEN` remains set.
+- Recovery: `npm run admin:recover -- --password …` (host filesystem only).
 
 ### 3.3 Setup takeover threat model
 

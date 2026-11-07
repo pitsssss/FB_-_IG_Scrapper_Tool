@@ -1,6 +1,10 @@
 node_modules
 .env
+.env.local
 data
+**/management/*.sqlite
 test
 .git
 *.md
+apps/dashboard/.next
+apps/dashboard/node_modules

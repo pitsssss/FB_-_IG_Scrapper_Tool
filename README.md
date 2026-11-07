@@ -3,7 +3,7 @@
 A standalone Node.js REST API that retrieves and normalizes recent **public** Facebook page posts and Instagram profile posts for backend clients—with API-key auth, persistent caching, shared Apify usage controls, and a stable JSON contract.
 
 [![CI](https://github.com/pitsssss/Facebook_Scrapper_Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/pitsssss/Facebook_Scrapper_Tool/actions/workflows/ci.yml)
-![Node.js ≥20.6](https://img.shields.io/badge/node-%3E%3D20.6-brightgreen)
+![Node.js ≥22.5](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen)
 ![Runtime deps](https://img.shields.io/badge/runtime%20dependencies-0-lightgrey)
 
 > Repository name on GitHub remains `Facebook_Scrapper_Tool`. The product name is **Social Media Posts API**.
@@ -95,7 +95,7 @@ flowchart TD
 
 ## Quick start
 
-**Requirements:** Node.js **≥ 20.6** (CI also runs on 22 and 24). No runtime `npm` packages; `newman` is a **devDependency** for Postman offline runs.
+**Requirements:** Node.js **≥ 22.5** (CI runs on 22 and 24; needed for built-in `node:sqlite` management store). No runtime `npm` packages; `newman` is a **devDependency** for Postman offline runs.
 
 ### A. Install
 
@@ -562,7 +562,7 @@ No external security audit or compliance certification is claimed.
 ```text
 ├── src/                 # HTTP server, service, cache, quota, normalizers
 │   └── providers/       # Apify (FB/IG), Graph, optional IG profile Actor
-├── apps/dashboard/      # Next.js admin UI foundation (Phase 7B — local preview only)
+├── apps/dashboard/      # Next.js admin UI (Phase 7C.1 — setup/login/sessions)
 ├── test/                # Unit / integration tests
 ├── scripts/             # E2E, Postman runner, quota status, Docker smoke
 ├── postman/             # Unified collection + env template
@@ -575,7 +575,7 @@ No external security audit or compliance certification is claimed.
 └── package.json
 ```
 
-> **Dashboard status:** `apps/dashboard` is a UI foundation for the future self-hosted admin experience. It is **not** production-ready and must not be exposed publicly until Phase 7C authentication. See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
+> **Dashboard status:** `apps/dashboard` supports secure first-time setup and administrator login (Phase 7C.1). Apify token and API key management ship in 7C.2. See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
 
 ## License & support
 

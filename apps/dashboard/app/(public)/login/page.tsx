@@ -1,40 +1,42 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { LoginForm } from "@/features/auth/login-form";
+import { getSetupStatus } from "@/lib/auth/api";
+import { redirectIfAuthenticated } from "@/lib/auth/session";
 
 export const metadata = { title: "Login" };
+export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  await redirectIfAuthenticated();
+  let setupHint: string | null = null;
+  try {
+    const setup = await getSetupStatus();
+    if (setup.body.data?.setupRequired) {
+      setupHint = setup.body.data.setupAvailable
+        ? "Initial setup is available."
+        : setup.body.data.message;
+    }
+  } catch {
+    setupHint = "Management API unreachable — start the API server before signing in.";
+  }
+
   return (
     <div>
       <PageHeader
         title="Administrator login"
-        description="Session cookies and CSRF protection arrive in Phase 7C. This page does not authenticate."
+        description="Server-side sessions with HttpOnly cookies. Public API keys cannot sign in here."
       />
-      <Alert className="mb-6" variant="warning" title="Login disabled">
-        There is no password check, mock cookie, or demo credential. Do not treat this screen as access control.
-      </Alert>
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Separate from public x-api-key integrations</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" disabled placeholder="Not available" autoComplete="username" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" disabled placeholder="Not available" autoComplete="current-password" />
-          </div>
-          <Button type="button" disabled>
-            Sign in
-          </Button>
-        </CardContent>
-      </Card>
+      {setupHint ? (
+        <Alert className="mb-6" variant="info" title="Setup required">
+          {setupHint}{" "}
+          <Link href="/setup" className="underline underline-offset-2">
+            Open setup
+          </Link>
+        </Alert>
+      ) : null}
+      <LoginForm />
     </div>
   );
 }

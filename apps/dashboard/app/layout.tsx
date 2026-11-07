@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
-import { LockedScreen } from "@/components/layout/locked-screen";
-import { isDashboardDevPreviewEnabled, previewDeniedReason } from "@/lib/config/preview";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,20 +18,15 @@ export const metadata: Metadata = {
     default: "Social Media Posts API",
     template: "%s · Social Media Posts API",
   },
-  description:
-    "Self-hosted developer dashboard foundation (Phase 7B). Not production-ready without Phase 7C authentication.",
+  description: "Self-hosted administrator dashboard for Social Media Posts API.",
   robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const preview = isDashboardDevPreviewEnabled();
-
   return (
     <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full antialiased">
-        <ThemeProvider>
-          {preview ? children : <LockedScreen reason={previewDeniedReason()} />}
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

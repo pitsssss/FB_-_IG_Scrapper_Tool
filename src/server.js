@@ -4,6 +4,8 @@ import { createService } from './service.js';
 import { parseFacebookUsername } from './pageRef.js';
 import { parseInstagramUsername } from './instagramRef.js';
 import { ServiceError } from './errors.js';
+import { createAuthService } from './management/authService.js';
+import { handleAdminRoutes } from './admin/routes.js';
 
 const sha = (s) => createHash('sha256').update(s).digest();
 const errBody = (code, message) => ({ success: false, error: { code, message } });
@@ -13,12 +15,40 @@ const ROUTES = {
   '/api/v1/instagram/posts': 'instagram',
 };
 
-export function createApp(config, service = createService(config)) {
+/**
+ * @param {object} config
+ * @param {ReturnType<typeof createService>} [service]
+ * @param {{ authService?: object }} [options]
+ */
+export function createApp(config, service = createService(config), options = {}) {
   if (!config.apiKeys.length) {
     throw new Error('API_KEYS is required (e.g. API_KEYS=site1:KEY1,site2:KEY2)');
   }
   const keys = config.apiKeys.map((k) => ({ name: k.name, hash: sha(k.key) }));
   const windows = new Map();
+
+  let auth = options.authService || null;
+  let authInitError = null;
+
+  function getAuth() {
+    if (auth) return auth;
+    if (authInitError) return null;
+    if (options.disableAuth) return null;
+    try {
+      auth = createAuthService({
+        managementDir: config.managementDir,
+        getSetupToken: () => config.bootstrapSetupToken || process.env.BOOTSTRAP_SETUP_TOKEN || '',
+        allowedOrigins: (config.adminAllowedOrigins || []).join(','),
+        trustProxy: config.trustProxy,
+        internalSecret: config.adminInternalSecret || process.env.ADMIN_INTERNAL_SECRET || '',
+      });
+      return auth;
+    } catch (err) {
+      authInitError = err;
+      console.error('[admin] failed to open management store:', err?.message || err);
+      return null;
+    }
+  }
 
   function authenticate(req) {
     // Credentials are accepted ONLY from headers — never from query strings.
@@ -73,12 +103,18 @@ export function createApp(config, service = createService(config)) {
 
   function send(res, status, body, headers = {}) {
     const payload = JSON.stringify(body);
-    res.writeHead(status, {
+    const out = {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff',
       ...headers,
-    });
+    };
+    // Preserve Set-Cookie arrays previously applied by admin handlers
+    const existingCookie = res.getHeader?.('set-cookie');
+    if (existingCookie && out['set-cookie'] === undefined) {
+      out['set-cookie'] = existingCookie;
+    }
+    res.writeHead(status, out);
     res.end(payload);
   }
 
@@ -122,6 +158,16 @@ export function createApp(config, service = createService(config)) {
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     const url = new URL(req.url, 'http://localhost');
+
+    if (url.pathname.startsWith('/api/v1/admin')) {
+      const handled = await handleAdminRoutes(req, res, url, {
+        auth: getAuth(),
+        config,
+        send,
+      });
+      if (handled) return;
+    }
+
     if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok' });
 
     const platform = ROUTES[url.pathname];
@@ -132,11 +178,18 @@ export function createApp(config, service = createService(config)) {
     return handlePosts(req, res, url, platform);
   }
 
-  return http.createServer((req, res) => {
+  const server = http.createServer((req, res) => {
     handle(req, res).catch((err) => {
       if (err instanceof ServiceError) return send(res, err.status, errBody(err.code, err.message));
       console.error('[server] unexpected error:', err);
       return send(res, 500, errBody('INTERNAL_ERROR', 'Unexpected server error'));
     });
   });
+
+  server.getAuthService = getAuth;
+  server.closeAuth = () => {
+    if (auth?.close) auth.close();
+    auth = null;
+  };
+  return server;
 }

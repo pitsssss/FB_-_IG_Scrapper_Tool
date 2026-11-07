@@ -4,17 +4,12 @@ import {
   evaluatePreviewDeniedReason,
 } from "@/lib/config/preview-policy";
 
-describe("dashboard preview security boundary", () => {
-  it("allows preview only in development with DASHBOARD_DEV_PREVIEW=1", () => {
-    expect(
-      evaluateDashboardPreview({
-        NODE_ENV: "development",
-        DASHBOARD_DEV_PREVIEW: "1",
-      }),
-    ).toBe(true);
-  });
-
-  it("fails closed in production even if preview flag is set", () => {
+/**
+ * Preview gate remains as a development utility, but production access
+ * is enforced by real session auth (middleware + dashboard layout).
+ */
+describe("legacy preview policy helper", () => {
+  it("still fails closed in production", () => {
     expect(
       evaluateDashboardPreview({
         NODE_ENV: "production",
@@ -23,16 +18,13 @@ describe("dashboard preview security boundary", () => {
     ).toBe(false);
   });
 
-  it("fails closed in development without the server flag", () => {
+  it("allows only explicit development preview flag", () => {
     expect(
       evaluateDashboardPreview({
         NODE_ENV: "development",
-        DASHBOARD_DEV_PREVIEW: undefined,
+        DASHBOARD_DEV_PREVIEW: "1",
       }),
-    ).toBe(false);
-  });
-
-  it("rejects NEXT_PUBLIC-style sole reliance by requiring exact server value", () => {
+    ).toBe(true);
     expect(
       evaluateDashboardPreview({
         NODE_ENV: "development",
@@ -41,9 +33,9 @@ describe("dashboard preview security boundary", () => {
     ).toBe(false);
   });
 
-  it("explains production denial", () => {
+  it("explains denial without implying auth is missing forever", () => {
     expect(
       evaluatePreviewDeniedReason({ NODE_ENV: "production", DASHBOARD_DEV_PREVIEW: "1" }),
-    ).toMatch(/Phase 7C/i);
+    ).toMatch(/authentication|Phase 7C|production/i);
   });
 });
