@@ -78,3 +78,14 @@ export async function fetchCacheSummary() {
 export async function fetchQuotaStatus() {
   return withSession("/api/v1/admin/quota", { method: "GET", csrf: false });
 }
+
+export async function fetchSettings() {
+  return withSession("/api/v1/admin/settings", { method: "GET", csrf: false });
+}
+
+export async function fetchUsageSummary(period: "today" | "7d" | "30d" = "today") {
+  return withSession(`/api/v1/admin/usage/summary?period=${period}`, {
+    method: "GET",
+    csrf: false,
+  });
+}

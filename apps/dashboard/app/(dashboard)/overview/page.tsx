@@ -3,7 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { fetchHealth } from "@/lib/api/client";
-import { fetchCacheSummary, fetchProviderStatus, fetchQuotaStatus } from "@/lib/auth/management";
+import {
+  fetchCacheSummary,
+  fetchProviderStatus,
+  fetchQuotaStatus,
+  fetchUsageSummary,
+} from "@/lib/auth/management";
 import { requireAdmin } from "@/lib/auth/session";
 
 export const metadata = { title: "Overview" };
@@ -31,16 +36,20 @@ type QuotaData = {
 
 export default async function OverviewPage() {
   await requireAdmin();
-  const [health, provider, cache, quota] = await Promise.all([
+  const [health, provider, cache, quota, usage] = await Promise.all([
     fetchHealth(),
     fetchProviderStatus(),
     fetchCacheSummary(),
     fetchQuotaStatus(),
+    fetchUsageSummary("today"),
   ]);
 
   const providerData = (provider.ok ? provider.body.data : null) as ProviderData | null;
   const cacheData = (cache.ok ? cache.body.data : null) as CacheData | null;
   const quotaData = (quota.ok ? quota.body.data : null) as QuotaData | null;
+  const usageData = (usage.ok ? usage.body.data : null) as {
+    counts?: { publicRequests?: number; providerFailures?: number };
+  } | null;
   const entryCount = Array.isArray(cacheData?.entries) ? cacheData.entries.length : null;
 
   return (
@@ -130,6 +139,28 @@ export default async function OverviewPage() {
               />
             ) : (
               <StatusIndicator tone="unknown" label="Unavailable" detail="Could not load cache summary" />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Today&apos;s traffic (UTC)</CardTitle>
+            <CardDescription>Local telemetry — not billing</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {usageData?.counts ? (
+              <StatusIndicator
+                tone={(usageData.counts.providerFailures || 0) > 0 ? "warn" : "ok"}
+                label={`${usageData.counts.publicRequests ?? 0} public request(s)`}
+                detail={`Provider failures: ${usageData.counts.providerFailures ?? 0}`}
+              />
+            ) : (
+              <StatusIndicator
+                tone="unknown"
+                label="Unavailable"
+                detail="Telemetry starts when the management API records events"
+              />
             )}
           </CardContent>
         </Card>

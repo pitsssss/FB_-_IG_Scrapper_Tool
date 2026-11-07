@@ -1,17 +1,34 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { CachePanel } from "@/features/ops/cache-quota-panels";
+import { CacheManager } from "@/features/ops/cache-manager";
+import { fetchCacheSummary } from "@/lib/auth/management";
+import { requireAdmin } from "@/lib/auth/session";
 
 export const metadata = { title: "Cache" };
 export const dynamic = "force-dynamic";
 
-export default function CachePage() {
+type CacheEntry = {
+  id: string;
+  platform: string;
+  username: string;
+  postCount: number;
+  fetchedAt: string | null;
+  ageSeconds: number | null;
+  freshness: string;
+};
+
+export default async function CachePage() {
+  await requireAdmin();
+  const result = await fetchCacheSummary();
+  const data = (result.ok ? result.body.data : null) as { entries?: CacheEntry[] } | null;
+  const entries = Array.isArray(data?.entries) ? data.entries : [];
+
   return (
     <div>
       <PageHeader
         title="Cache"
-        description="Inspect cached Facebook and Instagram entries. Purge and force-refresh are deferred to a later phase."
+        description="Inspect and delete individual Facebook or Instagram cache entries. Deletion never resets quota."
       />
-      <CachePanel />
+      <CacheManager initialEntries={entries} />
     </div>
   );
 }
