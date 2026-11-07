@@ -1,29 +1,54 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { UnavailableNotice } from "@/components/shared/unavailable-notice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { fetchHealth } from "@/lib/api/client";
+import { fetchCacheSummary, fetchProviderStatus, fetchQuotaStatus } from "@/lib/auth/management";
+import { requireAdmin } from "@/lib/auth/session";
 
 export const metadata = { title: "Overview" };
 export const dynamic = "force-dynamic";
 
+type ProviderData = {
+  connected?: boolean;
+  source?: string;
+};
+
+type CacheData = {
+  entries?: unknown[];
+  truncated?: boolean;
+};
+
+type QuotaData = {
+  available?: boolean;
+  paidExecutionAllowed?: boolean;
+  consumed?: number | null;
+  dailyLimit?: number | null;
+  remaining?: number | null;
+  todayUtc?: string | null;
+  note?: string;
+};
+
 export default async function OverviewPage() {
-  const health = await fetchHealth();
+  await requireAdmin();
+  const [health, provider, cache, quota] = await Promise.all([
+    fetchHealth(),
+    fetchProviderStatus(),
+    fetchCacheSummary(),
+    fetchQuotaStatus(),
+  ]);
+
+  const providerData = (provider.ok ? provider.body.data : null) as ProviderData | null;
+  const cacheData = (cache.ok ? cache.body.data : null) as CacheData | null;
+  const quotaData = (quota.ok ? quota.body.data : null) as QuotaData | null;
+  const entryCount = Array.isArray(cacheData?.entries) ? cacheData.entries.length : null;
 
   return (
     <div>
       <PageHeader
         title="Overview"
-        description="Deployment readiness cards. Management metrics arrive with Phase 7C APIs — nothing here invents operational data."
+        description="Live management metadata from authenticated admin APIs. Missing values stay unavailable — nothing is invented."
       />
-
-      <div className="mb-6">
-        <UnavailableNotice title="Management data not configured">
-          Quota, cache summaries, and activity feeds require authenticated admin endpoints. Optional API{" "}
-          <code className="font-mono text-xs">/health</code> probing below is not an admin session.
-        </UnavailableNotice>
-      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -43,10 +68,18 @@ export default async function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>Apify connection</CardTitle>
-            <CardDescription>Operator-owned token</CardDescription>
+            <CardDescription>Managed credential status</CardDescription>
           </CardHeader>
           <CardContent>
-            <StatusIndicator tone="idle" label="Not configured" detail="Token onboarding ships in Phase 7C" />
+            {providerData ? (
+              <StatusIndicator
+                tone={providerData.connected ? "ok" : "warn"}
+                label={providerData.connected ? "Connected" : "Not connected"}
+                detail={`Source: ${providerData.source || "none"}`}
+              />
+            ) : (
+              <StatusIndicator tone="unknown" label="Unavailable" detail="Could not load provider status" />
+            )}
           </CardContent>
         </Card>
 
@@ -58,9 +91,6 @@ export default async function OverviewPage() {
           <CardContent className="flex flex-wrap gap-2">
             <Badge>Facebook</Badge>
             <Badge>Instagram</Badge>
-            <p className="w-full text-xs text-[var(--muted-foreground)]">
-              Capability is implemented in the Node API. Connection status is separate from support.
-            </p>
           </CardContent>
         </Card>
 
@@ -70,27 +100,37 @@ export default async function OverviewPage() {
             <CardDescription>Attempt budget — not Apify billing</CardDescription>
           </CardHeader>
           <CardContent>
-            <StatusIndicator tone="unknown" label="No activity data available" detail="Awaiting management API" />
+            {quotaData?.available ? (
+              <StatusIndicator
+                tone={quotaData.paidExecutionAllowed ? "ok" : "warn"}
+                label={`${quotaData.consumed ?? "—"} / ${quotaData.dailyLimit ?? "—"} used`}
+                detail={`Remaining ${quotaData.remaining ?? "—"} · UTC ${quotaData.todayUtc || ""}`}
+              />
+            ) : (
+              <StatusIndicator
+                tone="unknown"
+                label="Unavailable"
+                detail={quotaData?.note || "Quota status could not be loaded"}
+              />
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Cache summary</CardTitle>
-            <CardDescription>Persistent CACHE_DIR</CardDescription>
+            <CardDescription>Persistent CACHE_DIR entries (metadata only)</CardDescription>
           </CardHeader>
           <CardContent>
-            <StatusIndicator tone="unknown" label="No activity data available" detail="Awaiting management API" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent activity & errors</CardTitle>
-            <CardDescription>Local audit stream</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StatusIndicator tone="unknown" label="No activity data available" detail="Awaiting management API" />
+            {entryCount != null ? (
+              <StatusIndicator
+                tone="ok"
+                label={`${entryCount} entr${entryCount === 1 ? "y" : "ies"}`}
+                detail={cacheData?.truncated ? "List truncated" : "Listed from local cache"}
+              />
+            ) : (
+              <StatusIndicator tone="unknown" label="Unavailable" detail="Could not load cache summary" />
+            )}
           </CardContent>
         </Card>
       </div>
