@@ -5,12 +5,13 @@
   "type": "module",
   "private": true,
   "engines": {
-    "node": ">=20.6"
+    "node": ">=22.5"
   },
   "scripts": {
     "start": "node --env-file=.env src/index.js",
     "start:prod": "node src/index.js",
-    "test": "node --test --test-concurrency=1 test/api.test.js test/fixture.test.js test/page-identity.test.js test/apify-quota.test.js test/cache-warmer.test.js test/page-scopes.test.js test/page-ref-security.test.js test/username-input.test.js test/cache-reliability.test.js test/postman-serve-cache.test.js test/postman-collection.test.js test/public-privacy.test.js test/instagram-ref.test.js test/instagram-normalize.test.js test/instagram-api.test.js test/instagram-identity.test.js test/instagram-profile-validate.test.js",
+    "admin:recover": "node --env-file=.env scripts/admin-recover.js",
+    "test": "node --test --test-concurrency=1 test/api.test.js test/fixture.test.js test/page-identity.test.js test/apify-quota.test.js test/cache-warmer.test.js test/page-scopes.test.js test/page-ref-security.test.js test/username-input.test.js test/cache-reliability.test.js test/postman-serve-cache.test.js test/postman-collection.test.js test/public-privacy.test.js test/instagram-ref.test.js test/instagram-normalize.test.js test/instagram-api.test.js test/instagram-identity.test.js test/instagram-profile-validate.test.js test/admin-auth.test.js test/management-db.test.js",
     "capture": "node --env-file=.env scripts/capture-fixture.js",
     "smoke": "node scripts/smoke.js",
     "e2e": "node scripts/e2e-local.js",

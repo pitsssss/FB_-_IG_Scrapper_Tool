@@ -1,37 +1,33 @@
 # ADR-006: Management database vs file storage
 
-**Status:** **OPEN** (recommendation below)  
-**Phase:** 7A
+**Status:** Accepted (implemented in 7C.1)  
+**Phase:** 7A design / 7C.1 implementation
 
-## Recommendation (not final without owner approval if deps/engines change)
+## Decision
 
-Use a **dedicated management store** separate from post cache files:
+Use a **dedicated management SQLite store** separate from post cache files:
 
-- **Preferred:** SQLite file under `/data/management/` for admin, sessions, API key hashes, encrypted secrets, settings, audit/usage.
+- **Path:** `MANAGEMENT_DIR/app.sqlite` (default `./data/management`; Docker `/data/management`).
+- **Driver:** Node.js built-in `node:sqlite` (`DatabaseSync`) — **no npm dependency**.
+- **Engines:** Node **≥ 22.5** (CI already matrixes 22/24). Still emits ExperimentalWarning.
 - **Keep:** Existing JSON post cache + `apify-quota.json` + Instagram profile meta files unchanged.
-- **Interim fallback:** Encrypted/atomic JSON documents if SQLite cannot land without unresolved engine/dependency policy.
 
 ## Context
 
-Project rule: zero runtime npm dependencies today; Node engines `>=20.6`; Docker uses Node 22. Management needs concurrent-safe updates (sessions, key revoke) beyond ad-hoc files, but PostgreSQL is unjustified for single-instance self-host.
+Zero runtime npm dependencies; Docker copies `src/` only onto `node:22-alpine`. Management needs transactional bootstrap and session revocation.
 
 ## Alternatives
 
-| Option | Pros | Cons |
-| --- | --- | --- |
-| Extend only CACHE_DIR JSON | No new tech | Weak for sessions; easy corruption races |
-| `node:sqlite` built-in | No npm dep | Experimental/version constraints — may need engines bump |
-| `better-sqlite3` | Mature sync API | Native addon; first runtime dep; Alpine build care |
-| PostgreSQL | Heavy | Ops burden |
-
-## Tradeoffs
-
-Choosing SQLite may require **owner approval** to bump engines and/or add a dependency — conflicts with historical zero-deps purity for the API package.
+| Option | Verdict |
+| --- | --- |
+| Extend only CACHE_DIR JSON | Rejected for sessions/bootstrap races |
+| `better-sqlite3` | Rejected — native addon breaks copy-only Docker |
+| PostgreSQL | Rejected — ops burden for single-instance MVP |
 
 ## Security implications
 
-Encrypt sensitive columns; restrict file modes; backup = ciphertext + separate key escrow.
+Restrict directory/file modes where OS allows; never store plaintext passwords or session tokens; parameterized SQL only; integrity_check on open.
 
 ## Migration path
 
-Additive DB file; no automatic cache deletion. Document backup of both trees.
+Additive `schema_migrations`; no automatic cache deletion. 7C.2 adds tables for provider credentials and managed API keys.

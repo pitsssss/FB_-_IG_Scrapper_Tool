@@ -3,6 +3,8 @@ node_modules
 .env.local
 .env.*.local
 data
+**/management/*.sqlite
+**/management/*.sqlite-*
 *.log
 handoff/
 .postman-local/
@@ -14,3 +16,4 @@ apps/dashboard/out/
 apps/dashboard/coverage/
 apps/dashboard/.env
 apps/dashboard/.env.local
+apps/dashboard/.env.*.local

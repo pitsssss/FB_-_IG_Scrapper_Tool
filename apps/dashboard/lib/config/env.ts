@@ -8,6 +8,11 @@ export function getApiInternalUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
+/** Shared BFF↔API secret. Never send to the browser. */
+export function getAdminInternalSecret(): string {
+  return (process.env.ADMIN_INTERNAL_SECRET || "").trim();
+}
+
 export function getPublicDocsBasePath(): string {
   return "/docs";
 }

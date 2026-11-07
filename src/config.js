@@ -235,6 +235,18 @@ export function loadConfig(env = process.env) {
     allowedPages: parseAllowedPages(env.ALLOWED_PAGES),
     instagramAllowedProfiles: parseInstagramAllowedProfiles(env.INSTAGRAM_ALLOWED_PROFILES),
     allowedOrigins: toList(env.ALLOWED_ORIGINS),
+    /** Comma-separated origins allowed for cookie-authenticated admin mutations (no wildcards). */
+    adminAllowedOrigins: toList(env.ADMIN_ALLOWED_ORIGINS),
+    managementDir: env.MANAGEMENT_DIR || './data/management',
+    bootstrapSetupToken: env.BOOTSTRAP_SETUP_TOKEN || '',
+    adminInternalSecret: env.ADMIN_INTERNAL_SECRET || '',
+    trustProxy: String(env.TRUST_PROXY || '').trim() === '1',
+    adminCookieSecure:
+      String(env.ADMIN_COOKIE_SECURE || '').trim() === '1'
+        ? true
+        : String(env.ADMIN_COOKIE_SECURE || '').trim() === '0'
+          ? false
+          : null,
     rateLimitPerMin: toInt(env.RATE_LIMIT_PER_MIN, 120),
     cacheDir: env.CACHE_DIR || './data/cache',
     freshTtlMs: toInt(env.FRESH_TTL_SECONDS, 21600) * 1000,

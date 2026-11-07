@@ -1,6 +1,6 @@
 # Storage and configuration design
 
-**Phase:** 7A design only  
+**Phase:** 7A design; **7C.1 management SQLite implemented** (`MANAGEMENT_DIR`, default `./data/management/app.sqlite`). Provider credentials / API key tables reserved for 7C.2.  
 **Related:** [ADR-006](./decisions/ADR-006-management-storage.md), [ADR-004](./decisions/ADR-004-apify-token.md), [ADR-005](./decisions/ADR-005-api-keys.md), [ADR-008](./decisions/ADR-008-usage-and-quota.md)
 
 ---
@@ -56,12 +56,12 @@ flowchart TB
 | **B. SQLite** for management | Medium | Strong for single writer | Secrets as ciphertext columns; posts stay files | Needs engine bump (`node:sqlite`) or npm driver | **Recommended** |
 | **C. PostgreSQL / Redis** | Low for self-host | High | Mature | Overkill for single instance | Rejected for MVP |
 
-### Recommendation
+### Recommendation (7C.1 decision)
 
 1. **Keep** post cache + quota + Instagram profile files exactly as today.
-2. **Add** a management database file on the same volume, e.g. `/data/management/app.sqlite` (path configurable).
-3. Prefer **Node.js built-in `node:sqlite`** after raising engines to a version where it is acceptable for production **or** `better-sqlite3` if built-in remains experimental — **OPEN** (owner approval on engines/deps). See ADR-006.
-4. Until SQLite lands, an **encrypted JSON document** store with atomic replace is an acceptable interim in 7C if needed to ship admin features without blocking.
+2. **Management DB:** `MANAGEMENT_DIR/app.sqlite` (Docker: `/data/management`).
+3. **Driver:** Node.js built-in **`node:sqlite` (`DatabaseSync`)** — no npm native addon. Requires **Node ≥ 22.5** (`engines` updated; CI already on 22/24). Still emits `ExperimentalWarning`; acceptable for single-instance self-host MVP. `better-sqlite3` rejected to preserve zero-runtime-deps / Alpine Docker copy-only image.
+4. Schema versioned via `schema_migrations`. Tables in v1: `admin_users`, `admin_sessions`, `bootstrap_state`, `auth_events`, `auth_rate_limits`. Future: `provider_credentials`, `managed_api_keys`, `management_settings`.
 
 ---
 

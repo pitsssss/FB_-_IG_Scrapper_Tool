@@ -31,7 +31,7 @@ Dependencies are hard unless noted. No calendar estimates.
 ## 7B — Dashboard foundation
 
 **Depends on:** 7A.  
-**Status:** Implemented in `apps/dashboard` (Next.js 16.4.5). Local preview only via `DASHBOARD_DEV_PREVIEW=1` in development; production builds fail closed. See `apps/dashboard/README.md`.
+**Status:** Implemented in `apps/dashboard` (Next.js 16.4.5). Phase 7C.1 replaced the preview gate with real session authentication. See `apps/dashboard/README.md`.
 
 **Work**
 
@@ -57,27 +57,33 @@ Dependencies are hard unless noted. No calendar estimates.
 
 **Depends on:** 7A; can parallelize lightly with 7B UI shell but needs API before real UI wiring.
 
-**Work**
+### 7C.1 — Secure admin foundation (implemented)
 
-- Management storage (SQLite or interim encrypted files) + migrations.
-- Bootstrap setup + admin password hashing + sessions + CSRF + login rate limits.
-- Admin HTTP routes under `/api/v1/admin/*` (session auth).
+**Work done**
+
+- [x] Management SQLite (`node:sqlite`) + migrations under `MANAGEMENT_DIR`
+- [x] `BOOTSTRAP_SETUP_TOKEN` one-time setup; scrypt password hashing
+- [x] Server-side sessions, CSRF/origin checks, auth rate limits
+- [x] `/api/v1/admin/*` (setup, login, logout, me, password, session)
+- [x] Next.js BFF `/api/auth/*` + protected dashboard routes
+- [x] Host-only recovery CLI (`npm run admin:recover`)
+- [x] Security tests (`test/admin-auth.test.js`, `test/management-db.test.js`)
+
+### 7C.2 — Secrets & keys (not started)
+
 - Encrypted Apify token save/validate/disconnect + runtime config holder.
 - API key CRUD (hash at rest, one-time plaintext), scopes hot-reload.
 - Read APIs: quota status, cache listing, health detail.
 - Admin **force refresh** endpoint wrapping existing `refresh()` + quota (for playground).
 - Import/overlay path for existing `API_KEYS` / `APIFY_TOKEN` env.
-- Security tests for threats 1–5, 13, 17, 19 from SECURITY_ARCHITECTURE.
 
-**Acceptance**
+**Acceptance (7C.1)**
 
-- [ ] Setup takeover tests pass
-- [ ] Admin session cannot be used as `x-api-key`; API key cannot hit admin routes
-- [ ] Token never returned after save; never logged
-- [ ] Public posts contract tests still pass
-- [ ] Cache/quota files not wiped by migrations
-
-**Risks:** First runtime dependency decision (ADR-006 OPEN); hot-reload correctness.
+- [x] Setup takeover tests pass
+- [x] Admin session cannot be used as `x-api-key`; API key cannot hit admin routes
+- [x] Public posts contract tests still pass
+- [x] Cache/quota files not wiped by migrations
+- [ ] Apify token never returned after save (7C.2)
 
 ---
 

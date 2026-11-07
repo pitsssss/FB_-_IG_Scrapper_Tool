@@ -1,17 +1,18 @@
 # ADR-003: Admin authentication design
 
-**Status:** Accepted (design); KDF library **OPEN**  
-**Phase:** 7A
+**Status:** Accepted (implemented in 7C.1)  
+**Phase:** 7A design / 7C.1 implementation
 
 ## Decision
 
-- **Bootstrap:** Operator-supplied one-time `BOOTSTRAP_SETUP_TOKEN` (primary); optional volume file delivery; reject open registration and default passwords.
-- **Login:** Single admin (MVP) with password hashed via modern KDF; **server-side sessions** in httpOnly Secure cookies; CSRF on state-changing requests; login rate limits.
+- **Bootstrap:** Operator-supplied one-time `BOOTSTRAP_SETUP_TOKEN`; reject open registration and default passwords. Fail closed if token unset and no admin exists.
+- **Login:** Single admin (MVP) with **scrypt** password hashing (`node:crypto`); **server-side sessions** (token hashed at rest) in httpOnly SameSite cookies; CSRF token + Origin allow-list; durable rate limits.
 - **Separation:** Admin sessions ≠ public API keys.
+- **Recovery:** Host-only CLI (`scripts/admin-recover.js`).
 
 ## Context
 
-No admin auth exists today. Public internet self-host requires setup-takeover resistance. Project already uses timing-safe API key compares.
+Public internet self-host requires setup-takeover resistance. Project already uses timing-safe API key compares.
 
 ## Alternatives
 
@@ -19,22 +20,18 @@ No admin auth exists today. Public internet self-host requires setup-takeover re
 | --- | --- |
 | JWT in localStorage | Rejected (XSS theft) |
 | First-visitor-wins admin | Rejected (takeover) |
+| Argon2id npm package | Deferred — preserves zero-runtime-deps Docker image; scrypt params stored for later KDF migration |
 | OAuth / social login | Out of scope |
-| Localhost-only setup alone | Insufficient for VPS |
 
 ## Tradeoffs
 
 - No email reset in MVP → host-access recovery only.
-- Session store adds persistence requirement.
+- scrypt instead of Argon2id for dependency policy; still memory-hard with unique salts.
 
 ## Security implications
 
 See SECURITY_ARCHITECTURE threat items 1–2, 5, 8–9, 13, 19.
 
-## Open
-
-Exact KDF: prefer **Argon2id** (may add dependency) vs **scrypt** via `node:crypto`. Decide in 7C with engines/deps policy.
-
 ## Migration path
 
-Later: multiple admins/RBAC without changing posts API key model.
+Later: Argon2id via stored `password_algo` / `password_params`; multiple admins/RBAC without changing posts API key model.

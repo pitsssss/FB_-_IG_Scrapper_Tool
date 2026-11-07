@@ -1,8 +1,8 @@
-# Social Media Posts API — Dashboard (Phase 7B)
+# Social Media Posts API — Dashboard
 
-Next.js App Router foundation for the self-hosted administrator UI.
+Next.js App Router administrator UI for the self-hosted Social Media Posts API.
 
-**Not safe for public deployment.** There is no admin authentication yet (Phase 7C). Production builds fail closed unless you are in local development with an explicit server-side preview flag.
+**Phase 7C.1:** Real administrator setup, login, server-side sessions, CSRF, and route protection are implemented. Apify token management and API key CRUD remain Phase 7C.2.
 
 ## Versions
 
@@ -12,10 +12,12 @@ Next.js App Router foundation for the self-hosted administrator UI.
 | React | 19.3.0 |
 | TypeScript | 5.x (strict) |
 | Tailwind CSS | 4.x |
-| Lucide React | 1.x |
-| Vitest | 3.2.x |
 
-shadcn-style primitives are hand-rolled with `class-variance-authority`, `clsx`, and `tailwind-merge` (no full shadcn CLI dependency). React Hook Form / Zod were not required for 7B disabled forms.
+## Prerequisites
+
+- Node.js **≥ 22.5** (API uses built-in `node:sqlite`)
+- Running posts API with management auth configured
+- Matching `ADMIN_INTERNAL_SECRET` on API and dashboard
 
 ## Install
 
@@ -25,77 +27,94 @@ npm install
 cp .env.example .env.local
 ```
 
-`.env.local` (server-only):
+`.env.local` (server-only — never `NEXT_PUBLIC_` for secrets):
 
 ```bash
-DASHBOARD_DEV_PREVIEW=1
 API_INTERNAL_URL=http://127.0.0.1:3000
+ADMIN_INTERNAL_SECRET=<same-as-api>
 ```
 
-Never use `NEXT_PUBLIC_` for preview flags, API keys, or tokens.
+## First-time administrator setup
+
+1. On the API host, generate secrets:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+2. Set on the **API**:
+
+```bash
+BOOTSTRAP_SETUP_TOKEN=<token>
+ADMIN_INTERNAL_SECRET=<shared>
+ADMIN_ALLOWED_ORIGINS=http://127.0.0.1:3001
+MANAGEMENT_DIR=./data/management
+```
+
+3. Set the same `ADMIN_INTERNAL_SECRET` and `API_INTERNAL_URL` on the dashboard.
+
+4. Start API, then dashboard (`npm run dev`).
+
+5. Open `/setup`, enter the bootstrap token, username, and password (≥12 characters).
+
+6. After success you are signed in. Setup cannot be repeated; restart does not reopen it.
+
+## Login / logout
+
+- `/login` — username + password
+- Sign out — header button calls `POST /api/auth/logout` (revokes server session)
+- Sessions: HttpOnly cookie `smp_admin_session`, CSRF cookie `smp_admin_csrf`, absolute 12h / idle 2h
 
 ## Commands
 
 ```bash
-npm run dev        # local preview (requires DASHBOARD_DEV_PREVIEW=1)
-npm run build      # production build (UI locked)
-npm run start      # serve production build (locked)
+npm run dev
+npm run build
+npm run start
 npm run lint
 npm run typecheck
 npm run test
 ```
 
-From repository root (optional convenience):
-
-```bash
-npm run dashboard:dev
-npm run dashboard:build
-npm run dashboard:test
-```
-
 ## Routes
 
-| Path | Purpose |
+| Path | Access |
 | --- | --- |
-| `/overview` | Status placeholders + optional `/health` probe |
-| `/playground` | Request builder UI (Send disabled) |
-| `/api-keys` | Key management foundation |
-| `/providers` | Apify / Graph / enrichment cards |
-| `/cache` | Cache table empty state |
-| `/usage` | Usage & logs empty state |
-| `/settings` | Settings sections (save disabled) |
-| `/docs` | Public API documentation + copyable examples |
-| `/setup` | Setup visual foundation (disabled) |
-| `/login` | Login visual foundation (disabled) |
+| `/setup`, `/login` | Public (auth pages) |
+| `/overview`, `/playground`, … | Authenticated admin only |
+| `/api/auth/*` | Same-origin BFF to API `/api/v1/admin/*` |
+
+Unauthenticated visitors are redirected to `/login` (middleware + server `requireAdmin`).
 
 ## Architecture
 
-- **Server Components** by default for pages.
-- **Client Components** for theme toggle, mobile nav, playground interactions, copy buttons.
-- **Server-only** modules: `lib/config/preview.ts`, `lib/config/env.ts`, `lib/api/client.ts`.
-- Posts scraping stays in the existing Node API (`src/`). This app does not reimplement providers.
+- Browser talks only to Next.js same-origin `/api/auth/*`.
+- BFF uses `API_INTERNAL_URL` + `ADMIN_INTERNAL_SECRET` (never exposed to the browser).
+- API owns SQLite sessions; dashboard sets cookies on its origin.
+- Public `x-api-key` posts API remains completely separate.
 
-## Theme
+## Recovery
 
-CSS variables for light/dark surfaces, teal accent, success/warning/danger. `next-themes` with `class` strategy, system preference default, manual toggle, `suppressHydrationWarning` on `<html>`.
+Password reset requires **host access** (not HTTP):
 
-## Security (7B)
+```bash
+# from repository root
+npm run admin:recover -- --password 'new-strong-password'
+```
 
-1. Preview requires `NODE_ENV=development` **and** `DASHBOARD_DEV_PREVIEW=1`.
-2. Production always shows the locked screen — even if the preview env var is set.
-3. No fake login, demo passwords, or mock session cookies.
-4. No Apify token fields that submit data.
-5. No paid scrape execution from the UI.
-6. Optional `API_INTERNAL_URL` health check is not admin auth.
+Revokes all sessions. Does not delete caches or Apify quota.
 
-## Known unfinished (7C+)
+## Security notes
 
-- Admin bootstrap, sessions, CSRF
-- Encrypted Apify token storage
+- HTTPS in production; set `ADMIN_COOKIE_SECURE=1` behind TLS.
+- Configure reverse proxy carefully; set `TRUST_PROXY=1` only when the proxy strips client spoofing of `X-Forwarded-For`.
+- No public password-reset endpoint.
+- Management features for Apify / API keys are not available yet (7C.2).
+
+## Known unfinished (7C.2+)
+
+- Encrypted Apify token storage / connect UI
 - API key CRUD
-- Management API + playground execution
-- Docker Compose dashboard service (7E)
-
-## Continue to 7C
-
-Implement management persistence and `/api/v1/admin/*` on the Node API, then replace the preview gate with real session auth while keeping this UI shell.
+- Live playground refresh
+- Cache purge / quota reset controls
+- Docker Compose multi-service topology (7E)
