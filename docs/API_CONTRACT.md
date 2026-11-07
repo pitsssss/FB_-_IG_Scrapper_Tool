@@ -179,6 +179,25 @@ Optional `ALLOWED_ORIGINS`. CORS is **not** authentication. Prefer server-to-ser
 - A URL string does not guarantee the remote asset is still downloadable.
 - Public page availability can change; cached content can become stale.
 
+## Admin Playground (management API — not public)
+
+Authenticated administrator sessions only (`admin_session` cookie + CSRF/Origin on mutating routes). **Not** callable with `x-api-key`. Pending-MFA sessions are rejected.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `GET` | `/api/v1/admin/playground/cache?platform=facebook\|instagram&page=<username>&limit=<n>` | Side-effect-free cache read via `peekCachedPosts`. No provider calls, no quota reservation, no background refresh. `404` + `CACHE_MISS` when absent. Stale entries return data with stale metadata only. |
+| `POST` | `/api/v1/admin/playground/prepare` | Validates inputs, allowlists, provider readiness, and local quota; returns a short-lived one-time `confirmationId` bound to session + platform + username + limit. Zero upstream calls. |
+| `POST` | `/api/v1/admin/playground/confirm` | Atomically consumes the confirmation, then runs `forceRefresh` through the existing provider pipeline and shared quota. |
+| `POST` | `/api/v1/admin/playground/cancel` | Invalidates an unused confirmation. Zero upstream calls. |
+
+Dashboard BFF (same-origin): `GET|POST /api/management/playground` → Node admin routes above. Keep `ADMIN_INTERNAL_SECRET` and `API_INTERNAL_URL` server-only.
+
+**Phase 7E reverse proxy note:** route `/api/management/*` and `/api/auth/*` to Next.js; route `/api/v1/*` and `/health` to the Node API. Do not send browser `/api/management/*` directly to Node without the BFF session bridge.
+
+Success bodies for cache hit / confirmed refresh reuse the public posts success envelope (`success`, `data.page`, `data.posts`, `meta`). Cache-only never claims `meta.source=live`.
+
+Local quota fields shown in prepare responses are **local attempt safeguards**, not Apify account balance or billed spend.
+
 ## Compatibility
 
 Field names and types above are a **stable contract**. Changing them requires updating this document, `test/schema.js`, OpenAPI (if present), and tests.

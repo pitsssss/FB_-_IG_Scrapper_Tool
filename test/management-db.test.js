@@ -27,6 +27,7 @@ test('management db migrates and passes integrity check', () => {
       'admin_users', 'admin_sessions', 'bootstrap_state', 'auth_events', 'schema_migrations', 'auth_rate_limits',
       'provider_credentials', 'managed_api_keys', 'api_key_scopes', 'management_audit_events',
       'email_otp_challenges', 'totp_pending', 'recovery_code_hashes', 'totp_used_steps',
+      'playground_confirmations',
     ]) {
       assert.ok(tables.includes(t), `missing table ${t}`);
     }
