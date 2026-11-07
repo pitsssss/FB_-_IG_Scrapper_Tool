@@ -25,7 +25,12 @@ Accepted **only** via headers (never query string):
 
 Missing or invalid credentials → `401` with error envelope (no account names or scope details).
 
-Optional `API_KEY_PAGE_SCOPES` restricts each named API key to specific Facebook pages and/or Instagram profiles
+Keys may come from environment `API_KEYS` and/or dashboard-managed keys (hashed in SQLite). Both authenticate
+through the same header pipeline. Managed keys are **deny-by-default** until Facebook/Instagram scopes are assigned.
+Environment keys keep legacy unscoped behavior unless `API_KEY_PAGE_SCOPES` is set. Name collisions between
+env and managed clients are rejected at creation time.
+
+Optional `API_KEY_PAGE_SCOPES` restricts each named environment API key to specific Facebook pages and/or Instagram profiles
 (prefer bare usernames / `instagram:<username>`; legacy trusted URLs still normalize at startup). Global `ALLOWED_PAGES` applies to Facebook only.
 Optional `INSTAGRAM_ALLOWED_PROFILES` applies to Instagram only.
 

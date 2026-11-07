@@ -1,37 +1,34 @@
 # ADR-005: API key lifecycle and storage
 
-**Status:** Accepted (design)  
-**Phase:** 7A
+**Status:** Accepted (implemented in 7C.2)  
+**Phase:** 7A design / 7C.2 implementation
 
 ## Decision
 
-- Generate keys with CSPRNG; store **hashes only** at rest; show plaintext **once** at creation/rotation.
-- Support create / name / list metadata / revoke / rotate / per-key FB+IG scopes.
-- Keep public verification via `x-api-key` / Bearer and timing-safe compare.
+- Generate keys with CSPRNG (`smp_<prefix>_<secret>`); store **SHA-256 hashes only**; show plaintext **once** at creation/rotation.
+- Support create / list metadata / revoke / rotate / per-key FB+IG scopes (deny-by-default for managed keys).
+- **Dual-read:** environment `API_KEYS` remain usable; managed keys hot-reload into the same authenticator.
+- Name collisions between env and managed clients are rejected.
+- Empty `API_KEYS` is allowed at startup (admin can create the first managed key); posts stay 401 without a valid key.
 - Admin session must not substitute for API keys and vice versa.
-- Migrate from startup `API_KEYS` env via import or dual-read overlay (product choice OPEN — see roadmap O5).
 
 ## Context
 
-Today: plaintext secrets in env; hashed in memory at boot (`src/server.js`); scopes from `API_KEY_PAGE_SCOPES`. Runtime create/revoke impossible without restart.
+Previously plaintext secrets in env; hashed in memory at boot only.
 
 ## Alternatives
 
 | Option | Verdict |
 | --- | --- |
 | Keep env-only forever | Blocks product UX |
-| Store plaintext keys in DB for redisplay | Rejected |
-| Opaque cookies for machine clients | Wrong client type |
+| Store plaintext for redisplay | Rejected |
+| Auto-import env secrets into SQLite | Rejected (no silent copy of plaintext) |
 
 ## Tradeoffs
 
-- Lost plaintext cannot be recovered — correct security property; rotation replaces.
-- Dual-read migration complicates auth until cutover.
-
-## Security implications
-
-Threat items 4, 13. Preserve fail-closed scopes (no wildcards — already enforced in `parseApiKeyPageScopes`).
+- Lost plaintext cannot be recovered — rotate instead.
+- Dual-read until operators migrate integrations off env.
 
 ## Migration path
 
-Phase out env plaintext after dashboard import; document rotation for existing integrations.
+Create managed keys with matching scopes; update clients; optionally remove env entries later.

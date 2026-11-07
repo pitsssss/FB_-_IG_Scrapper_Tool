@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 
 const PUBLIC_PREFIXES = ["/login", "/setup", "/api/auth"];
+// /api/management requires session cookie — middleware still checks cookie below.
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

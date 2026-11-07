@@ -1,6 +1,6 @@
 # Security architecture
 
-**Phase:** 7A design; **7C.1 implemented** (admin bootstrap, sessions, CSRF, rate limits). Apify/API-key management remains 7C.2.  
+**Phase:** 7A design; **7C.1 + 7C.2 implemented** (admin auth, encrypted Apify credentials, managed API keys). Live playground/paid refresh remain 7D.  
 **Companion ADRs:** [ADR-003](./decisions/ADR-003-admin-auth.md), [ADR-004](./decisions/ADR-004-apify-token.md), [ADR-005](./decisions/ADR-005-api-keys.md)
 
 ---

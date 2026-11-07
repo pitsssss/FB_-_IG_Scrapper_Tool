@@ -1,40 +1,23 @@
-import { Activity } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { UnavailableNotice } from "@/components/shared/unavailable-notice";
 import { Alert } from "@/components/ui/alert";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { QuotaPanel } from "@/features/ops/cache-quota-panels";
 
 export const metadata = { title: "Usage & Logs" };
+export const dynamic = "force-dynamic";
 
 export default function UsagePage() {
   return (
     <div>
       <PageHeader
         title="Usage & Logs"
-        description="Local request activity, cache hits, provider attempts, and quota reservations."
+        description="Local Apify attempt budget and operational signals. Not a substitute for Apify billing."
       />
-      <div className="mb-6 space-y-3">
-        <UnavailableNotice title="No activity data available">
-          Counters and audit events require Phase 7C persistence. Charts stay omitted until real series exist.
-        </UnavailableNotice>
+      <div className="mb-6">
         <Alert variant="warning" title="Not Apify billing">
-          Local attempt budgets are operational safeguards. Confirm financial usage in your own Apify account.
+          Figures below are the local daily attempt counter. Confirm financial usage in your Apify account.
         </Alert>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent events</CardTitle>
-          <CardDescription>Request, cache, provider, rate-limit, and quota signals</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            icon={<Activity className="h-8 w-8" />}
-            title="No logs yet"
-            description="When wired, this list will show locally observed events without inventing spend figures."
-          />
-        </CardContent>
-      </Card>
+      <QuotaPanel />
     </div>
   );
 }
