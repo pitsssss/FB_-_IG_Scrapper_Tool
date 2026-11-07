@@ -1,23 +1,19 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { Alert } from "@/components/ui/alert";
-import { QuotaPanel } from "@/features/ops/cache-quota-panels";
+import { UsagePanel } from "@/features/ops/usage-panel";
+import { requireAdmin } from "@/lib/auth/session";
 
 export const metadata = { title: "Usage & Logs" };
 export const dynamic = "force-dynamic";
 
-export default function UsagePage() {
+export default async function UsagePage() {
+  await requireAdmin();
   return (
     <div>
       <PageHeader
         title="Usage & Logs"
-        description="Local Apify attempt budget and operational signals. Not a substitute for Apify billing."
+        description="Local request and provider telemetry with the shared Apify attempt budget. Not a billing dashboard."
       />
-      <div className="mb-6">
-        <Alert variant="warning" title="Not Apify billing">
-          Figures below are the local daily attempt counter. Confirm financial usage in your Apify account.
-        </Alert>
-      </div>
-      <QuotaPanel />
+      <UsagePanel />
     </div>
   );
 }
