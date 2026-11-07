@@ -1,22 +1,22 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { PlaygroundRequestBuilder } from "@/features/playground/request-builder";
-import { UnavailableNotice } from "@/components/shared/unavailable-notice";
+import { PlaygroundApp } from "@/features/playground/playground-app";
+import { requireAdmin } from "@/lib/auth/session";
 
 export const metadata = { title: "API Playground" };
+export const dynamic = "force-dynamic";
 
-export default function PlaygroundPage() {
+export default async function PlaygroundPage() {
+  await requireAdmin();
+  const maxPosts = Number.parseInt(process.env.MAX_POSTS || "10", 10);
+  const bound = Number.isFinite(maxPosts) && maxPosts > 0 ? Math.min(maxPosts, 50) : 10;
+
   return (
     <div>
       <PageHeader
         title="API Playground"
-        description="Build Facebook or Instagram username requests. Send remains disabled until authenticated BFF integration exists."
+        description="Inspect cached Facebook/Instagram posts or confirm a live refresh through the management API. Cache Only never contacts providers."
       />
-      <div className="mb-6">
-        <UnavailableNotice title="Execution disabled">
-          No paid Apify calls, no cache mutations, and no fabricated successful responses in Phase 7B.
-        </UnavailableNotice>
-      </div>
-      <PlaygroundRequestBuilder />
+      <PlaygroundApp maxPosts={bound} />
     </div>
   );
 }
