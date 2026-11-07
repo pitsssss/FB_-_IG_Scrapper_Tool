@@ -59,6 +59,8 @@ Unauthenticated users: only `/setup` (if incomplete), `/login`, and public marke
 
 ### B. API Playground
 
+**Status (7D.1):** Implemented — cache-only default + server-enforced prepare/confirm live refresh. Settings purge and anonymous public playground remain out of scope.
+
 **Inputs**
 
 - Platform: Facebook | Instagram

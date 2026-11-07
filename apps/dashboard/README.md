@@ -71,9 +71,18 @@ npm run typecheck
 npm run test
 ```
 
-## Known unfinished (7D)
+## Playground (7D.1)
 
-- Live playground / paid refresh confirmation
+1. Open **API Playground** while signed in (full MFA session).
+2. **Cache only** (default): Read Cache — never contacts providers or reserves quota.
+3. **Live refresh**: Prepare → review local quota → Confirm or Cancel.
+   - Confirmation tokens are single-use, short-lived, and bound to the admin session + username/limit.
+   - Cancel makes zero provider calls.
+4. Results: Visual preview, Raw JSON, Request details, Response metadata (LIVE / CACHE / STALE CACHE).
+
+## Known unfinished
+
 - Cache purge / quota reset controls
-- Full settings editor
-- Docker Compose multi-service topology
+- Full settings editor (host env remains authoritative)
+- Docker Compose multi-service topology (7E)
+- Production HTTPS / Caddy same-origin routing (7E)

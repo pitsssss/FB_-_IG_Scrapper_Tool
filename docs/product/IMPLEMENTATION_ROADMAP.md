@@ -85,7 +85,7 @@ Dependencies are hard unless noted. No calendar estimates.
 - [x] API key CRUD (hash at rest, one-time plaintext), scopes hot-reload
 - [x] Read APIs: quota status, cache listing, health detail
 - [x] Dual-read env + managed API keys; disconnect suppresses env Apify fallback
-- [ ] Admin **force refresh** / playground live scrape (7D)
+- [x] Admin **force refresh** / playground live scrape (7D.1)
 - [ ] Forced import of env keys into SQLite (optional; dual-read remains)
 
 **Acceptance (7C.1 + 7C.1B + 7C.2)**
@@ -104,24 +104,30 @@ Dependencies are hard unless noted. No calendar estimates.
 
 **Depends on:** 7B + 7C.
 
-**Work**
+### 7D.1 — Interactive API Playground (implemented)
 
-- Wire all dashboard screens to admin APIs.
-- Playground visual + JSON + metadata; cache-only vs live confirm UX.
-- XSS-safe rendering; CSP groundwork.
+- [x] Side-effect-free admin cache read (`GET /api/v1/admin/playground/cache`)
+- [x] Prepare/confirm/cancel live refresh with one-time confirmation tokens (schema v4)
+- [x] Next.js Playground UI: cache-only default, visual + JSON + metadata
+- [x] Overview wired to real health/provider/quota/cache management APIs
+- [x] XSS-safe post text + http(s)-only media/permalink validation
+- [x] Tests: `test/admin-playground.test.js` (mocked providers; no paid Apify)
+
+### Remaining 7D
+
 - Settings: allowlists, warm lists, TTL, enrichment toggle with warnings.
-- In-app API documentation with neutral examples.
+- In-app API documentation with neutral examples (partial exists).
 - Usage & logs views (local counters only).
 - Cache purge with confirmations.
 
 **Acceptance**
 
-- [ ] Journeys J1–J3 from DASHBOARD_REQUIREMENTS succeed against fake upstream / cache-only
-- [ ] Live refresh blocked or confirmed when quota exhausted
-- [ ] Mobile nav usable for primary flows
-- [ ] No fabricated “real” scrape data in UI
+- [x] Cache-only playground journey against seeded fixture (zero provider calls)
+- [x] Live refresh prepare/cancel/confirm with mocked upstream
+- [x] Mobile nav / responsive QA for playground confirmation (browser spot-check at 360–1440)
+- [x] No fabricated “real” scrape data in UI
 
-**Risks:** Accidental Apify calls in CI — keep fakes; gate live behind explicit scripts.
+**Risks:** Accidental Apify calls in CI — keep fakes; gate live behind explicit confirmation.
 
 ---
 

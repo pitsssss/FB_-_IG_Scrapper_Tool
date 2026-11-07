@@ -562,7 +562,7 @@ No external security audit or compliance certification is claimed.
 ```text
 ├── src/                 # HTTP server, service, cache, quota, normalizers
 │   └── providers/       # Apify (FB/IG), Graph, optional IG profile Actor
-├── apps/dashboard/      # Next.js admin UI (Phase 7C.1B — email/MFA + 7C.2 providers/keys)
+├── apps/dashboard/      # Next.js admin UI (7C.1B auth, 7C.2 keys/providers, 7D.1 playground)
 ├── test/                # Unit / integration tests
 ├── scripts/             # E2E, Postman runner, quota status, Docker smoke
 ├── postman/             # Unified collection + env template
@@ -575,7 +575,7 @@ No external security audit or compliance certification is claimed.
 └── package.json
 ```
 
-> **Dashboard status:** `apps/dashboard` supports email admin setup/login, optional SMTP verification, TOTP MFA, encrypted Apify connection, and managed API keys (Phases 7C.1B / 7C.2). Live playground scrape controls ship in 7D. See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
+> **Dashboard status:** `apps/dashboard` supports email admin setup/login, optional SMTP verification, TOTP MFA, encrypted Apify connection, managed API keys, and the authenticated API Playground (cache-only + confirmed live refresh). See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
 
 ## License & support
 
