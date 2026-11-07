@@ -26,7 +26,14 @@
     "dashboard:build": "npm --prefix apps/dashboard run build",
     "dashboard:lint": "npm --prefix apps/dashboard run lint",
     "dashboard:typecheck": "npm --prefix apps/dashboard run typecheck",
-    "dashboard:test": "npm --prefix apps/dashboard run test"
+    "dashboard:test": "npm --prefix apps/dashboard run test",
+    "secrets:generate": "node scripts/generate-compose-secrets.mjs",
+    "backup:management": "node scripts/backup-management.mjs",
+    "compose:config": "docker compose -f docker-compose.yml -f docker-compose.local.yml config",
+    "compose:up": "docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build",
+    "compose:down": "docker compose -f docker-compose.yml -f docker-compose.local.yml down",
+    "compose:smoke": "node scripts/compose-smoke.mjs",
+    "docker:smoke": "bash scripts/docker-smoke.sh"
   },
   "devDependencies": {
     "newman": "6.2.1"
