@@ -4,11 +4,15 @@ This document is an operational checklist. Passing local tests does **not** by i
 
 ## Secrets
 
-- [ ] `API_KEYS` — unique long random secrets per site (e.g. 48 hex chars)
+- [ ] `BOOTSTRAP_SETUP_TOKEN`, `ADMIN_INTERNAL_SECRET`, `DATA_ENCRYPTION_KEY` generated (`npm run secrets:generate`) and escrowed
+- [ ] `ADMIN_ALLOWED_ORIGINS` matches the public browser origin exactly
+- [ ] `ADMIN_COOKIE_SECURE=1` for HTTPS production; `0` only for documented local HTTP
+- [ ] `API_KEYS` optional if using dashboard-managed keys after setup
 - [ ] Rotate keys by adding a new `name:secret`, deploying, then removing the old secret
-- [ ] `APIFY_TOKEN` injected at runtime (never baked into images or Git)
+- [ ] `APIFY_TOKEN` optional — prefer Providers UI; never baked into images or Git
 - [ ] Optional `GRAPH_PAGE_TOKENS` only for pages you manage
 - [ ] No secrets in `NEXT_PUBLIC_*`, HTML, mobile apps, or client bundles
+- [ ] `DATA_ENCRYPTION_KEY` backed up **separately** from SQLite/volume archives
 
 ## Authorization
 
@@ -25,16 +29,19 @@ This document is an operational checklist. Passing local tests does **not** by i
 
 ## Networking
 
-- [ ] Public HTTPS URL (reverse proxy / platform TLS)
-- [ ] Healthcheck: `GET /health`
+- [ ] Production: `docker compose up -d --build` with `API_DOMAIN` DNS → host; ports 80/443 free
+- [ ] Local: compose local overlay binds `127.0.0.1:8080` only
+- [ ] Caddy routes BFF (`/api/auth/*`, `/api/management/*`) to dashboard; `/api/v1/*` + `/health` to api
+- [ ] Healthchecks: `GET /health` (api) and dashboard `/api/health`
 - [ ] Client timeouts ≥ worst-case live scrape latency for cold pages
+- [ ] `TRUST_PROXY=1` only behind known reverse proxy (Caddy)
 
 ## Persistence (required)
 
-- [ ] Durable volume for `CACHE_DIR` (posts + `apify-quota.json`)
-- [ ] Directory writable by the runtime user
+- [ ] Durable Compose volume `api_data` for `/data/cache` + `/data/management`
+- [ ] Directory writable by non-root `node` (entrypoint chown)
 - [ ] **Single API replica/worker** while quota is filesystem-based
-- [ ] Backup/restore plan for `CACHE_DIR`
+- [ ] Backup/restore plan for cache + management + encryption key escrow ([BACKUP_RESTORE.md](./BACKUP_RESTORE.md))
 
 If disk writes fail, the process may still serve from memory until restart; those entries can be lost on restart.
 

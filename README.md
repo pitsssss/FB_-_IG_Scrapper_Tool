@@ -466,20 +466,39 @@ Authoritative full list: [`.env.example`](.env.example). Essentials:
 
 ## Docker & deployment
 
-```dockerfile
-# Image listens on PORT (default 3000), CACHE_DIR=/data/cache, USER node
+Full self-hosted stack (recommended): **Caddy + API + Next.js dashboard** on one Compose network. Only Caddy publishes ports. Single **api** replica (filesystem Apify quota is not multi-replica safe).
+
+Beginner walkthrough: [`docs/SELF_HOSTING_GUIDE.md`](docs/SELF_HOSTING_GUIDE.md) · Backup: [`docs/BACKUP_RESTORE.md`](docs/BACKUP_RESTORE.md) · Checklist: [`docs/PRODUCTION_CHECKLIST.md`](docs/PRODUCTION_CHECKLIST.md).
+
+### Local (loopback HTTP)
+
+```bash
+cp .env.example .env
+npm run secrets:generate
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# Open http://127.0.0.1:8080 → /setup → Providers → API Keys
 ```
+
+### Production (HTTPS via Caddy)
+
+Set `API_DOMAIN`, `ADMIN_ALLOWED_ORIGINS=https://your.domain`, `ADMIN_COOKIE_SECURE=1`, then:
+
+```bash
+docker compose up -d --build
+```
+
+Caddy routes `/api/auth/*` and `/api/management/*` to the dashboard BFF, and `/api/v1/*` + `/health` to the Node API. Do not catch-all `/api/*` to the API.
+
+### API-only image (optional)
 
 ```bash
 docker build -t fb-posts-api .
 docker run -d -p 3000:3000 -v fbdata:/data --env-file .env fb-posts-api
 ```
 
-[`docker-compose.yml`](docker-compose.yml) runs a **single** `api` replica plus optional Caddy TLS. Mount `/data` so posts cache and `apify-quota.json` survive restarts.
+Compose smoke (isolated project, synthetic secrets, auto-cleanup): `npm run compose:smoke`.
 
-Checklist: [`docs/PRODUCTION_CHECKLIST.md`](docs/PRODUCTION_CHECKLIST.md).
-
-This repository does **not** document a public production URL. Deploy on any host that provides Node/Docker, HTTPS termination, and durable storage—then call the API from your website backends.
+This repository does **not** publish a hosted public production URL. You bring the domain, DNS, and secrets.
 
 ## Integration guide
 
@@ -562,7 +581,7 @@ No external security audit or compliance certification is claimed.
 ```text
 ├── src/                 # HTTP server, service, cache, quota, normalizers
 │   └── providers/       # Apify (FB/IG), Graph, optional IG profile Actor
-├── apps/dashboard/      # Next.js admin UI (7C.1B auth, 7C.2 keys/providers, 7D.1 playground)
+├── apps/dashboard/      # Next.js admin UI (auth/MFA, keys/providers, playground, settings) + Dockerfile
 ├── test/                # Unit / integration tests
 ├── scripts/             # E2E, Postman runner, quota status, Docker smoke
 ├── postman/             # Unified collection + env template
