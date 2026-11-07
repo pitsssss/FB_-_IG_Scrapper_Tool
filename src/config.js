@@ -240,6 +240,8 @@ export function loadConfig(env = process.env) {
     managementDir: env.MANAGEMENT_DIR || './data/management',
     bootstrapSetupToken: env.BOOTSTRAP_SETUP_TOKEN || '',
     adminInternalSecret: env.ADMIN_INTERNAL_SECRET || '',
+    /** Base64-encoded 32-byte key for AES-256-GCM provider credential encryption. */
+    dataEncryptionKey: env.DATA_ENCRYPTION_KEY || '',
     trustProxy: String(env.TRUST_PROXY || '').trim() === '1',
     adminCookieSecure:
       String(env.ADMIN_COOKIE_SECURE || '').trim() === '1'

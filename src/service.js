@@ -159,5 +159,5 @@ export function createService(config, providers) {
     }
   }
 
-  return { getPosts, warm };
+  return { getPosts, warm, quota, cache };
 }

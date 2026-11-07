@@ -108,7 +108,8 @@ async function writeCapture(captureDir, { ref, actor, input, items, httpStatus }
 export function createInstagramApifyProvider(config, { quota } = {}) {
   const fbCfg = config.apify;
   const igCfg = config.instagramApify || {};
-  const token = fbCfg.token || '';
+  // Read token at call time so dashboard-managed credentials hot-reload without restart.
+  const getToken = () => fbCfg.token || '';
   const actor = (igCfg.actor || 'apify~instagram-post-scraper').replace('/', '~');
   const runCfg = {
     baseUrl: fbCfg.baseUrl,
@@ -146,7 +147,7 @@ export function createInstagramApifyProvider(config, { quota } = {}) {
     try {
       res = await fetch(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${getToken()}` },
         body: JSON.stringify(input),
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -191,7 +192,7 @@ export function createInstagramApifyProvider(config, { quota } = {}) {
 
   return {
     name: 'instagram-apify',
-    supports: (ref) => Boolean(token) && isInstagramRef(ref),
+    supports: (ref) => Boolean(getToken()) && isInstagramRef(ref),
     quota: quotaManager,
     fetchRaw,
     async fetch(ref, limit) {
