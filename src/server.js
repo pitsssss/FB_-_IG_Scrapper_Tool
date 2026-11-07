@@ -1,13 +1,12 @@
 import http from 'node:http';
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { createService } from './service.js';
 import { parseFacebookUsername } from './pageRef.js';
 import { parseInstagramUsername } from './instagramRef.js';
 import { ServiceError } from './errors.js';
-import { createAuthService } from './management/authService.js';
+import { createManagementHub } from './management/hub.js';
+import { createKeyAuthenticator } from './management/keyAuthenticator.js';
 import { handleAdminRoutes } from './admin/routes.js';
 
-const sha = (s) => createHash('sha256').update(s).digest();
 const errBody = (code, message) => ({ success: false, error: { code, message } });
 
 const ROUTES = {
@@ -18,63 +17,56 @@ const ROUTES = {
 /**
  * @param {object} config
  * @param {ReturnType<typeof createService>} [service]
- * @param {{ authService?: object }} [options]
+ * @param {{ hub?: object, disableHub?: boolean, hubOptions?: object, authService?: object }} [options]
  */
 export function createApp(config, service = createService(config), options = {}) {
-  if (!config.apiKeys.length) {
-    throw new Error('API_KEYS is required (e.g. API_KEYS=site1:KEY1,site2:KEY2)');
-  }
-  const keys = config.apiKeys.map((k) => ({ name: k.name, hash: sha(k.key) }));
-  const windows = new Map();
+  // Empty API_KEYS is allowed: public posts stay 401 until env or managed keys exist.
+  // Admin bootstrap/setup still works via management hub.
 
-  let auth = options.authService || null;
-  let authInitError = null;
+  let hub = options.hub || null;
+  let hubInitError = null;
+  let keyAuth = null;
 
-  function getAuth() {
-    if (auth) return auth;
-    if (authInitError) return null;
-    if (options.disableAuth) return null;
+  function getHub() {
+    if (hub) return hub;
+    if (hubInitError || options.disableHub) return null;
+    if (options.authService && !options.forceHub) {
+      // Auth-only test path: skip hub unless forceHub is set
+      return null;
+    }
     try {
-      auth = createAuthService({
-        managementDir: config.managementDir,
-        getSetupToken: () => config.bootstrapSetupToken || process.env.BOOTSTRAP_SETUP_TOKEN || '',
-        allowedOrigins: (config.adminAllowedOrigins || []).join(','),
-        trustProxy: config.trustProxy,
-        internalSecret: config.adminInternalSecret || process.env.ADMIN_INTERNAL_SECRET || '',
-      });
-      return auth;
+      hub = createManagementHub(config, options.hubOptions || {});
+      keyAuth?.refreshManaged();
+      return hub;
     } catch (err) {
-      authInitError = err;
-      console.error('[admin] failed to open management store:', err?.message || err);
+      hubInitError = err;
+      console.error('[admin] failed to open management hub:', err?.message || err);
       return null;
     }
   }
 
+  keyAuth = createKeyAuthenticator({
+    envKeys: config.apiKeys || [],
+    envPageScopes: config.pageScopes,
+    getManagedSnapshot: () => getHub()?.apiKeys.activeSnapshot() || [],
+    allowedPages: config.allowedPages || [],
+    instagramAllowedProfiles: config.instagramAllowedProfiles || [],
+    onManagedUse(id) {
+      getHub()?.apiKeys.markUsed(id);
+    },
+  });
+
+  const windows = new Map();
+
   function authenticate(req) {
-    // Credentials are accepted ONLY from headers — never from query strings.
-    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
-    const headerKey = req.headers['x-api-key'];
-    const supplied = (typeof headerKey === 'string' && headerKey) || (bearer && bearer[1]) || null;
-    if (!supplied || typeof supplied !== 'string') return null;
-    const given = sha(supplied);
-    let name = null;
-    for (const k of keys) {
-      if (given.length === k.hash.length && timingSafeEqual(given, k.hash) && !name) name = k.name;
-    }
-    return name;
+    // Always reload managed key snapshot so create/revoke/rotate apply immediately
+    // (hub.keyAuth is a separate instance; this is the request authenticator).
+    keyAuth.refreshManaged();
+    return keyAuth.authenticate(req);
   }
 
-  function pageAllowedForClient(clientName, ref) {
-    const isIg = ref.platform === 'instagram' || String(ref.key || '').startsWith('instagram:');
-    if (isIg) {
-      const allow = config.instagramAllowedProfiles || [];
-      if (allow.length && !allow.includes(ref.key)) return false;
-    } else if (config.allowedPages.length && !config.allowedPages.includes(ref.key)) {
-      return false;
-    }
-    if (!config.pageScopes) return true;
-    const scope = config.pageScopes.get(clientName);
-    return Boolean(scope && scope.has(ref.key));
+  function pageAllowedForClient(client, ref) {
+    return keyAuth.pageAllowedForClient(client, ref);
   }
 
   function rateLimited(name) {
@@ -109,7 +101,6 @@ export function createApp(config, service = createService(config), options = {})
       'x-content-type-options': 'nosniff',
       ...headers,
     };
-    // Preserve Set-Cookie arrays previously applied by admin handlers
     const existingCookie = res.getHeader?.('set-cookie');
     if (existingCookie && out['set-cookie'] === undefined) {
       out['set-cookie'] = existingCookie;
@@ -122,7 +113,7 @@ export function createApp(config, service = createService(config), options = {})
     const client = authenticate(req);
     if (!client) return send(res, 401, errBody('UNAUTHORIZED', 'Missing or invalid API key'));
 
-    const wait = rateLimited(client);
+    const wait = rateLimited(client.name);
     if (wait) return send(res, 429, errBody('RATE_LIMITED', 'Too many requests'), { 'retry-after': String(wait) });
 
     const pageParam = url.searchParams.get('page');
@@ -134,7 +125,6 @@ export function createApp(config, service = createService(config), options = {})
       return send(res, 400, errBody('INVALID_PAGE_URL', `Not a valid ${label}`));
     }
 
-    // Public contract: bare username only. Full social URLs are rejected with 400.
     const ref = platform === 'instagram'
       ? parseInstagramUsername(pageParam)
       : parseFacebookUsername(pageParam);
@@ -160,8 +150,12 @@ export function createApp(config, service = createService(config), options = {})
     const url = new URL(req.url, 'http://localhost');
 
     if (url.pathname.startsWith('/api/v1/admin')) {
+      const h = getHub();
+      const auth = h?.auth || options.authService || null;
       const handled = await handleAdminRoutes(req, res, url, {
-        auth: getAuth(),
+        auth,
+        hub: h,
+        service,
         config,
         send,
       });
@@ -186,10 +180,12 @@ export function createApp(config, service = createService(config), options = {})
     });
   });
 
-  server.getAuthService = getAuth;
+  server.getHub = getHub;
+  server.getAuthService = () => getHub()?.auth || options.authService || null;
   server.closeAuth = () => {
-    if (auth?.close) auth.close();
-    auth = null;
+    if (hub?.close) hub.close();
+    hub = null;
+    if (options.authService?.close) options.authService.close();
   };
   return server;
 }

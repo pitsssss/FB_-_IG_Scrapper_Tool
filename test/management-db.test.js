@@ -18,12 +18,15 @@ test('management db migrates and passes integrity check', () => {
     assert.ok(fs.existsSync(dbPath));
     integrityCheck(db);
     const versions = db.prepare('SELECT version FROM schema_migrations').all();
-    assert.equal(versions.length, 1);
-    assert.equal(versions[0].version, MANAGEMENT_SCHEMA_VERSION);
+    assert.equal(versions.length, MANAGEMENT_SCHEMA_VERSION);
+    assert.equal(Math.max(...versions.map((v) => v.version)), MANAGEMENT_SCHEMA_VERSION);
     const tables = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
     ).all().map((r) => r.name);
-    for (const t of ['admin_users', 'admin_sessions', 'bootstrap_state', 'auth_events', 'schema_migrations', 'auth_rate_limits']) {
+    for (const t of [
+      'admin_users', 'admin_sessions', 'bootstrap_state', 'auth_events', 'schema_migrations', 'auth_rate_limits',
+      'provider_credentials', 'managed_api_keys', 'api_key_scopes', 'management_audit_events',
+    ]) {
       assert.ok(tables.includes(t), `missing table ${t}`);
     }
   } finally {

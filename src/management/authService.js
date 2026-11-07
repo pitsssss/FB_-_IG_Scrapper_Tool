@@ -11,11 +11,17 @@ import { parseAllowedOrigins, validateOrigin, resolveClientIp } from './csrf.js'
  */
 export function createAuthService(options = {}) {
   const managementDir = options.managementDir;
-  if (!managementDir) throw new Error('managementDir is required');
+  if (!managementDir && !options.db) throw new Error('managementDir is required');
 
-  const opened = openManagementDb(managementDir);
-  const { db } = opened;
-  integrityCheck(db);
+  let opened = null;
+  let db = options.db || null;
+  if (!db) {
+    opened = openManagementDb(managementDir);
+    db = opened.db;
+    integrityCheck(db);
+  } else {
+    try { integrityCheck(db); } catch { /* caller already checked */ }
+  }
 
   const getSetupToken = options.getSetupToken || (() => process.env.BOOTSTRAP_SETUP_TOKEN || '');
   const bootstrap = createBootstrapService(db, { getSetupToken });
@@ -68,8 +74,8 @@ export function createAuthService(options = {}) {
 
   return {
     db,
-    path: opened.path,
-    close: opened.close,
+    path: opened?.path || null,
+    close: options.closeDb || (opened ? () => opened.close() : () => {}),
     bootstrap,
     sessions,
     allowedOrigins,

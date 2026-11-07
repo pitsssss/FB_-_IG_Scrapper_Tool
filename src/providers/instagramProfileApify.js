@@ -15,7 +15,7 @@ export function createInstagramProfileEnricher(config, { quota } = {}) {
   const fbCfg = config.apify || {};
   const igCfg = config.instagramProfileEnrichment || {};
   const enabled = Boolean(igCfg.enabled);
-  const token = fbCfg.token || '';
+  const getToken = () => fbCfg.token || '';
   const actor = (igCfg.actor || 'apify~instagram-profile-scraper').replace('/', '~');
   const timeoutMs = igCfg.timeoutMs || 60000;
   const inflight = new Map();
@@ -49,7 +49,7 @@ export function createInstagramProfileEnricher(config, { quota } = {}) {
     try {
       res = await fetch(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${getToken()}` },
         body: JSON.stringify(input),
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -102,7 +102,7 @@ export function createInstagramProfileEnricher(config, { quota } = {}) {
    */
   async function fetchProfile(ref) {
     if (!enabled) return null;
-    if (!token) return null;
+    if (!getToken()) return null;
     if (!ref?.username) return null;
     if (inflight.has(ref.username)) return inflight.get(ref.username);
     const p = fetchProfileOnce(ref).finally(() => inflight.delete(ref.username));

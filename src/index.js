@@ -15,6 +15,12 @@ const warmInstagram = parseInstagramWarmProfileList(config.instagramWarmProfiles
 const warmPages = [...warmFacebook, ...warmInstagram];
 const service = createService(config);
 const server = createApp(config, service);
+// Activate management hub (encrypted Apify token + managed API keys) without waiting for an admin request.
+try {
+  server.getHub?.();
+} catch (err) {
+  console.error('[admin] management hub failed to start:', err?.message || err);
+}
 let warmer = null;
 let shuttingDown = false;
 

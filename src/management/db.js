@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const MANAGEMENT_SCHEMA_VERSION = 1;
+export const MANAGEMENT_SCHEMA_VERSION = 2;
 
 const MIGRATIONS = [
   {
@@ -57,6 +57,60 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
   bucket_key TEXT PRIMARY KEY,
   window_start_ms INTEGER NOT NULL,
   count INTEGER NOT NULL
+);
+`,
+  },
+  {
+    version: 2,
+    sql: `
+CREATE TABLE IF NOT EXISTS provider_credentials (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  provider TEXT NOT NULL DEFAULT 'apify',
+  status TEXT NOT NULL,
+  format_version INTEGER NOT NULL DEFAULT 1,
+  key_version INTEGER NOT NULL DEFAULT 1,
+  ciphertext BLOB,
+  nonce BLOB,
+  auth_tag BLOB,
+  username_hint TEXT,
+  last_verified_at TEXT,
+  last_verify_ok INTEGER,
+  last_verify_code TEXT,
+  disconnected_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS managed_api_keys (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  key_prefix TEXT NOT NULL,
+  key_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  last_used_at TEXT,
+  revoked_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_managed_api_keys_hash ON managed_api_keys(key_hash);
+
+CREATE TABLE IF NOT EXISTS api_key_scopes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key_id INTEGER NOT NULL REFERENCES managed_api_keys(id) ON DELETE CASCADE,
+  cache_key TEXT NOT NULL,
+  UNIQUE(key_id, cache_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_key_scopes_key ON api_key_scopes(key_id);
+
+CREATE TABLE IF NOT EXISTS management_audit_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  event TEXT NOT NULL,
+  admin_username TEXT,
+  target_type TEXT,
+  target_id TEXT,
+  outcome TEXT NOT NULL,
+  meta_json TEXT
 );
 `,
   },
