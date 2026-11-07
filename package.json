@@ -1,7 +1,7 @@
 {
-  "name": "fb-posts-api",
-  "version": "1.0.0",
-  "description": "Facebook page posts API with provider fallback, persistent cache and stable response format",
+  "name": "social-media-posts-api",
+  "version": "0.1.0-beta.1",
+  "description": "Self-hosted Social Media Posts API — Facebook/Instagram posts API with Next.js admin dashboard, Docker Compose, and Apify-backed providers",
   "type": "module",
   "private": true,
   "engines": {
@@ -11,7 +11,7 @@
     "start": "node --env-file=.env src/index.js",
     "start:prod": "node src/index.js",
     "admin:recover": "node --env-file=.env scripts/admin-recover.js",
-    "test": "node --test --test-concurrency=1 test/api.test.js test/fixture.test.js test/page-identity.test.js test/apify-quota.test.js test/cache-warmer.test.js test/page-scopes.test.js test/page-ref-security.test.js test/username-input.test.js test/cache-reliability.test.js test/postman-serve-cache.test.js test/postman-collection.test.js test/public-privacy.test.js test/instagram-ref.test.js test/instagram-normalize.test.js test/instagram-api.test.js test/instagram-identity.test.js test/instagram-profile-validate.test.js test/admin-auth.test.js test/admin-auth-mfa.test.js test/admin-playground.test.js test/admin-settings-ops.test.js test/management-db.test.js test/management-provider.test.js test/management-api-keys.test.js",
+    "test": "node --test --test-concurrency=1 test/api.test.js test/fixture.test.js test/page-identity.test.js test/apify-quota.test.js test/cache-warmer.test.js test/page-scopes.test.js test/page-ref-security.test.js test/username-input.test.js test/cache-reliability.test.js test/postman-serve-cache.test.js test/postman-collection.test.js test/public-privacy.test.js test/instagram-ref.test.js test/instagram-normalize.test.js test/instagram-api.test.js test/instagram-identity.test.js test/instagram-profile-validate.test.js test/admin-auth.test.js test/admin-auth-mfa.test.js test/admin-playground.test.js test/admin-settings-ops.test.js test/management-db.test.js test/management-provider.test.js test/management-api-keys.test.js test/backup-management.test.js test/csrf-forwarded-ip.test.js",
     "capture": "node --env-file=.env scripts/capture-fixture.js",
     "smoke": "node scripts/smoke.js",
     "e2e": "node scripts/e2e-local.js",
@@ -28,14 +28,17 @@
     "dashboard:typecheck": "npm --prefix apps/dashboard run typecheck",
     "dashboard:test": "npm --prefix apps/dashboard run test",
     "secrets:generate": "node scripts/generate-compose-secrets.mjs",
+    "init:selfhost": "node scripts/generate-compose-secrets.mjs",
     "backup:management": "node scripts/backup-management.mjs",
     "compose:config": "docker compose -f docker-compose.yml -f docker-compose.local.yml config",
     "compose:up": "docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build",
     "compose:down": "docker compose -f docker-compose.yml -f docker-compose.local.yml down",
     "compose:smoke": "node scripts/compose-smoke.mjs",
-    "docker:smoke": "bash scripts/docker-smoke.sh"
+    "release:acceptance": "node scripts/release-acceptance.mjs",
+    "docker:smoke": "bash scripts/docker-smoke.sh",
+    "privacy:history": "node scripts/privacy-history-audit.mjs"
   },
   "devDependencies": {
-    "newman": "6.2.1"
+    "newman": "6.2.3"
   }
 }
