@@ -575,7 +575,7 @@ No external security audit or compliance certification is claimed.
 └── package.json
 ```
 
-> **Dashboard status:** `apps/dashboard` supports email admin setup/login, optional SMTP verification, TOTP MFA, encrypted Apify connection, managed API keys, and the authenticated API Playground (cache-only + confirmed live refresh). See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
+> **Dashboard status:** `apps/dashboard` supports email admin setup/login, optional SMTP verification, TOTP MFA, encrypted Apify connection, managed API keys, authenticated Playground, application settings/allowlists, per-account cache delete, and local usage telemetry (Phases 7C–7D.2). See [`apps/dashboard/README.md`](apps/dashboard/README.md) and [`docs/product/`](docs/product/).
 
 ## License & support
 

@@ -198,6 +198,23 @@ Success bodies for cache hit / confirmed refresh reuse the public posts success 
 
 Local quota fields shown in prepare responses are **local attempt safeguards**, not Apify account balance or billed spend.
 
+## Admin settings, cache & usage (management API)
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `GET` | `/api/v1/admin/settings` | Effective + env + managed values for the editable catalog |
+| `PATCH` | `/api/v1/admin/settings` | Validate/persist allowlisted keys; hot-apply where safe |
+| `POST` | `/api/v1/admin/settings/clear` | Clear one managed override (`{ key }`) |
+| `POST` | `/api/v1/admin/cache/delete` | Delete one account cache (password + `confirm:true`); no quota reset |
+| `GET` | `/api/v1/admin/usage/summary?period=today\|7d\|30d` | Local telemetry aggregates + quota snapshot |
+| `GET` | `/api/v1/admin/usage/events` | Recent sanitized operational events |
+
+**Allowlist composition:** managed overrides never expand environment `ALLOWED_PAGES` / `INSTAGRAM_ALLOWED_PROFILES`. Empty managed override with key present = deny-all; absent key = env-only (empty env = unrestricted).
+
+**Daily limit:** dashboard may lower effective `apify_daily_run_limit` up to the env ceiling; never resets consumed attempts. Manual quota reset is not available.
+
+**Warm settings:** persist only; require API process restart to schedule. Saving lists does not scrape.
+
 ## Compatibility
 
 Field names and types above are a **stable contract**. Changing them requires updating this document, `test/schema.js`, OpenAPI (if present), and tests.

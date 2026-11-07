@@ -108,8 +108,8 @@ Migrations: numbered SQL or versioned document schema; apply on startup before l
 | --- | --- |
 | Apify token | Management store → env `APIFY_TOKEN` → empty |
 | API keys | Management store active keys **union** env keys during migration window → later store-only option |
-| Allowlists / warm lists | Management settings override env when `settings_source=db` flag set |
-| `CACHE_DIR`, ports, encryption key | Env / Compose only |
+| Allowlists / warm lists / TTL / enrichment / daily limit | Managed SQLite `management_settings` (schema v5) with explicit key allowlist; effective allowlists = env ∩ managed (never expands env); absent key = env-only |
+| `CACHE_DIR`, ports, encryption key, Actor IDs, TLS | Env / Compose only |
 
 Document in UI which knobs need restart.
 

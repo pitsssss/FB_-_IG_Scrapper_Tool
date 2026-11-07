@@ -113,12 +113,19 @@ Dependencies are hard unless noted. No calendar estimates.
 - [x] XSS-safe post text + http(s)-only media/permalink validation
 - [x] Tests: `test/admin-playground.test.js` (mocked providers; no paid Apify)
 
+### 7D.2 — Settings, cache management & usage (implemented)
+
+- [x] Versioned `management_settings` + `operational_events` (schema v5)
+- [x] Editable allowlists / TTL / enrichment / daily limit (env ceiling) with hot apply
+- [x] Warm lists/enable/interval/concurrency persisted (restart required)
+- [x] Per-account cache delete (memory+disk, password reauth, no quota reset, no purge-all)
+- [x] Local usage summary/events + Overview traffic card
+- [x] Dashboard Settings / Cache / Usage wired via BFF
+
 ### Remaining 7D
 
-- Settings: allowlists, warm lists, TTL, enrichment toggle with warnings.
 - In-app API documentation with neutral examples (partial exists).
-- Usage & logs views (local counters only).
-- Cache purge with confirmations.
+- Broader usage analytics polish (optional).
 
 **Acceptance**
 

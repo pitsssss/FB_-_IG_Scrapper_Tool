@@ -169,8 +169,8 @@ async function start({ providers, seedCache } = {}) {
   };
 }
 
-test('management schema includes playground confirmations (v4)', async () => {
-  assert.equal(MANAGEMENT_SCHEMA_VERSION, 4);
+test('management schema includes playground confirmations (v4+) and settings (v5)', async () => {
+  assert.equal(MANAGEMENT_SCHEMA_VERSION, 5);
   const ctx = await start();
   try {
     const tables = ctx.service; // ensure app opened hub
