@@ -59,7 +59,7 @@ Unauthenticated users: only `/setup` (if incomplete), `/login`, and public marke
 
 ### B. API Playground
 
-**Status (7D.1):** Implemented — cache-only default + server-enforced prepare/confirm live refresh. Settings purge and anonymous public playground remain out of scope.
+**Status (7D.1 + 7D.2):** Implemented — cache-only default + server-enforced prepare/confirm live refresh. Settings allowlists/TTL/warming/enrichment/daily limit, per-account cache delete, and local usage telemetry are available. Purge-all, quota reset, and anonymous public playground remain out of scope.
 
 **Inputs**
 

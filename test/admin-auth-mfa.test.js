@@ -158,7 +158,7 @@ test('schema migrates to v3 additively and preserves legacy username admin', asy
   db.close();
 
   const opened = openManagementDb(dir);
-  assert.equal(MANAGEMENT_SCHEMA_VERSION, 4);
+  assert.equal(MANAGEMENT_SCHEMA_VERSION, 5);
   const cols = opened.db.prepare('PRAGMA table_info(admin_users)').all().map((r) => r.name);
   assert.ok(cols.includes('email'));
   assert.ok(cols.includes('totp_enabled'));

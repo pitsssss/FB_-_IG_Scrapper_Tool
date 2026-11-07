@@ -1,6 +1,6 @@
 # Security architecture
 
-**Phase:** 7A design; **7C.1 + 7C.1B + 7C.2 + 7D.1 implemented** (admin auth/MFA, encrypted Apify credentials, managed API keys, confirmed playground refresh). Settings purge and Compose HTTPS remain later.  
+**Phase:** 7A design; **7C.1 + 7C.1B + 7C.2 + 7D.1 + 7D.2 implemented** (admin auth/MFA, encrypted Apify credentials, managed API keys, confirmed playground refresh, settings/allowlists, per-account cache delete, local usage telemetry). Purge-all / quota reset / Compose HTTPS remain later.  
 **Companion ADRs:** [ADR-003](./decisions/ADR-003-admin-auth.md), [ADR-004](./decisions/ADR-004-apify-token.md), [ADR-005](./decisions/ADR-005-api-keys.md)
 
 ---

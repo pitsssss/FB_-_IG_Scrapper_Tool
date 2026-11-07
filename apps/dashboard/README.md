@@ -80,9 +80,14 @@ npm run test
    - Cancel makes zero provider calls.
 4. Results: Visual preview, Raw JSON, Request details, Response metadata (LIVE / CACHE / STALE CACHE).
 
+## Settings, cache & usage (7D.2)
+
+- **Settings:** allowlists, fresh TTL, enrichment, daily attempt limit (≤ env ceiling), warm lists (restart required).
+- **Cache:** list/filter + single-entry delete with password confirmation (no purge-all, no quota reset).
+- **Usage:** local telemetry for today / 7d / 30d — distinguishes cache hits from provider attempts.
+
 ## Known unfinished
 
-- Cache purge / quota reset controls
-- Full settings editor (host env remains authoritative)
+- Cache purge-all and manual quota reset (intentionally unavailable)
 - Docker Compose multi-service topology (7E)
 - Production HTTPS / Caddy same-origin routing (7E)
