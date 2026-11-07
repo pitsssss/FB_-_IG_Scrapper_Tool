@@ -18,6 +18,7 @@ describe("dashboard auth boundaries", () => {
     const mw = read("middleware.ts");
     expect(mw).toMatch(/SESSION_COOKIE/);
     expect(mw).toMatch(/\/login/);
+    expect(mw).toMatch(/\/api\/health/);
   });
 
   it("does not expose API_INTERNAL_URL or ADMIN_INTERNAL_SECRET to the browser", () => {
