@@ -86,8 +86,21 @@ npm run test
 - **Cache:** list/filter + single-entry delete with password confirmation (no purge-all, no quota reset).
 - **Usage:** local telemetry for today / 7d / 30d — distinguishes cache hits from provider attempts.
 
+## Docker (Phase 7E)
+
+Prefer the root Compose stack (Caddy + API + this dashboard). See [`docs/SELF_HOSTING_GUIDE.md`](../../docs/SELF_HOSTING_GUIDE.md).
+
+```bash
+# from repo root
+npm run secrets:generate
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# http://127.0.0.1:8080
+```
+
+Runtime (injected by Compose): `API_INTERNAL_URL=http://api:3000`, `ADMIN_INTERNAL_SECRET`, `PORT=3001`. No secrets in `NEXT_PUBLIC_*`.
+
 ## Known unfinished
 
 - Cache purge-all and manual quota reset (intentionally unavailable)
-- Docker Compose multi-service topology (7E)
-- Production HTTPS / Caddy same-origin routing (7E)
+- Live public HTTPS certificate acceptance on a real domain (operator / Phase 7F)
+- Open-source license choice (owner)

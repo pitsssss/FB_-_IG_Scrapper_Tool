@@ -1,6 +1,6 @@
 # Security architecture
 
-**Phase:** 7A design; **7C.1 + 7C.1B + 7C.2 + 7D.1 + 7D.2 implemented** (admin auth/MFA, encrypted Apify credentials, managed API keys, confirmed playground refresh, settings/allowlists, per-account cache delete, local usage telemetry). Purge-all / quota reset / Compose HTTPS remain later.  
+**Phase:** 7A design; **7C–7E implemented** (admin auth/MFA, encrypted Apify credentials, managed API keys, playground, settings/cache/usage, three-service Compose with Caddy path separation + local/prod overlays). Purge-all / quota reset intentionally unavailable. Live public HTTPS domain acceptance remains Phase 7F.  
 **Companion ADRs:** [ADR-003](./decisions/ADR-003-admin-auth.md), [ADR-004](./decisions/ADR-004-apify-token.md), [ADR-005](./decisions/ADR-005-api-keys.md)
 
 ---
@@ -211,7 +211,7 @@ No SOC2/ISO claims. Self-hosted operator remains responsible for host hardening.
 - Render post **text** as text nodes (no `dangerouslySetInnerHTML`).
 - Media: only `http:`/`https:` URLs; prefer HTTPS; block `javascript:` / data HTML.
 - External permalinks: `rel="noopener noreferrer"`.
-- CSP headers from Caddy or Next for dashboard (finalize in 7E).
+- Caddy sets `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`; production Caddyfile adds HSTS. CSP left permissive enough for Next.js + theme + media previews (tighten carefully in 7F if needed).
 
 ---
 

@@ -138,26 +138,31 @@ Dependencies are hard unless noted. No calendar estimates.
 
 ---
 
-## 7E — Docker integration and QA
+## 7E — Docker integration and QA *(implemented)*
 
 **Depends on:** 7D (MVP feature-complete).
 
-**Work**
+**Work done**
 
-- Compose: `caddy` + `api` + `dashboard`; same-origin routes.
-- Dashboard Dockerfile (standalone).
-- Healthchecks; volume paths for management.
-- Evolve docker smoke / add dashboard smoke (no real Apify).
-- CI: build dashboard; keep matrix Node tests for API.
-- Backup/restore doc dry-run.
+- [x] Compose: `caddy` + `api` + `dashboard`; private `smp_net`; single API replica
+- [x] Explicit Caddy routing: BFF `/api/auth/*` + `/api/management/*` → dashboard; `/api/v1/*` + `/health` → api
+- [x] Dashboard multi-stage Dockerfile (`output: "standalone"`, non-root, port 3001)
+- [x] API entrypoint volume chown + `su-exec`; healthchecks; log rotation
+- [x] Local overlay `docker-compose.local.yml` + `Caddyfile.local` (127.0.0.1:8080, no HSTS)
+- [x] `npm run secrets:generate` (never overwrites existing secrets)
+- [x] `npm run backup:management` + `docs/BACKUP_RESTORE.md` / `docs/SELF_HOSTING_GUIDE.md`
+- [x] Isolated `npm run compose:smoke` (synthetic secrets; project-scoped cleanup)
 
 **Acceptance**
 
-- [ ] Criteria in DEPLOYMENT_DESIGN §14
-- [ ] `postman:offline` + unit + e2e green
-- [ ] Single-replica documented and enforced in compose comments
+- [x] Three-service Compose stack; Caddy path separation verified in smoke
+- [x] Admin setup/login cookies through Caddy; settings BFF reachable
+- [x] Volume persistence across API restart (smoke)
+- [x] Single-replica documented in compose comments
+- [ ] Live public HTTPS with real domain — operator acceptance (Phase 7F)
+- [ ] Full interactive browser MFA/Playground through Compose — optional; HTTP smoke covers BFF path
 
-**Risks:** Cookie Secure flags on HTTP local vs HTTPS prod — document both.
+**Risks:** Cookie Secure flags on HTTP local vs HTTPS prod — documented in SELF_HOSTING_GUIDE.
 
 ---
 

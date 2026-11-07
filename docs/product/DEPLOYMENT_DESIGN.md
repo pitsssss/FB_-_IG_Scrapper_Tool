@@ -1,15 +1,15 @@
 # Deployment design
 
-**Phase:** 7A design only  
+**Phase:** 7E implemented  
 **Related:** [ADR-007](./decisions/ADR-007-docker-topology.md)  
-**Current evidence:** `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `.dockerignore`, `docs/PRODUCTION_CHECKLIST.md`
+**Operator guides:** [SELF_HOSTING_GUIDE.md](../SELF_HOSTING_GUIDE.md), [BACKUP_RESTORE.md](../BACKUP_RESTORE.md)
 
 ---
 
 ## 1. Goals
 
-- One command: `docker compose up -d --build`
-- One public origin (HTTPS)
+- One command after secrets: `docker compose up -d --build`
+- One public origin (HTTPS in production; loopback HTTP for local)
 - Durable volume for cache, quota, and management data
 - API reachable by external backends with `x-api-key`
 - Admin UI protected by session; no open admin APIs
@@ -17,200 +17,117 @@
 
 ---
 
-## 2. Current deployment (as shipped)
-
-```mermaid
-flowchart LR
-  User[Clients] -->|80/443| Caddy
-  Caddy -->|api:3000| API[api container]
-  API --> Vol[(api_data /data)]
-```
-
-| Service | Image / build | Ports | Role |
-| --- | --- | --- | --- |
-| `api` | build `.` | expose 3000 only | Posts API |
-| `caddy` | `caddy:2` | 80, 443 | TLS + reverse_proxy |
-
-Secrets: Compose `env_file: .env`. Domain: `API_DOMAIN`. Healthcheck: `wget` → `/health`.
-
-**Gaps for product vision:** no dashboard container; Caddy routes only to API; setup is manual `.env` editing.
-
----
-
-## 3. Target Compose topology
+## 2. Compose topology (shipped)
 
 ```mermaid
 flowchart TB
-  Internet((Internet))
+  Internet((Clients / browsers))
   Caddy[caddy :80/:443]
   Dash[dashboard :3001 internal]
   API[api :3000 internal]
-  Data[(volume /data)]
+  Data[(volume api_data /data)]
 
   Internet --> Caddy
-  Caddy -->|"/, /_next/*"| Dash
-  Caddy -->|/api/*, /health| API
-  Dash -->|server-side http://api:3000| API
+  Caddy -->|"/, /_next/*, /api/auth/*, /api/management/*, /api/health"| Dash
+  Caddy -->|/api/v1/*, /health| API
+  Dash -->|server-side API_INTERNAL_URL=http://api:3000| API
   API --> Data
 ```
 
-| Service | Responsibility |
+| Service | Build / image | Host ports | Role |
+| --- | --- | --- | --- |
+| `api` | root `Dockerfile` | none (expose 3000) | Posts API + admin HTTP + SQLite |
+| `dashboard` | `apps/dashboard/Dockerfile` | none (expose 3001) | Next.js UI + BFF |
+| `caddy` | `caddy:2` | prod 80/443; local `127.0.0.1:8080` | TLS (prod) + path routing |
+
+Network: `smp_net` (bridge). Volumes: `api_data`, `caddy_data`, `caddy_config`.
+
+**Do not** publish host ports for `api` or `dashboard` in production. **Do not** scale `api` replicas.
+
+---
+
+## 3. Caddy routing (critical)
+
+Two API layers share the `/api` prefix. Catch-all `/api/*` → Node is **incorrect**.
+
+| Path | Upstream |
 | --- | --- |
-| `caddy` | Public TLS; path routing; long `response_header_timeout` for live scrapes (today 200s) |
-| `api` | Existing Node API + future admin routes; mounts `/data` |
-| `dashboard` | Next.js standalone output; no public DB credentials; talks to `api` on Docker network |
+| `/health` | `api:3000` |
+| `/api/v1/*` | `api:3000` (200s response header timeout for live scrapes) |
+| `/api/auth/*` | `dashboard:3001` |
+| `/api/management/*` | `dashboard:3001` |
+| `/api/health` | `dashboard:3001` |
+| everything else (`/`, `/_next/*`, pages) | `dashboard:3001` |
 
-**Do not** publish host ports for `api` or `dashboard` in production Compose — only Caddy.
-
----
-
-## 4. Suggested routing (Caddy)
-
-Conceptual (exact file updated in 7E):
-
-```caddyfile
-{$API_DOMAIN} {
-  encode gzip
-
-  handle /health {
-    reverse_proxy api:3000
-  }
-
-  handle /api/* {
-    reverse_proxy api:3000 {
-      transport http {
-        response_header_timeout 200s
-      }
-    }
-  }
-
-  handle {
-    reverse_proxy dashboard:3001
-  }
-}
-```
-
-Same-origin cookies work for admin session without cross-site issues.
+Files: `Caddyfile` (production domain + HSTS), `Caddyfile.local` (HTTP `:80`, no HSTS).
 
 ---
 
-## 5. Images and builds
+## 4. Local vs production
 
-### API image (evolve carefully)
-
-- Keep multi-stage optional; today single-stage Alpine + `USER node`.
-- Continue excluding `.env`, `data`, tests from image (`.dockerignore` already excludes `*.md`, `test`, `.env`, `data`).
-- When management code lands, still run as non-root.
-
-### Dashboard image
-
-- Follow Next.js **standalone** output recommendations for Docker.
-- Build with secrets **not** in `NEXT_PUBLIC_*`.
-- Runtime env: `API_INTERNAL_URL=http://api:3000`, public URL for redirects.
-
-### Dependency policy note
-
-API historically has **zero runtime npm deps**. Dashboard will have many. Prefer **separate package.json** under `apps/dashboard` so API image does not install Next.js. Management features on API may add first carefully justified dependency or use Node built-ins (ADR-006).
-
----
-
-## 6. Volumes and paths
-
-| Mount | Contents |
-| --- | --- |
-| `/data/cache` | Post cache, `apify-quota.json`, Instagram profile meta |
-| `/data/management` | SQLite / encrypted management files |
-| `/data/bootstrap` | Optional one-time setup token file |
-| Caddy volumes | TLS certs / config (unchanged pattern) |
-
-File permissions: create dirs as `node` before volume use (existing Dockerfile comment remains relevant).
-
----
-
-## 7. Secrets injection
-
-| Secret | Injection |
-| --- | --- |
-| `BOOTSTRAP_SETUP_TOKEN` | Compose secret / env — first run only |
-| `DATA_ENCRYPTION_KEY` | Required once management secrets exist |
-| `API_KEYS` / `APIFY_TOKEN` | Optional bootstrap for headless; dashboard can supersede |
-| Dashboard session signing | Server-only env on API (sessions owned by API) or shared HMAC secret |
-
-Never bake secrets into images. Never commit `.env`.
-
----
-
-## 8. Networking and exposure
-
-| Endpoint | Public | Auth |
+| | Local | Production |
 | --- | --- | --- |
-| Dashboard UI | Yes | Session after setup |
-| `/api/v1/admin/*` | Via same origin | Admin session (+ CSRF) |
-| `/api/v1/facebook/posts` etc. | Yes | API key |
-| `/health` | Yes | None (no secrets) |
-| Apify | Egress only from `api` | Operator token |
+| Compose | `-f docker-compose.yml -f docker-compose.local.yml` | `docker-compose.yml` |
+| Browser origin | `http://127.0.0.1:8080` | `https://$API_DOMAIN` |
+| `ADMIN_COOKIE_SECURE` | `0` | `1` |
+| Ports | loopback 8080 only | 80 + 443 |
+| TLS | none | Caddy automatic HTTPS |
 
-Browser must not call Apify. Dashboard server components/actions call `api` over the private Docker network.
-
----
-
-## 9. Health, restart, shutdown
-
-- Keep API `/health` for Compose healthcheck.
-- Add dashboard health (e.g. `/api/health` or Next ready check) in 7E.
-- `restart: unless-stopped` retained.
-- API already handles SIGTERM (warmer stop + `server.close`). Dashboard should likewise drain.
-- Quota warning in logs: single-replica only — Compose `deploy.replicas` must stay 1 (or omit Swarm scaling).
+`ADMIN_ALLOWED_ORIGINS` must match the **browser** origin, never `http://api:3000` or `http://dashboard:3001`.
 
 ---
 
-## 10. Local development mode
+## 5. Secrets & bootstrap
 
-| Mode | Approach |
+Required before first useful start:
+
+- `BOOTSTRAP_SETUP_TOKEN`
+- `ADMIN_INTERNAL_SECRET` (identical on api env and dashboard env)
+- `DATA_ENCRYPTION_KEY`
+- `ADMIN_ALLOWED_ORIGINS`
+
+Optional: `APIFY_TOKEN`, `API_KEYS`, SMTP. Operators can connect Apify and create keys in the UI after setup.
+
+Generate missing values without overwrite: `npm run secrets:generate`.
+
+Never bake secrets into image build args, `NEXT_PUBLIC_*`, or Git.
+
+---
+
+## 6. Persistence
+
+| Path in container | Contents |
 | --- | --- |
-| API only | `npm start` with `.env` (today) |
-| API + dashboard | Concurrent `node src/index.js` + `next dev`; Next rewrites `/api` → `localhost:3000` |
-| Full Compose | `docker compose up --build` against local domain / `localhost` with Caddy or published ports for dev only |
+| `/data/cache` | Post caches, Instagram profile meta, `apify-quota.json` |
+| `/data/management` | SQLite (schema migrations on startup), sessions, keys, encrypted credentials |
 
-Dev may publish ports for convenience; production Compose should not.
-
----
-
-## 11. Upgrades and rollback
-
-1. Pull new images / rebuild.
-2. Backup `/data` first.
-3. Apply management migrations on API start (forward-only).
-4. Roll back = previous image + restored volume snapshot.
-5. Do not assume volumes sync across hosts.
+API entrypoint (`scripts/docker-entrypoint-api.sh`) chowns `/data` then drops to `node` via `su-exec`.
 
 ---
 
-## 12. Backup / recovery (ops)
+## 7. Healthchecks
 
-See [STORAGE_AND_CONFIG_DESIGN.md](./STORAGE_AND_CONFIG_DESIGN.md) § Backup. Checklist item for 7F user docs.
-
----
-
-## 13. Resource expectations (order-of-magnitude)
-
-| Component | Notes |
-| --- | --- |
-| API | Light idle; spikes on live Apify (CPU/network); disk grows with cached pages |
-| Dashboard | Modest Node memory for Next standalone |
-| Caddy | Negligible |
-
-Exact sizing is operator-specific; live scrape timeout budget already ~150s+ per Actor call.
+- API: `GET http://127.0.0.1:3000/health` (Node fetch; no Apify)
+- Dashboard: `GET http://127.0.0.1:3001/api/health`
+- Caddy: `depends_on` healthy api + dashboard
 
 ---
 
-## 14. Acceptance criteria for deployment phase (7E)
+## 8. Verification
 
-- [ ] `docker compose up -d --build` brings up proxy + api + dashboard
-- [ ] HTTPS (or documented local HTTP) serves UI and API on one host
-- [ ] External posts request with API key works through proxy
-- [ ] Unauthenticated `/api/v1/admin/*` denied
-- [ ] Volume retains cache + quota across restart
-- [ ] No secrets in image layers or compose overrides committed
-- [ ] Existing `scripts/docker-smoke.sh` evolved or sibling smoke covers new topology
-- [ ] Offline unit/e2e/postman still pass without Apify
+- `npm run compose:config`
+- `npm run compose:smoke` — isolated project, synthetic secrets, cleanup with `down -v` **only** for that project
+- Unit / E2E / Postman offline remain API contract gates
+
+Live public HTTPS and paid Apify acceptance remain operator-side (Phase 7F).
+
+---
+
+## 9. Acceptance criteria (7E)
+
+- [x] `docker compose up -d --build` starts three services after `.env` secrets
+- [x] Same-origin dashboard + BFF + public posts API via Caddy
+- [x] Dashboard production image uses standalone output, non-root
+- [x] Volume data survives container restart/rebuild
+- [x] Documented backup/restore and self-hosting guide
+- [ ] Real domain HTTPS certificate issuance — NOT claimed without operator DNS
