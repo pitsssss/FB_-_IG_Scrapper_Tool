@@ -25,6 +25,7 @@ export function createManagementHub(config, {
     allowedOrigins: (config.adminAllowedOrigins || []).join(','),
     trustProxy: config.trustProxy,
     internalSecret: config.adminInternalSecret || process.env.ADMIN_INTERNAL_SECRET || '',
+    getEncryptionKey: getEncryptionKey || (() => config.dataEncryptionKey || process.env.DATA_ENCRYPTION_KEY || ''),
   });
 
   const db = auth.db;

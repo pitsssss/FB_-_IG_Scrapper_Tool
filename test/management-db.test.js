@@ -26,9 +26,13 @@ test('management db migrates and passes integrity check', () => {
     for (const t of [
       'admin_users', 'admin_sessions', 'bootstrap_state', 'auth_events', 'schema_migrations', 'auth_rate_limits',
       'provider_credentials', 'managed_api_keys', 'api_key_scopes', 'management_audit_events',
+      'email_otp_challenges', 'totp_pending', 'recovery_code_hashes', 'totp_used_steps',
     ]) {
       assert.ok(tables.includes(t), `missing table ${t}`);
     }
+    const adminCols = db.prepare('PRAGMA table_info(admin_users)').all().map((r) => r.name);
+    assert.ok(adminCols.includes('email'));
+    assert.ok(adminCols.includes('totp_enabled'));
   } finally {
     close();
   }
@@ -56,6 +60,7 @@ test('bootstrap requires token and creates exactly one admin', async () => {
 
     const denied = await boot.complete({
       setupToken: 'wrong',
+      email: 'admin@example.com',
       username: 'admin',
       password: 'correct-horse-battery',
       confirmPassword: 'correct-horse-battery',
@@ -64,16 +69,19 @@ test('bootstrap requires token and creates exactly one admin', async () => {
 
     const ok = await boot.complete({
       setupToken: token,
+      email: 'admin@example.com',
       username: 'Admin',
       password: 'correct-horse-battery',
       confirmPassword: 'correct-horse-battery',
     });
     assert.equal(ok.ok, true);
     assert.equal(ok.admin.username, 'admin');
+    assert.equal(ok.admin.email, 'admin@example.com');
     assert.equal(boot.status(), 'completed');
 
     const again = await boot.complete({
       setupToken: token,
+      email: 'other@example.com',
       username: 'other',
       password: 'correct-horse-battery',
       confirmPassword: 'correct-horse-battery',
@@ -94,6 +102,7 @@ test('bootstrap fails closed without token', async () => {
     assert.equal(boot.status(), 'needs_token');
     const r = await boot.complete({
       setupToken: 'anything-long-enough',
+      email: 'admin@example.com',
       username: 'admin',
       password: 'correct-horse-battery',
       confirmPassword: 'correct-horse-battery',
@@ -117,8 +126,8 @@ test('concurrent bootstrap only one wins', async () => {
       confirmPassword: 'correct-horse-battery',
     };
     const results = await Promise.all([
-      boot.complete({ ...payload, username: 'admin1' }),
-      boot.complete({ ...payload, username: 'admin2' }),
+      boot.complete({ ...payload, email: 'a1@example.com', username: 'admin1' }),
+      boot.complete({ ...payload, email: 'a2@example.com', username: 'admin2' }),
     ]);
     const wins = results.filter((r) => r.ok);
     const losses = results.filter((r) => !r.ok);

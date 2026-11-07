@@ -59,9 +59,21 @@ export async function getSetupStatus() {
     status: string;
     setupRequired: boolean;
     setupAvailable: boolean;
+    smtpConfigured?: boolean;
     message: string;
   }>("/api/v1/admin/setup/status", { method: "GET" });
 }
+
+export type AdminProfile = {
+  id: number;
+  username: string;
+  email?: string | null;
+  emailPending?: string | null;
+  emailVerified?: boolean;
+  smtpConfigured?: boolean;
+  totpEnabled?: boolean;
+  recoveryCodesRemaining?: number;
+};
 
 export async function getAdminMe(sessionToken: string | null) {
   if (!sessionToken) {
@@ -71,7 +83,11 @@ export async function getAdminMe(sessionToken: string | null) {
       body: { success: false, error: { code: "UNAUTHORIZED", message: "Authentication required" } },
     } satisfies AdminApiResult;
   }
-  return adminApiFetch<{ admin: { id: number; username: string } }>("/api/v1/admin/me", {
+  return adminApiFetch<{
+    admin: AdminProfile;
+    mfaPending?: boolean;
+    authLevel?: string;
+  }>("/api/v1/admin/me", {
     method: "GET",
     sessionToken,
   });

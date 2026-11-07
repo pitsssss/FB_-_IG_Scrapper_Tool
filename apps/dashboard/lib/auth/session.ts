@@ -7,7 +7,11 @@ export async function getCurrentAdmin() {
   const token = await readSessionToken();
   const me = await getAdminMe(token);
   if (!me.ok || !me.body.data?.admin) return null;
-  return me.body.data.admin;
+  return {
+    ...me.body.data.admin,
+    mfaPending: Boolean(me.body.data.mfaPending),
+    authLevel: me.body.data.authLevel || "full",
+  };
 }
 
 export async function requireAdmin() {
@@ -19,10 +23,15 @@ export async function requireAdmin() {
     }
     redirect("/login");
   }
+  if (admin.mfaPending) {
+    redirect("/mfa");
+  }
   return admin;
 }
 
 export async function redirectIfAuthenticated() {
   const admin = await getCurrentAdmin();
-  if (admin) redirect("/overview");
+  if (!admin) return;
+  if (admin.mfaPending) redirect("/mfa");
+  redirect("/overview");
 }

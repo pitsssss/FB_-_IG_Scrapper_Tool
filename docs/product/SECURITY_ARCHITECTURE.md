@@ -126,9 +126,9 @@ API keys **must not** authorize `/api/v1/admin/*`.
 
 ### 4.6 Password reset / recovery (MVP)
 
-- **No email-based reset** in MVP (no mailer dependency; self-hosted).
-- Recovery = host access: documented CLI/script or volume procedure to reset admin hash and re-enable bootstrap.
-- Future: optional SMTP — **DEFER**.
+- **No anonymous email password reset** (enumeration / takeover risk).
+- Optional SMTP is used only for **authenticated email verification OTPs**; absent SMTP never claims verification success.
+- Recovery = host access: `scripts/admin-recover.js` (interactive password preferred) resets hash, clears MFA/recovery codes, revokes sessions.
 
 ### 4.7 Reverse proxy
 

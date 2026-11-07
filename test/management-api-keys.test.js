@@ -72,6 +72,7 @@ async function start() {
   const setup = await json(base, 'POST', '/api/v1/admin/setup', {
     body: {
       setupToken: BOOT,
+      email: 'admin@example.com',
       username: 'admin',
       password: 'correct-horse-battery',
       confirmPassword: 'correct-horse-battery',
@@ -239,6 +240,7 @@ test('empty API_KEYS allows admin bootstrap; posts stay 401 until managed key', 
     const setup = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: BOOT,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',

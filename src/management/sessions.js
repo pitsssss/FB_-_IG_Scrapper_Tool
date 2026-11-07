@@ -12,11 +12,11 @@ export const SESSION_IDLE_MS = 2 * 60 * 60 * 1000;
 export function createSessionService(db) {
   const insert = db.prepare(`
     INSERT INTO admin_sessions
-      (token_hash, admin_id, csrf_hash, created_at, absolute_expires_at, idle_expires_at, last_seen_at, user_agent_hash, revoked_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+      (token_hash, admin_id, csrf_hash, created_at, absolute_expires_at, idle_expires_at, last_seen_at, user_agent_hash, revoked_at, auth_level, mfa_pending)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
   `);
   const byHash = db.prepare(`
-    SELECT s.*, u.username
+    SELECT s.*, u.username, u.email, u.email_verified_at, u.totp_enabled
     FROM admin_sessions s
     JOIN admin_users u ON u.id = s.admin_id
     WHERE s.token_hash = ?
@@ -32,13 +32,24 @@ export function createSessionService(db) {
   const revokeAllForAdmin = db.prepare(`
     UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL
   `);
+  const promote = db.prepare(`
+    UPDATE admin_sessions
+    SET auth_level = 'full', mfa_pending = 0
+    WHERE id = ? AND revoked_at IS NULL
+  `);
 
   return {
-    create(adminId, { userAgent } = {}) {
+    /**
+     * @param {number} adminId
+     * @param {{ userAgent?: string, authLevel?: 'password'|'full', mfaPending?: boolean }} [opts]
+     */
+    create(adminId, { userAgent, authLevel = 'full', mfaPending = false } = {}) {
       const token = randomToken(32);
       const csrf = randomToken(32);
       const now = Date.now();
       const createdAt = isoNow(now);
+      const level = authLevel === 'password' ? 'password' : 'full';
+      const pending = mfaPending || level === 'password' ? 1 : 0;
       insert.run(
         sha256Hex(token),
         adminId,
@@ -48,15 +59,22 @@ export function createSessionService(db) {
         isoNow(now + SESSION_IDLE_MS),
         createdAt,
         userAgent ? sha256Hex(userAgent) : null,
+        level,
+        pending,
       );
-      return { token, csrf, absoluteExpiresAt: isoNow(now + SESSION_ABSOLUTE_MS) };
+      return {
+        token,
+        csrf,
+        absoluteExpiresAt: isoNow(now + SESSION_ABSOLUTE_MS),
+        authLevel: level,
+        mfaPending: Boolean(pending),
+      };
     },
 
     /**
-     * Validate session token. Extends idle timeout on success.
-     * @returns {{ ok: true, admin: { id, username }, sessionId: number, csrfHash: string } | { ok: false, reason: string }}
+     * @param {{ requireFull?: boolean }} [opts]
      */
-    validate(token, { nowMs = Date.now(), touchIdle = true } = {}) {
+    validate(token, { nowMs = Date.now(), touchIdle = true, requireFull = true } = {}) {
       if (!token || typeof token !== 'string') return { ok: false, reason: 'missing' };
       const row = byHash.get(sha256Hex(token));
       if (!row) return { ok: false, reason: 'not_found' };
@@ -64,15 +82,32 @@ export function createSessionService(db) {
       const nowIso = isoNow(nowMs);
       if (row.absolute_expires_at <= nowIso) return { ok: false, reason: 'absolute_expired' };
       if (row.idle_expires_at <= nowIso) return { ok: false, reason: 'idle_expired' };
+      const authLevel = row.auth_level || 'full';
+      const mfaPending = Boolean(row.mfa_pending) || authLevel === 'password';
+      if (requireFull && mfaPending) {
+        return { ok: false, reason: 'mfa_required', authLevel, mfaPending: true, sessionId: row.id };
+      }
       if (touchIdle) {
         touch.run(nowIso, isoNow(nowMs + SESSION_IDLE_MS), row.id);
       }
       return {
         ok: true,
-        admin: { id: row.admin_id, username: row.username },
+        admin: {
+          id: row.admin_id,
+          username: row.username,
+          email: row.email || null,
+          emailVerified: Boolean(row.email_verified_at),
+          totpEnabled: Boolean(row.totp_enabled),
+        },
         sessionId: row.id,
         csrfHash: row.csrf_hash,
+        authLevel,
+        mfaPending,
       };
+    },
+
+    promoteToFull(sessionId) {
+      return promote.run(sessionId).changes > 0;
     },
 
     revokeToken(token) {

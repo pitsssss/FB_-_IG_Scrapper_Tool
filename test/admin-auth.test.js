@@ -120,6 +120,7 @@ test('bootstrap: wrong token denied; correct creates admin; reuse denied', async
     const bad = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: 'wrong-token-wrong-token-xx',
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',
@@ -131,6 +132,7 @@ test('bootstrap: wrong token denied; correct creates admin; reuse denied', async
     const ok = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: TOKEN,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',
@@ -149,6 +151,7 @@ test('bootstrap: wrong token denied; correct creates admin; reuse denied', async
     const reuse = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: TOKEN,
+        email: 'other@example.com',
         username: 'other',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',
@@ -172,6 +175,7 @@ test('login, me, logout, forged session, csrf', async () => {
     await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: TOKEN,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',
@@ -260,6 +264,7 @@ test('internal BFF secret returns sessionToken; password change revokes old sess
     const setup = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: TOKEN,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',
@@ -337,6 +342,7 @@ test('GET cannot mutate setup; rate limit on setup', async () => {
         last = await json(b, 'POST', '/api/v1/admin/setup', {
           body: {
             setupToken: 'wrong-token-wrong-token-xx',
+            email: 'admin@example.com',
             username: 'admin',
             password: 'correct-horse-battery',
             confirmPassword: 'correct-horse-battery',
@@ -361,6 +367,7 @@ test('session idle/absolute expiry', async () => {
     const setup = await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: TOKEN,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',
@@ -384,6 +391,7 @@ test('management dir does not touch cache; recovery CLI path', async () => {
     await json(base, 'POST', '/api/v1/admin/setup', {
       body: {
         setupToken: TOKEN,
+        email: 'admin@example.com',
         username: 'admin',
         password: 'correct-horse-battery',
         confirmPassword: 'correct-horse-battery',

@@ -2,7 +2,9 @@ import { openManagementDb, integrityCheck } from './db.js';
 import { createBootstrapService } from './bootstrap.js';
 import { createSessionService } from './sessions.js';
 import { createRateLimiter } from './rateLimit.js';
+import { createAccountSecurityService } from './accountSecurity.js';
 import { hashPassword, verifyPassword, validatePassword, validateUsername } from './passwords.js';
+import { validateEmail, loadSmtpConfig } from './email.js';
 import { sha256Hex, isoNow } from './cryptoUtil.js';
 import { parseAllowedOrigins, validateOrigin, resolveClientIp } from './csrf.js';
 
@@ -39,6 +41,7 @@ export function createAuthService(options = {}) {
     options.internalSecret ?? process.env.ADMIN_INTERNAL_SECRET ?? '';
 
   const getAdminByUsername = db.prepare('SELECT * FROM admin_users WHERE username = ? COLLATE NOCASE');
+  const getAdminByEmail = db.prepare('SELECT * FROM admin_users WHERE email = ? COLLATE NOCASE');
   const getAdminById = db.prepare('SELECT * FROM admin_users WHERE id = ?');
   const updatePassword = db.prepare(`
     UPDATE admin_users
@@ -72,26 +75,59 @@ export function createAuthService(options = {}) {
     return sha256Hex(`${kind}|${ip || ''}|${(username || '').toLowerCase()}`);
   }
 
-  return {
+  const getSmtpConfig = options.getSmtpConfig || (() => loadSmtpConfig(process.env));
+  const getEncryptionKey = options.getEncryptionKey
+    || (() => options.dataEncryptionKey || process.env.DATA_ENCRYPTION_KEY || '');
+
+  const accountSecurity = createAccountSecurityService(db, {
+    sessions,
+    getEncryptionKey,
+    getSmtpConfig,
+    limiter,
+    logEvent,
+  });
+
+  function findAdminByLogin(loginRaw) {
+    const raw = String(loginRaw || '').trim();
+    if (!raw) return null;
+    const asEmail = validateEmail(raw);
+    if (asEmail.ok) {
+      const byEmail = getAdminByEmail.get(asEmail.email);
+      if (byEmail) return byEmail;
+    }
+    const asUser = validateUsername(raw);
+    if (asUser.ok) return getAdminByUsername.get(asUser.username) || null;
+    return null;
+  }
+
+  function adminPublic(row, extras = {}) {
+    const dto = accountSecurity.adminDto(row);
+    return { ...dto, ...extras };
+  }
+
+  const api = {
     db,
     path: opened?.path || null,
     close: options.closeDb || (opened ? () => opened.close() : () => {}),
     bootstrap,
     sessions,
+    accountSecurity,
     allowedOrigins,
     trustProxy,
 
     setupStatus() {
       const status = bootstrap.status();
+      const smtp = getSmtpConfig();
       return {
         status,
         setupRequired: status !== 'completed',
         setupAvailable: status === 'ready',
+        smtpConfigured: Boolean(smtp?.enabled),
         message:
           status === 'completed'
             ? 'Administrator is configured'
             : status === 'ready'
-              ? 'Initial setup is available'
+              ? 'Create the administrator account with your bootstrap token'
               : 'Set BOOTSTRAP_SETUP_TOKEN on the API host, then open /setup',
       };
     },
@@ -104,20 +140,27 @@ export function createAuthService(options = {}) {
         return { ok: false, http: 429, code: 'RATE_LIMITED', message: 'Too many attempts', retryAfterSec: rl.retryAfterSec };
       }
 
-      const originCheck = this.assertMutationOrigin(req);
+      const originCheck = api.assertMutationOrigin(req);
       if (!originCheck.ok) {
         return { ok: false, http: 403, code: 'CSRF_REJECTED', message: 'Origin check failed' };
       }
 
+      const smtp = getSmtpConfig();
       const result = await bootstrap.complete({
         setupToken: body?.setupToken,
+        email: body?.email,
         username: body?.username,
         password: body?.password,
         confirmPassword: body?.confirmPassword,
+        emailVerified: false,
       });
 
       if (!result.ok) {
-        logEvent('setup_failed', { username: body?.username ? String(body.username).slice(0, 64) : null, ip, meta: { code: result.code } });
+        logEvent('setup_failed', {
+          username: body?.email || body?.username ? String(body.email || body.username).slice(0, 64) : null,
+          ip,
+          meta: { code: result.code },
+        });
         const http = result.code === 'SETUP_COMPLETED' ? 409
           : result.code === 'SETUP_NOT_CONFIGURED' ? 503
           : result.code === 'INVALID_SETUP_TOKEN' ? 403
@@ -125,39 +168,50 @@ export function createAuthService(options = {}) {
         return { ok: false, http, code: result.code, message: result.message };
       }
 
+      let verificationRequired = false;
+      if (smtp?.enabled && result.admin.email) {
+        const sent = await accountSecurity.sendVerificationForEmail(result.admin.email);
+        verificationRequired = Boolean(sent.ok);
+      }
+
       logEvent('setup_completed', { username: result.admin.username, ip });
-      const session = sessions.create(result.admin.id, { userAgent: req.headers?.['user-agent'] });
+      const session = sessions.create(result.admin.id, {
+        userAgent: req.headers?.['user-agent'],
+        authLevel: 'full',
+      });
       return {
         ok: true,
         http: 201,
-        admin: result.admin,
+        admin: adminPublic(getAdminById.get(1)),
         session,
+        verificationRequired,
+        smtpConfigured: Boolean(smtp?.enabled),
       };
     },
 
     async login(body, req) {
       const ip = clientIp(req);
-      const usernameRaw = typeof body?.username === 'string' ? body.username : '';
+      const loginRaw = typeof body?.email === 'string' && body.email.trim()
+        ? body.email
+        : (typeof body?.username === 'string' ? body.username : (typeof body?.login === 'string' ? body.login : ''));
       const rlIp = limiter.check(rateKey('login_ip', ip, ''), { max: options.loginIpRateMax ?? 30 });
       if (!rlIp.allowed) {
         logEvent('login_rate_limited', { ip, meta: { scope: 'ip' } });
         return { ok: false, http: 429, code: 'RATE_LIMITED', message: 'Too many attempts', retryAfterSec: rlIp.retryAfterSec };
       }
-      const rlUser = limiter.check(rateKey('login_user', ip, usernameRaw), { max: options.loginUserRateMax ?? 10 });
+      const rlUser = limiter.check(rateKey('login_user', ip, loginRaw), { max: options.loginUserRateMax ?? 10 });
       if (!rlUser.allowed) {
-        logEvent('login_rate_limited', { username: usernameRaw.slice(0, 64), ip, meta: { scope: 'user' } });
+        logEvent('login_rate_limited', { username: loginRaw.slice(0, 64), ip, meta: { scope: 'user' } });
         return { ok: false, http: 429, code: 'RATE_LIMITED', message: 'Too many attempts', retryAfterSec: rlUser.retryAfterSec };
       }
 
-      const originCheck = this.assertMutationOrigin(req);
+      const originCheck = api.assertMutationOrigin(req);
       if (!originCheck.ok) {
         return { ok: false, http: 403, code: 'CSRF_REJECTED', message: 'Origin check failed' };
       }
 
-      // Constant-ish failure path: always verify against a dummy when user missing.
-      const uCheck = validateUsername(usernameRaw);
       const password = typeof body?.password === 'string' ? body.password : '';
-      const admin = uCheck.ok ? getAdminByUsername.get(uCheck.username) : null;
+      const admin = findAdminByLogin(loginRaw);
 
       let valid = false;
       if (admin) {
@@ -169,7 +223,6 @@ export function createAuthService(options = {}) {
           hash: admin.password_hash,
         });
       } else {
-        // Burn cycles to reduce username enumeration via timing
         await verifyPassword(password || 'x', {
           algo: 'scrypt',
           params: {
@@ -182,18 +235,63 @@ export function createAuthService(options = {}) {
       }
 
       if (!valid) {
-        logEvent('login_failed', { username: usernameRaw.slice(0, 64), ip });
-        return { ok: false, http: 401, code: 'INVALID_CREDENTIALS', message: 'Invalid username or password' };
+        logEvent('login_failed', { username: loginRaw.slice(0, 64), ip });
+        return { ok: false, http: 401, code: 'INVALID_CREDENTIALS', message: 'Invalid email/username or password' };
       }
 
-      // Rotate: revoke nothing yet; create new session (old sessions remain until idle/absolute or password change)
-      const session = sessions.create(admin.id, { userAgent: req.headers?.['user-agent'] });
-      logEvent('login_ok', { username: admin.username, ip });
+      const mfaRequired = Boolean(admin.totp_enabled);
+      const session = sessions.create(admin.id, {
+        userAgent: req.headers?.['user-agent'],
+        authLevel: mfaRequired ? 'password' : 'full',
+        mfaPending: mfaRequired,
+      });
+      logEvent(mfaRequired ? 'login_password_ok_mfa_pending' : 'login_ok', { username: admin.username, ip });
       return {
         ok: true,
         http: 200,
-        admin: { id: admin.id, username: admin.username },
+        admin: adminPublic(admin),
         session,
+        mfaRequired,
+      };
+    },
+
+    async mfaVerify(body, req) {
+      const originCheck = api.assertMutationOrigin(req);
+      if (!originCheck.ok) {
+        return { ok: false, http: 403, code: 'CSRF_REJECTED', message: 'Origin check failed' };
+      }
+      const token = extractSessionToken(req);
+      const v = sessions.validate(token, { requireFull: false });
+      if (!v.ok) {
+        return { ok: false, http: 401, code: 'UNAUTHORIZED', message: 'Authentication required' };
+      }
+      if (!v.mfaPending) {
+        return {
+          ok: true,
+          http: 200,
+          admin: adminPublic(getAdminById.get(v.admin.id)),
+          alreadyComplete: true,
+          mfaRequired: false,
+        };
+      }
+      const csrfHeader = req.headers?.['x-csrf-token'] || req.headers?.['X-CSRF-Token'];
+      if (!originCheck.internal && !sessions.verifyCsrf(v.csrfHash, csrfHeader)) {
+        return { ok: false, http: 403, code: 'CSRF_REJECTED', message: 'Invalid CSRF token' };
+      }
+      const rl = limiter.check(rateKey('mfa', clientIp(req), String(v.admin.id)), { max: 15 });
+      if (!rl.allowed) {
+        return { ok: false, http: 429, code: 'RATE_LIMITED', message: 'Too many attempts', retryAfterSec: rl.retryAfterSec };
+      }
+      const result = accountSecurity.completeMfaChallenge({
+        sessionValidation: v,
+        code: body?.code,
+      });
+      if (!result.ok) return result;
+      return {
+        ok: true,
+        http: 200,
+        admin: result.admin,
+        mfaRequired: false,
       };
     },
 
@@ -205,17 +303,84 @@ export function createAuthService(options = {}) {
     },
 
     me(req) {
-      const auth = this.requireSession(req, { requireCsrf: false });
+      const auth = api.requireSession(req, { requireCsrf: false, allowMfaPending: true });
       if (!auth.ok) return auth;
+      const row = getAdminById.get(auth.admin.id);
       return {
         ok: true,
         http: 200,
-        admin: auth.admin,
+        admin: adminPublic(row),
+        mfaPending: Boolean(auth.mfaPending),
+        authLevel: auth.authLevel || 'full',
       };
     },
 
+    securityStatus(req) {
+      const auth = api.requireSession(req, { requireCsrf: false });
+      if (!auth.ok) return auth;
+      return { ok: true, http: 200, data: accountSecurity.securityStatus() };
+    },
+
+    async enrollEmail(body, req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      return accountSecurity.beginEmailEnrollment({
+        email: body?.email,
+        currentPassword: body?.currentPassword,
+      }, { userAgent: req.headers?.['user-agent'] });
+    },
+
+    async verifyEmail(body, req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      return accountSecurity.verifyEmailOtp({ code: body?.code });
+    },
+
+    async resendEmailOtp(req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      return accountSecurity.resendEmailOtp();
+    },
+
+    async totpStart(body, req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      return accountSecurity.startTotpEnrollment({ currentPassword: body?.currentPassword });
+    },
+
+    async totpConfirm(body, req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      const result = await accountSecurity.confirmTotpEnrollment({ code: body?.code });
+      if (!result.ok) return result;
+      // Issue new full session after enrollment revoked all sessions
+      const session = sessions.create(1, { userAgent: req.headers?.['user-agent'], authLevel: 'full' });
+      return { ...result, session };
+    },
+
+    async totpDisable(body, req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      const result = await accountSecurity.disableTotp({
+        currentPassword: body?.currentPassword,
+        code: body?.code,
+      });
+      if (!result.ok) return result;
+      const session = sessions.create(1, { userAgent: req.headers?.['user-agent'], authLevel: 'full' });
+      return { ...result, session };
+    },
+
+    async recoveryCodesRegen(body, req) {
+      const auth = api.requireSession(req, { requireCsrf: true });
+      if (!auth.ok) return auth;
+      return accountSecurity.regenerateRecoveryCodes({
+        currentPassword: body?.currentPassword,
+        code: body?.code,
+      });
+    },
+
     async changePassword(body, req) {
-      const auth = this.requireSession(req, { requireCsrf: true });
+      const auth = api.requireSession(req, { requireCsrf: true });
       if (!auth.ok) return auth;
 
       const current = typeof body?.currentPassword === 'string' ? body.currentPassword : '';
@@ -242,44 +407,58 @@ export function createAuthService(options = {}) {
       sessions.revokeAll(admin.id);
       logEvent('password_changed', { username: admin.username, ip: clientIp(req) });
 
-      const session = sessions.create(admin.id, { userAgent: req.headers?.['user-agent'] });
+      const session = sessions.create(admin.id, { userAgent: req.headers?.['user-agent'], authLevel: 'full' });
       return {
         ok: true,
         http: 200,
-        admin: { id: admin.id, username: admin.username },
+        admin: adminPublic(getAdminById.get(admin.id)),
         session,
         message: 'Password updated; all prior sessions revoked',
       };
     },
 
     /**
-     * @param {{ requireCsrf?: boolean }} opts
+     * @param {{ requireCsrf?: boolean, allowMfaPending?: boolean, requireFull?: boolean }} opts
      */
     requireSession(req, opts = {}) {
-      const { requireCsrf = true } = opts;
+      const { requireCsrf = true, allowMfaPending = false, requireFull = !allowMfaPending } = opts;
       const token = extractSessionToken(req);
-      const v = sessions.validate(token);
+      const v = sessions.validate(token, { requireFull });
       if (!v.ok) {
+        if (v.reason === 'mfa_required') {
+          return {
+            ok: false,
+            http: 401,
+            code: 'MFA_REQUIRED',
+            message: 'Multi-factor authentication required',
+            mfaPending: true,
+          };
+        }
         return { ok: false, http: 401, code: 'UNAUTHORIZED', message: 'Authentication required' };
       }
       if (requireCsrf) {
         const method = (req.method || 'GET').toUpperCase();
         if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-          const originCheck = this.assertMutationOrigin(req);
+          const originCheck = api.assertMutationOrigin(req);
           if (!originCheck.ok) {
             return { ok: false, http: 403, code: 'CSRF_REJECTED', message: 'Origin check failed' };
           }
-          const csrfHeader = req.headers?.[ 'x-csrf-token'] || req.headers?.['X-CSRF-Token'];
+          const csrfHeader = req.headers?.['x-csrf-token'] || req.headers?.['X-CSRF-Token'];
           if (!sessions.verifyCsrf(v.csrfHash, csrfHeader)) {
             return { ok: false, http: 403, code: 'CSRF_REJECTED', message: 'Invalid CSRF token' };
           }
         }
       }
-      return { ok: true, admin: v.admin, sessionId: v.sessionId };
+      return {
+        ok: true,
+        admin: v.admin,
+        sessionId: v.sessionId,
+        mfaPending: v.mfaPending,
+        authLevel: v.authLevel,
+      };
     },
 
     assertMutationOrigin(req) {
-      // Internal service-to-service (dashboard BFF) may present a shared secret.
       const presented = req.headers?.['x-admin-internal-secret'];
       if (internalSecret && presented && sha256Hex(presented) === sha256Hex(internalSecret)) {
         return { ok: true, internal: true };
@@ -287,7 +466,6 @@ export function createAuthService(options = {}) {
       return validateOrigin(req.headers || {}, allowedOrigins);
     },
 
-    /** Recovery: reset password for the sole admin (CLI only). */
     async recoverPassword(newPassword) {
       const p = validatePassword(newPassword);
       if (!p.ok) return { ok: false, message: p.message };
@@ -295,11 +473,23 @@ export function createAuthService(options = {}) {
       if (!admin) return { ok: false, message: 'No administrator exists; run bootstrap setup instead' };
       const hashed = await hashPassword(newPassword);
       updatePassword.run(hashed.hash, hashed.algo, JSON.stringify(hashed.params), isoNow(), 1);
+      // Also disable MFA so operator can regain access without authenticator after host recovery
+      try {
+        db.prepare(`
+          UPDATE admin_users SET totp_enabled = 0, totp_ciphertext = NULL, totp_nonce = NULL,
+            totp_auth_tag = NULL, totp_format_version = NULL, totp_confirmed_at = NULL, updated_at = ?
+          WHERE id = 1
+        `).run(isoNow());
+        db.prepare('DELETE FROM totp_pending WHERE id = 1').run();
+        db.prepare('DELETE FROM recovery_code_hashes WHERE admin_id = 1').run();
+      } catch { /* ignore if columns missing mid-migration */ }
       const n = sessions.revokeAll(1);
       logEvent('recovery_password_reset', { username: admin.username, meta: { revokedSessions: n } });
-      return { ok: true, username: admin.username, revokedSessions: n };
+      return { ok: true, username: admin.username, email: admin.email || null, revokedSessions: n };
     },
   };
+
+  return api;
 }
 
 export function extractSessionToken(req) {

@@ -11,12 +11,13 @@ type Props = {
   setupAvailable: boolean;
   setupRequired: boolean;
   message: string;
+  smtpConfigured?: boolean;
 };
 
-export function SetupForm({ setupAvailable, setupRequired, message }: Props) {
+export function SetupForm({ setupAvailable, setupRequired, message, smtpConfigured }: Props) {
   const router = useRouter();
   const [setupToken, setSetupToken] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function SetupForm({ setupAvailable, setupRequired, message }: Props) {
       const res = await fetch("/api/auth/setup", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ setupToken, username, password, confirmPassword }),
+        body: JSON.stringify({ setupToken, email, password, confirmPassword }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -74,8 +75,8 @@ export function SetupForm({ setupAvailable, setupRequired, message }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create administrator</CardTitle>
-        <CardDescription>One-time bootstrap · single administrator</CardDescription>
+        <CardTitle>Create administrator account</CardTitle>
+        <CardDescription>One-time bootstrap · single administrator per deployment</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit} noValidate>
@@ -84,6 +85,15 @@ export function SetupForm({ setupAvailable, setupRequired, message }: Props) {
               {error}
             </Alert>
           ) : null}
+          {smtpConfigured ? (
+            <Alert variant="info" title="Email verification available">
+              SMTP is configured. After setup you can verify the administrator email from Account security.
+            </Alert>
+          ) : (
+            <Alert variant="info" title="SMTP optional">
+              Email delivery is not configured. You can still create the account and enable authenticator MFA without SMTP.
+            </Alert>
+          )}
           <div className="space-y-2">
             <Label htmlFor="bootstrap">Bootstrap setup token</Label>
             <Input
@@ -97,19 +107,20 @@ export function SetupForm({ setupAvailable, setupRequired, message }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="username">Administrator username</Label>
+            <Label htmlFor="admin-email">Administrator email</Label>
             <Input
-              id="username"
-              name="username"
-              autoComplete="username"
+              id="admin-email"
+              name="email"
+              type="email"
+              autoComplete="email"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="admin-password">Administrator password</Label>
+            <Label htmlFor="admin-password">Password</Label>
             <Input
               id="admin-password"
               name="password"
@@ -137,7 +148,7 @@ export function SetupForm({ setupAvailable, setupRequired, message }: Props) {
             />
           </div>
           <Button type="submit" disabled={loading}>
-            {loading ? "Creating…" : "Complete setup"}
+            {loading ? "Creating…" : "Create administrator"}
           </Button>
         </form>
       </CardContent>
