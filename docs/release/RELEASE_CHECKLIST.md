@@ -15,20 +15,32 @@
 - [x] Docs links resolve (README → SELF_HOSTING / BACKUP / SECURITY / release pack)
 - [x] `npm audit --omit=dev` clean (dev toolchain advisories documented)
 
-## Owner blockers
+## Licensing (STEP 2B)
 
-- [ ] `LICENSE_DECISION_REQUIRED` resolved + `LICENSE` file added
-- [ ] GitHub private vulnerability reporting enabled (`PRIVATE_REPORTING_NOT_VERIFIED` until confirmed)
-- [ ] Historical privacy: credentials rotated if ever real; remediation decision recorded
+- [x] SPDX **Apache-2.0** selected and approved by owner
+- [x] Official root `LICENSE` (unmodified Apache-2.0 text)
+- [x] Root `NOTICE` **NOT_NEEDED** for current source package
+- [x] Owner declaration recorded: personal project; sole owner of original code (declaration, not independent legal verification)
+- [x] No invented legal name / copyright line inserted
+- [x] Favicon retained as verified create-next-app MIT scaffold asset (not claimed as original brand)
+- [x] Third-party inventory reviewed
+- [x] `package.json` / dashboard `"license": "Apache-2.0"` with `"private": true`
+- [ ] Source license merged to GitHub `main` and verified (complete in STEP 2B after merge)
+- [ ] Docker image publication — **BLOCKED** until [DOCKER_THIRD_PARTY_COMPLIANCE.md](./DOCKER_THIRD_PARTY_COMPLIANCE.md) implemented/verified
+
+## Remaining owner blockers (public beta)
+
+- [ ] GitHub private vulnerability reporting enabled (`PRIVATE_REPORTING_NOT_VERIFIED`)
+- [ ] Historical privacy: credentials rotated if ever real; residual risk acknowledged
 - [ ] Optional: repository rename
 - [ ] Optional: `LIVE_HTTPS` acceptance on real domain
 - [ ] Optional: controlled live Apify acceptance (`REAL PROVIDER VERIFIED`)
 - [ ] Explicit approval to create GitHub Release / tag
 
-## Publish steps (only after approval)
+## Publish steps (only after remaining approval)
 
-1. Confirm working tree clean and `HEAD == origin/main`
-2. Add `LICENSE` with chosen SPDX
-3. Tag annotated release (e.g. `v0.1.0-beta.1`)
-4. Publish GitHub Release notes from `RELEASE_NOTES_DRAFT.md`
-5. Announce security reporting path
+1. Confirm `main` has root `LICENSE` and Apache-2.0 metadata
+2. Tag annotated release only after remaining blockers are accepted (e.g. `v0.1.0-beta.1`)
+3. Publish GitHub Release notes from `RELEASE_NOTES_DRAFT.md`
+4. Announce security reporting path
+5. When publishing dashboard images, complete the Docker third-party checklist first

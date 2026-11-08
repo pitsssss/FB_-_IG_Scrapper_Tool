@@ -2,6 +2,7 @@
   "name": "social-media-posts-api",
   "version": "0.1.0-beta.1",
   "description": "Self-hosted Social Media Posts API — Facebook/Instagram posts API with Next.js admin dashboard, Docker Compose, and Apify-backed providers",
+  "license": "Apache-2.0",
   "type": "module",
   "private": true,
   "engines": {

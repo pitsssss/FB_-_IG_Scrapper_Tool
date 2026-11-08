@@ -4,9 +4,9 @@ Self-hosted platform that fetches and normalizes recent **public** Facebook page
 
 [![CI](https://github.com/pitsssss/Facebook_Scrapper_Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/pitsssss/Facebook_Scrapper_Tool/actions/workflows/ci.yml)
 ![Release candidate](https://img.shields.io/badge/status-0.1.0--beta.1%20RC-blue)
-![License](https://img.shields.io/badge/license-pending%20owner%20decision-orange)
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
-> GitHub repository name may still be historical (`Facebook_Scrapper_Tool`). The product name is **Social Media Posts API**. License: **pending owner decision** (`LICENSE_DECISION_REQUIRED`).
+> GitHub repository name may still be historical (`Facebook_Scrapper_Tool` / `FB_-_IG_Scrapper_Tool`). The product name is **Social Media Posts API**. This project is licensed under **Apache License 2.0** — see [`LICENSE`](./LICENSE).
 
 ## Who it is for
 
@@ -105,4 +105,18 @@ Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Production checklist: [docs/
 
 ## License & support
 
-**License pending owner decision** — see [docs/release/OWNER_DECISIONS.md](docs/release/OWNER_DECISIONS.md). Do not assume MIT/Apache/GPL until a `LICENSE` file exists.
+This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) (`Apache-2.0`). See the root [`LICENSE`](./LICENSE) file.
+
+Under Apache-2.0:
+
+- Personal and **commercial** use are permitted
+- Modification and redistribution are permitted
+- Integration into proprietary products is permitted without a general obligation to publish your modifications
+- You must retain required license and attribution notices
+- The software is provided **without warranties**, as described in the license
+
+This project is independent and is **not** affiliated with, endorsed by, or sponsored by the Apache Software Foundation, Meta, Facebook, Instagram, or Apify.
+
+Third-party dependency notes: [docs/release/THIRD_PARTY_LICENSE_INVENTORY.md](docs/release/THIRD_PARTY_LICENSE_INVENTORY.md). Publishing dashboard Docker images remains a separate compliance gate: [docs/release/DOCKER_THIRD_PARTY_COMPLIANCE.md](docs/release/DOCKER_THIRD_PARTY_COMPLIANCE.md).
+
+**Platform terms are separate:** this code license does **not** grant Meta/Facebook/Instagram data access, Apify account rights, or remove provider obligations. Operators must comply with Apify and platform terms when using live providers.

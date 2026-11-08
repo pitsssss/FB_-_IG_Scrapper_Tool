@@ -65,4 +65,10 @@ See [SECURITY.md](./SECURITY.md). Do not file public issues for exploitable vuln
 
 ## License
 
-License selection is an **owner decision** (`LICENSE_DECISION_REQUIRED`). Do not add a `LICENSE` file in a PR unless the owner has explicitly approved the SPDX identifier.
+This project is licensed under the **Apache License, Version 2.0** — see [`LICENSE`](./LICENSE).
+
+- Contributions are accepted under Apache-2.0 unless otherwise stated.
+- Do not relicense third-party dependencies or strip required notices.
+- Preserve attribution documented in [docs/release/THIRD_PARTY_LICENSE_INVENTORY.md](docs/release/THIRD_PARTY_LICENSE_INVENTORY.md).
+- Dashboard Docker image redistribution has separate obligations — see [docs/release/DOCKER_THIRD_PARTY_COMPLIANCE.md](docs/release/DOCKER_THIRD_PARTY_COMPLIANCE.md).
+- Release blockers and owner notes: [docs/release/OWNER_DECISIONS.md](docs/release/OWNER_DECISIONS.md).
