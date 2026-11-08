@@ -1,27 +1,24 @@
 #!/usr/bin/env node
 /**
  * Sanitized historical Git privacy audit (pickaxe / -G).
- * Prints counts and categories only — never prints matched secret values.
+ * Prints counts and classifications only — never prints matched secret values.
  *
  * Usage: node scripts/privacy-history-audit.mjs
+ *
+ * Exit semantics (stdout marker):
+ *   HISTORICAL_PRIVACY: PASS              — hits only classified as synthetic/safe
+ *   HISTORICAL_PRIVACY: REVIEW_REQUIRED   — unresolved / realistic credential-shaped hits
  */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  PATTERNS,
+  classifyTextOccurrences,
+  summarizeOccurrences,
+} from './privacy-finding-classify.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
-const PATTERNS = [
-  { id: 'apify_token_prefix', needle: 'apify_api_', severity: 'critical' },
-  { id: 'meta_page_token_prefix', needle: 'EAACEdEose0cBA', severity: 'critical' },
-  { id: 'pem_private_key', needle: 'BEGIN PRIVATE KEY', severity: 'critical' },
-  { id: 'pem_rsa_private_key', needle: 'BEGIN RSA PRIVATE KEY', severity: 'critical' },
-  { id: 'aws_access_key_id', needle: 'AKIA', severity: 'high', regex: 'AKIA[0-9A-Z]{16}' },
-  { id: 'env_apify_assignment', needle: 'APIFY_TOKEN=', severity: 'high' },
-  { id: 'env_api_keys_assignment', needle: 'API_KEYS=', severity: 'high' },
-  { id: 'env_bootstrap_assignment', needle: 'BOOTSTRAP_SETUP_TOKEN=', severity: 'high' },
-  { id: 'env_encryption_assignment', needle: 'DATA_ENCRYPTION_KEY=', severity: 'high' },
-];
 
 function git(args) {
   const r = spawnSync('git', args, {
@@ -36,38 +33,147 @@ function git(args) {
   return r.stdout || '';
 }
 
-const commitCount = git(['rev-list', '--all', '--count']).trim();
-const findings = [];
-
-for (const p of PATTERNS) {
+function commitsForPattern(p) {
   const args = p.regex
     ? ['log', '--all', '-G', p.regex, '--pretty=format:%H']
     : ['log', '--all', '-S', p.needle, '--pretty=format:%H'];
   const out = git(args).trim();
-  const shas = out ? out.split(/\r?\n/).filter(Boolean) : [];
-  // Filter false positives for placeholders where possible by checking HEAD only for example files
+  return out ? out.split(/\r?\n/).filter(Boolean) : [];
+}
+
+function filesWithNeedleAtCommit(commit, p) {
+  const args = p.regex
+    ? ['grep', '-l', '-E', p.regex, commit]
+    : ['grep', '-l', '-F', p.needle, commit];
+  const out = git(args).trim();
+  if (!out) return [];
+  return out
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      // git grep with commit: "commit:path" or just path depending on version
+      const idx = line.indexOf(':');
+      if (idx > 0 && /^[0-9a-f]{7,40}$/i.test(line.slice(0, idx))) {
+        return line.slice(idx + 1);
+      }
+      return line.replace(new RegExp(`^${commit}:`), '');
+    });
+}
+
+function blobAt(commit, filePath) {
+  const r = spawnSync('git', ['show', `${commit}:${filePath}`], {
+    cwd: root,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (r.status !== 0) return null;
+  return r.stdout || '';
+}
+
+const commitCount = git(['rev-list', '--all', '--count']).trim();
+const findings = [];
+let unresolvedPatterns = 0;
+
+for (const p of PATTERNS) {
+  const shas = commitsForPattern(p);
+  const occurrences = [];
+  const pathsSeen = new Set();
+
+  for (const sha of shas) {
+    const files = filesWithNeedleAtCommit(sha, p);
+    for (const filePath of files) {
+      pathsSeen.add(filePath);
+      const text = blobAt(sha, filePath);
+      if (text == null) {
+        occurrences.push({
+          path: filePath,
+          class: 'NEEDS_REVIEW_UNREADABLE_BLOB',
+          safe: false,
+        });
+        continue;
+      }
+      occurrences.push(...classifyTextOccurrences(p, filePath, text));
+    }
+  }
+
+  // Also classify HEAD explicitly (covers uncommitted? no — HEAD only) for reporting
+  const headFiles = filesWithNeedleAtCommit('HEAD', p);
+  for (const filePath of headFiles) {
+    if (pathsSeen.has(filePath) && shas.length > 0) {
+      // already covered via some historical commit; still ensure HEAD content classified
+    }
+    const text = blobAt('HEAD', filePath);
+    if (text == null) continue;
+    // Deduplicate by re-summarizing all; appending HEAD ensures current tree is covered
+    // even when pickaxe commit list is empty but working tree somehow differs (shouldn't).
+    if (shas.length === 0) {
+      occurrences.push(...classifyTextOccurrences(p, filePath, text));
+    }
+  }
+
+  // When pickaxe found commits, classify every blob already done.
+  // Re-scan HEAD paths once more only if not already in occurrences for that path at HEAD —
+  // simplest: if shas non-empty, also merge HEAD classifications for reporting accuracy.
+  if (shas.length > 0) {
+    for (const filePath of headFiles) {
+      const text = blobAt('HEAD', filePath);
+      if (text == null) continue;
+      occurrences.push(...classifyTextOccurrences(p, filePath, text));
+    }
+  }
+
+  const summary = summarizeOccurrences(occurrences);
+  if (shas.length > 0 && summary.occurrenceCount === 0) {
+    // Pickaxe hit but no readable occurrences — force review
+    summary.unresolvedCount = 1;
+    summary.allSafe = false;
+    summary.byClass.NEEDS_REVIEW_EMPTY_OCCURRENCE_SET = 1;
+  }
+
+  if (summary.unresolvedCount > 0) unresolvedPatterns += 1;
+
   findings.push({
     pattern: p.id,
     severity: p.severity,
     commitHits: shas.length,
     sampleCommits: shas.slice(0, 5).map((s) => s.slice(0, 12)),
+    pathsSample: [...pathsSeen].slice(0, 12),
+    classification: {
+      occurrenceCount: summary.occurrenceCount,
+      unresolvedCount: summary.unresolvedCount,
+      allSafe: summary.allSafe,
+      byClass: summary.byClass,
+      sampleUnresolvedPaths: summary.sampleUnresolvedPaths,
+    },
   });
 }
 
 const bySeverity = { critical: 0, high: 0, medium: 0, low: 0 };
+const unresolvedBySeverity = { critical: 0, high: 0, medium: 0, low: 0 };
 for (const f of findings) {
   if (f.commitHits > 0) bySeverity[f.severity] = (bySeverity[f.severity] || 0) + f.commitHits;
+  if (f.classification.unresolvedCount > 0) {
+    unresolvedBySeverity[f.severity] =
+      (unresolvedBySeverity[f.severity] || 0) + f.classification.unresolvedCount;
+  }
 }
 
-const summary = {
+const needsReview = findings.some((f) => f.classification.unresolvedCount > 0);
+const status = needsReview ? 'HISTORICAL_PRIVACY: REVIEW_REQUIRED' : 'HISTORICAL_PRIVACY: PASS';
+
+const report = {
   scannedCommitCount: Number(commitCount) || null,
   findings,
   bySeverity,
-  note: 'Match values intentionally omitted. Placeholder assignments in .env.example may cause env_* hits — review sample commits privately.',
-  remediation: 'Rotate any real credentials that appeared historically. History rewrite requires owner approval (see docs/release/OWNER_DECISIONS.md).',
+  unresolvedBySeverity,
+  unresolvedPatternCount: unresolvedPatterns,
+  note:
+    'Match values intentionally omitted. Synthetic detector needles, empty/CHANGE_ME env assignments, and negative-test prefixes may appear as commitHits but classify as safe. Realistic token bodies remain REVIEW_REQUIRED even in tests/docs.',
+  remediation:
+    'Rotate any real credentials that appeared historically. Residual GitHub PR refs/caches are a separate owner decision (see docs/release/OWNER_DECISIONS.md).',
+  status,
 };
 
-console.log(JSON.stringify(summary, null, 2));
-
-const needsReview = findings.some((f) => f.commitHits > 0 && (f.severity === 'critical' || f.severity === 'high'));
-console.log(needsReview ? 'HISTORICAL_PRIVACY: REVIEW_REQUIRED' : 'HISTORICAL_PRIVACY: CLEAN_OR_LOW');
+console.log(JSON.stringify(report, null, 2));
+console.log(status);
+process.exitCode = needsReview ? 0 : 0; // informational; CI may parse stdout
