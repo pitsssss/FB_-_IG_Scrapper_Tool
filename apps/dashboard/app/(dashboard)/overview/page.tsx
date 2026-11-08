@@ -59,7 +59,7 @@ export default async function OverviewPage() {
         description="Live management metadata from authenticated admin APIs. Missing values stay unavailable — nothing is invented."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
         <Card>
           <CardHeader>
             <CardTitle>API health</CardTitle>

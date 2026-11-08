@@ -12,28 +12,28 @@ export function AppShell({
   adminUsername?: string;
 }) {
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto flex min-h-screen max-w-[90rem]">
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-[var(--border)] bg-[var(--surface)] lg:block">
-          <div className="flex h-14 items-center border-b border-[var(--border)] px-4">
+    <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
+      <div className="flex min-h-dvh w-full">
+        <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] xl:flex">
+          <div className="flex h-14 shrink-0 items-center border-b border-[var(--border)] px-4">
             <Link href="/overview" className="text-sm font-semibold tracking-tight">
               Social Media Posts API
             </Link>
           </div>
-          <SidebarNav />
+          <SidebarNav dense />
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)]/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/75">
-            <div className="flex items-center gap-2">
+          <header className="sticky top-0 z-40 flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/90 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/75 sm:px-4">
+            <div className="flex min-w-0 items-center gap-2">
               <MobileNav />
-              <Link href="/overview" className="text-sm font-semibold lg:hidden">
-                Social Media Posts API
+              <Link href="/overview" className="truncate text-sm font-semibold xl:hidden">
+                Posts API
               </Link>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {adminUsername ? (
-                <span className="hidden text-xs text-[var(--muted-foreground)] sm:inline">
+                <span className="hidden max-w-[14rem] truncate text-xs text-[var(--muted-foreground)] md:inline">
                   Signed in as {adminUsername}
                 </span>
               ) : null}
@@ -41,8 +41,8 @@ export function AppShell({
               <ThemeToggle />
             </div>
           </header>
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto w-full max-w-5xl">{children}</div>
+          <main className="min-w-0 flex-1 px-3 py-5 sm:px-5 sm:py-6 xl:px-8">
+            <div className="mx-auto w-full max-w-[110rem]">{children}</div>
           </main>
         </div>
       </div>

@@ -111,7 +111,7 @@ export function PostCard({ post }: { post: Post }) {
           ))}
         </div>
       ) : null}
-      <dl className="grid grid-cols-3 gap-2 text-xs text-[var(--muted-foreground)]">
+      <dl className="grid gap-2 text-xs text-[var(--muted-foreground)] [grid-template-columns:repeat(auto-fit,minmax(6.5rem,1fr))]">
         <div>
           <dt className="font-medium text-[var(--foreground)]">Likes</dt>
           <dd>{post.stats?.likes ?? "—"}</dd>

@@ -72,7 +72,7 @@ export function CachePanel() {
                 {entries.map((e) => (
                   <tr key={e.id} className="border-t border-[var(--border)]">
                     <td className="py-2 pr-3">{e.platform}</td>
-                    <td className="py-2 pr-3 font-mono text-xs">{e.username}</td>
+                    <td className="py-2 pr-3 font-mono text-sm [overflow-wrap:anywhere]">{e.username}</td>
                     <td className="py-2 pr-3">{e.postCount}</td>
                     <td className="py-2 pr-3">
                       <Badge variant="outline">{e.freshness}</Badge>

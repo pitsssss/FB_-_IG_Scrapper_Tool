@@ -11,7 +11,7 @@ export function LockedScreen({ reason }: { reason: string }) {
           </div>
           <CardTitle>Dashboard unavailable</CardTitle>
           <CardDescription>
-            The self-hosted admin UI foundation is locked until Phase 7C authentication ships.
+            This unsigned preview is locked. The running dashboard uses an admin sign-in session.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-[var(--muted-foreground)]">

@@ -15,7 +15,7 @@ export function evaluatePreviewDeniedReason(env: {
   DASHBOARD_DEV_PREVIEW?: string;
 }): string {
   if (env.NODE_ENV !== "development") {
-    return "This dashboard foundation is not available in production until Phase 7C authentication is implemented.";
+    return "The unsigned development preview is disabled in production. Use the admin sign-in session instead.";
   }
   if (env.DASHBOARD_DEV_PREVIEW !== "1") {
     return "Set DASHBOARD_DEV_PREVIEW=1 in the dashboard server environment to enable the local development UI preview.";

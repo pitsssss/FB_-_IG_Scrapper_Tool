@@ -196,7 +196,7 @@ export function AccountSecurityPanel({ initialStatus }: Props) {
               </Button>
               {totpSecret ? (
                 <Alert variant="info" title="Add to authenticator">
-                  <p className="mb-2 break-all font-mono text-xs">{totpSecret}</p>
+                  <p className="mb-2 break-all font-mono text-sm">{totpSecret}</p>
                   {otpauthUrl ? (
                     <p className="break-all text-xs opacity-80">{otpauthUrl}</p>
                   ) : null}
@@ -248,7 +248,7 @@ export function AccountSecurityPanel({ initialStatus }: Props) {
           )}
           {recoveryCodes ? (
             <Alert variant="warning" title="Store these recovery codes offline">
-              <ul className="mt-2 space-y-1 font-mono text-xs">
+              <ul className="mt-2 space-y-1 break-all font-mono text-sm">
                 {recoveryCodes.map((c) => (
                   <li key={c}>{c}</li>
                 ))}
