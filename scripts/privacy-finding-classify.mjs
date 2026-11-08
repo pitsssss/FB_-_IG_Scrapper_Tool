@@ -42,7 +42,10 @@ export function isDetectorSourcePath(filePath) {
   return (
     n.endsWith('scripts/privacy-history-audit.mjs') ||
     n.endsWith('scripts/privacy-finding-classify.mjs') ||
-    n.endsWith('test/privacy-history-audit.test.js')
+    n.endsWith('test/privacy-history-audit.test.js') ||
+    /(^|\/)privacy-history-audit\.test\.js$/.test(n) ||
+    /(^|\/)privacy-finding-classify\.mjs$/.test(n) ||
+    /(^|\/)privacy-history-audit\.mjs$/.test(n)
   );
 }
 
@@ -71,18 +74,22 @@ export function isNegativeAssertionPath(filePath) {
  */
 export function unwrapEnvValue(raw) {
   let v = String(raw ?? '').trim();
-  // Bash line continuations: KEY=value \
-  v = v.replace(/\\\s*$/, '').trim();
   if (
     (v.startsWith('"') && v.endsWith('"')) ||
     (v.startsWith("'") && v.endsWith("'"))
   ) {
     v = v.slice(1, -1);
   }
-  // Trailing code/prose delimiters from error strings or markdown.
-  v = v.replace(/[`'")\];]+$/g, '').trim();
+  // Trailing code/prose delimiters from error strings, markdown, or JS source.
+  // Include comma so JS source like: '… APIFY_TOKEN=dummy \\',
+  v = v.replace(/[`'")\],;]+$/g, '').trim();
+  // Bash line continuations and JS source escaping of those continuations:
+  // KEY=value \  /  KEY=value \\
+  v = v.replace(/(?:\\\s*)+$/g, '').trim();
   // If markdown captured past the closing backtick, keep only the first token.
   if (v.includes('`')) v = v.slice(0, v.indexOf('`')).trim();
+  // Re-strip delimiters after continuation cleanup (e.g. dummy \\',).
+  v = v.replace(/[`'")\],;]+$/g, '').trim();
   return v.trim();
 }
 
