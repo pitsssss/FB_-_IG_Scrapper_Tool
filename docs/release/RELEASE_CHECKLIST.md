@@ -25,16 +25,24 @@
 - [x] Favicon retained as verified create-next-app MIT scaffold asset (not claimed as original brand)
 - [x] Third-party inventory reviewed
 - [x] `package.json` / dashboard `"license": "Apache-2.0"` with `"private": true`
-- [ ] Source license merged to GitHub `main` and verified (complete in STEP 2B after merge)
+- [x] Source license merged to GitHub `main` and verified (`31ee864`; GitHub detects Apache-2.0)
 - [ ] Docker image publication — **BLOCKED** until [DOCKER_THIRD_PARTY_COMPLIANCE.md](./DOCKER_THIRD_PARTY_COMPLIANCE.md) implemented/verified
+
+## Security reporting (STEP 3A)
+
+- [x] Private vulnerability reporting **enabled** (`GET .../private-vulnerability-reporting` → `enabled: true`)
+- [x] `SECURITY.md` documents Advisories → Report a vulnerability (no public Issues for security bugs)
+- [ ] Owner confirms GitHub notification settings receive security/vulnerability alerts (`OWNER_NOTIFICATION_PENDING`)
+- [x] Core GitHub CI green on licensed `main`
+- [x] Public beta still **not** published (no tag / Release)
 
 ## Remaining owner blockers (public beta)
 
-- [ ] GitHub private vulnerability reporting enabled (`PRIVATE_REPORTING_NOT_VERIFIED`)
-- [ ] Historical privacy: credentials rotated if ever real; residual risk acknowledged
+- [ ] Historical privacy: credentials rotated if ever real; residual risk acknowledged (PR refs/caches; `privacy:history` REVIEW_REQUIRED for synthetic hits)
 - [ ] Optional: repository rename
 - [ ] Optional: `LIVE_HTTPS` acceptance on real domain
 - [ ] Optional: controlled live Apify acceptance (`REAL PROVIDER VERIFIED`)
+- [ ] Dashboard Docker LGPL distribution compliance before image publication
 - [ ] Explicit approval to create GitHub Release / tag
 
 ## Publish steps (only after remaining approval)
