@@ -143,7 +143,7 @@ export function ApiKeysManager() {
 
       {oneTimeKey ? (
         <Alert variant="warning" title="Copy this key now">
-          <p className="mb-2 break-all font-mono text-xs text-[var(--foreground)]">{oneTimeKey}</p>
+          <p className="mb-2 break-all font-mono text-sm text-[var(--foreground)]">{oneTimeKey}</p>
           <p className="mb-3 text-xs">It will not be shown again. Closing clears it from this page.</p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" onClick={() => void copyKey()}>

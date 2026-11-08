@@ -7,7 +7,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"in
       ref={ref}
       type={type}
       className={cn(
-        "flex h-10 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50",
+        "flex min-h-11 w-full min-w-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm",
         className,
       )}
       {...props}
@@ -30,5 +30,5 @@ export function Label({
 
 export function FieldError({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
-  return <p className="text-xs text-[var(--danger)]">{children}</p>;
+  return <p className="text-sm text-[var(--danger)]">{children}</p>;
 }

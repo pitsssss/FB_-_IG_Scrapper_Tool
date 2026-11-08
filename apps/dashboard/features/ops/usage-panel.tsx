@@ -112,7 +112,7 @@ export function UsagePanel() {
           <CardTitle>Local quota</CardTitle>
           <CardDescription>{summary?.quota?.note || "Attempt budget for this UTC day."}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 text-sm sm:grid-cols-4">
+        <CardContent className="grid gap-2 text-sm [grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
           <div>
             <div className="text-[var(--muted-foreground)]">Daily limit</div>
             <div className="font-mono">{summary?.quota?.dailyLimit ?? "—"}</div>
@@ -180,7 +180,7 @@ export function UsagePanel() {
                   {events.map((e) => (
                     <tr key={e.id} className="border-t border-[var(--border)]">
                       <td className="py-2 pr-3 text-xs">{new Date(e.at).toLocaleString()}</td>
-                      <td className="py-2 pr-3 font-mono text-xs">{e.category}</td>
+                      <td className="py-2 pr-3 font-mono text-sm [overflow-wrap:anywhere]">{e.category}</td>
                       <td className="py-2 pr-3">{e.platform || "—"}</td>
                       <td className="py-2 pr-3">
                         <Badge variant="outline">{e.outcome}</Badge>

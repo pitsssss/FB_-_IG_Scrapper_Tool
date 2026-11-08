@@ -107,7 +107,7 @@ function ParamTable({ rows }: { rows: [string, string, string][] }) {
         <tbody>
           {rows.map(([name, req, desc]) => (
             <tr key={name} className="border-t border-[var(--border)]">
-              <td className="px-3 py-2 font-mono text-xs">{name}</td>
+              <td className="px-3 py-2 font-mono text-sm [overflow-wrap:anywhere]">{name}</td>
               <td className="px-3 py-2">{req}</td>
               <td className="px-3 py-2 text-[var(--muted-foreground)]">{desc}</td>
             </tr>

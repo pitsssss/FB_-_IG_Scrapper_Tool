@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DASHBOARD_NAV } from "@/lib/navigation";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -36,6 +36,12 @@ describe("navigation and shared UI", () => {
       );
     }
     expect(screen.getByRole("link", { name: /overview/i })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps the desktop sidebar to labels when dense", () => {
+    const view = render(<SidebarNav dense />);
+    expect(within(view.container).getByRole("link", { name: /^overview$/i })).toBeInTheDocument();
+    expect(within(view.container).queryByText(/service status and summaries/i)).not.toBeInTheDocument();
   });
 
   it("renders empty states without invented metrics", () => {

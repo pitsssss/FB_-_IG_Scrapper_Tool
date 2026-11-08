@@ -9,9 +9,9 @@ export function PreviewBanner() {
       <div className="mx-auto flex max-w-6xl items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
         <p>
-          <strong className="font-medium">Local development preview only.</strong>{" "}
-          No admin authentication, secrets storage, or paid scraping. Not safe for public deployment.
-          Phase 7C adds real security.
+          <strong className="font-medium">Self-hosted beta.</strong> You run this on your own
+          machine and supply your own Apify token. It is not a hosted service and not a production
+          guarantee.
         </p>
       </div>
     </div>

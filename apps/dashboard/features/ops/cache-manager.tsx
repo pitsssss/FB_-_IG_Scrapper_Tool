@@ -103,7 +103,7 @@ export function CacheManager({ initialEntries = [] }: { initialEntries?: CacheEn
               <Label htmlFor="plat">Platform</Label>
               <select
                 id="plat"
-                className="mt-1 block rounded-md border border-[var(--border)] bg-transparent px-2 py-2 text-sm"
+                className="mt-1 block min-h-11 w-full min-w-[8rem] rounded-md border border-[var(--border)] bg-transparent px-2 py-2 text-base sm:text-sm"
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as typeof platform)}
               >
@@ -116,7 +116,7 @@ export function CacheManager({ initialEntries = [] }: { initialEntries?: CacheEn
               <Label htmlFor="fresh">Freshness</Label>
               <select
                 id="fresh"
-                className="mt-1 block rounded-md border border-[var(--border)] bg-transparent px-2 py-2 text-sm"
+                className="mt-1 block min-h-11 w-full min-w-[8rem] rounded-md border border-[var(--border)] bg-transparent px-2 py-2 text-base sm:text-sm"
                 value={freshness}
                 onChange={(e) => setFreshness(e.target.value as typeof freshness)}
               >
@@ -155,7 +155,7 @@ export function CacheManager({ initialEntries = [] }: { initialEntries?: CacheEn
                   {filtered.map((e) => (
                     <tr key={e.id} className="border-t border-[var(--border)]">
                       <td className="py-2 pr-3">{e.platform}</td>
-                      <td className="py-2 pr-3 font-mono text-xs">{e.username}</td>
+                      <td className="py-2 pr-3 font-mono text-sm [overflow-wrap:anywhere]">{e.username}</td>
                       <td className="py-2 pr-3">{e.postCount}</td>
                       <td className="py-2 pr-3">
                         <Badge variant="outline">{e.freshness}</Badge>

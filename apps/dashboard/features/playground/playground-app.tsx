@@ -404,7 +404,7 @@ export function PlaygroundApp({ maxPosts = 10 }: { maxPosts?: number }) {
 
       {tab === "json" ? (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Raw JSON</CardTitle>
               <CardDescription>Exact envelope returned by the API.</CardDescription>
@@ -416,7 +416,7 @@ export function PlaygroundApp({ maxPosts = 10 }: { maxPosts?: number }) {
           <CardContent>
             <pre
               className={cn(
-                "max-h-[28rem] overflow-auto rounded-md border border-[var(--border)] bg-[var(--code-bg)] p-3 font-mono text-xs",
+                "max-h-[28rem] max-w-full overflow-auto rounded-md border border-[var(--border)] bg-[var(--code-bg)] p-3 font-mono text-sm [overflow-wrap:anywhere]",
               )}
             >
               {result ? JSON.stringify(result.body, null, 2) : "// awaiting request"}
@@ -430,7 +430,7 @@ export function PlaygroundApp({ maxPosts = 10 }: { maxPosts?: number }) {
           <CardHeader>
             <CardTitle>Request details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-2 text-sm [overflow-wrap:anywhere]">
             <p>Platform: {platform}</p>
             <p>Username: {username || "—"}</p>
             <p>Limit: {limit}</p>

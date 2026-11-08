@@ -40,8 +40,8 @@ export function CodeBlock({
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>
-      <pre className="overflow-x-auto p-4 pr-24 text-xs leading-relaxed text-[var(--foreground)] font-mono">
-        <code>{code}</code>
+      <pre className="max-w-full overflow-x-auto p-4 pr-28 text-sm leading-relaxed text-[var(--foreground)] font-mono">
+        <code className="[overflow-wrap:anywhere]">{code}</code>
       </pre>
     </div>
   );
