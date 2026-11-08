@@ -1,56 +1,71 @@
 # Owner decisions required before public release
 
-These items **block** calling the project a completed public open-source release. Technical Phase **7F.2** produced a **CONDITIONAL GO** (see [FINAL_ACCEPTANCE_REPORT.md](./FINAL_ACCEPTANCE_REPORT.md)).
+These items **block** calling the project a completed public open-source **beta release** (tag / GitHub Release). Technical Phase **7F.2** produced a **CONDITIONAL GO** (see [FINAL_ACCEPTANCE_REPORT.md](./FINAL_ACCEPTANCE_REPORT.md)).
 
-## 1. LICENSE_DECISION_REQUIRED
+## 1. LICENSE — Apache-2.0 (source license publication)
 
-No `LICENSE` file is committed. Do **not** auto-select a license.
+| Field | Status |
+| --- | --- |
+| Owner intent | Permissive open source: personal + commercial use, modification, redistribution, proprietary integration without a general share-alike duty |
+| Selected SPDX | **Apache-2.0** |
+| Official text | Root [`LICENSE`](../../LICENSE) from https://www.apache.org/licenses/LICENSE-2.0.txt (SHA-256 `CFC7749B96F63BD31C3C42B5C471BF756814053E847C10F3EB003417BC523D30`) |
+| Root `NOTICE` | **NOT_NEEDED** for the current source package (independent/non-ASF project; no required third-party NOTICE content in-tree) |
+| package.json `"license"` | `Apache-2.0` (root + dashboard); both remain `"private": true` (not published to npm) |
+| Owner copyright declaration | **Recorded (STEP 2B):** owner states this is a **personal project**, that they are its **sole owner**, and that they hold rights to the **original code**. Treat as owner declaration — not an independently verified legal opinion. No separate named copyright line was inserted (no guessed legal identity). |
+| Favicon | Retained create-next-app / Next.js MIT scaffold asset (verified SHA match); not claimed as original brand art |
+| Third-party inventory | Reviewed — see [THIRD_PARTY_LICENSE_INVENTORY.md](./THIRD_PARTY_LICENSE_INVENTORY.md) |
+| Docker binary compliance | **Separate gate** — dashboard image embeds sharp/libvips (LGPL). Image publication remains **BLOCKED** until [DOCKER_THIRD_PARTY_COMPLIANCE.md](./DOCKER_THIRD_PARTY_COMPLIANCE.md) is implemented and verified. Source Apache-2.0 does **not** by itself satisfy all binary redistribution duties. |
+| Source license on GitHub `main` | Updated via STEP 2B PR (verify after merge) |
+| Public beta RELEASED | **No** — no tag / GitHub Release in this step |
 
-| License | Commercial use | Redistribution / modification | Attribution | Copyleft | Patents |
-| --- | --- | --- | --- | --- | --- |
-| **MIT** | Yes | Yes | Required notice | None | No explicit grant |
-| **Apache-2.0** | Yes | Yes | NOTICE + change notes | None | Explicit patent grant/termination |
-| **GPL-3.0** | Yes (with GPL terms) | Yes | Required | Strong — derivatives must be GPL | Patent provisions + strong copyleft |
+### SPDX / source headers
 
-**Recommendation:** **Apache-2.0** for a self-hosted infrastructure tool (patent grant + clear attribution without viral copyleft). Choose **MIT** if maximum simplicity is preferred. Choose **GPL-3.0** only if the owner wants to require share-alike for derivative SaaS/products.
-
-Owner must reply with the SPDX id (e.g. `Apache-2.0`) before a `LICENSE` file is added.
+- Root `LICENSE` is the primary license instrument.
+- Per-file SPDX headers were **not** mass-added in this step.
 
 ## 2. Security reporting channel
 
 `SECURITY.md` references GitHub Security Advisories. Owner must **enable private vulnerability reporting** on the GitHub repository (or publish an authorized contact).
 
-Acceptance status: **PRIVATE_REPORTING_NOT_VERIFIED** (no authorized API confirmation in the 7F.2 environment).
+Acceptance status: **PRIVATE_REPORTING_NOT_VERIFIED**.
 
-Until then, mark security-reporting readiness incomplete for a fully public launch.
+Still required for a fully public launch readiness review.
 
 ## 3. Historical Git privacy
 
 Sanitized audit result (`npm run privacy:history`):
 
-- Pattern hits exist (counts only; **values omitted**). At HEAD, `apify_api_` occurrences inspected in tracked Postman artifacts are **negative-assertion needles**, not live token values. Env assignment hits include `.env.example` empty placeholders and synthetic test harness writers.
-- Historical commits (including retired Postman artifacts) still require **owner private review**.
-- Status: **HISTORICAL_PRIVACY: REVIEW_REQUIRED**
+- Pattern hits exist (counts only; **values omitted**). Synthetic/placeholder matches are expected.
+- Status: **HISTORICAL_PRIVACY: REVIEW_REQUIRED** (residual risk remains noted)
 
-**Owner actions:**
+**Owner actions (still open):**
 
-1. Privately review sample commit SHAs printed by the audit (values are not printed by the tool).
-2. **Rotate** any credentials that were ever real (Apify, API keys, encryption keys, bootstrap tokens) — do not rely on history rewrite alone.
-3. Decide whether to authorize a **separate**, planned history-remediation procedure (filter-repo / BFG). This requires explicit approval, coordination with forks/clones, and is **not** performed automatically.
-4. Understand that rewritten objects may remain in forks, CI caches, and mirrors.
-
-Unresolved **real** credential exposure is a **release blocker** until rotation is confirmed (or owner records that matches were never production-real).
+1. Privately review sample commit SHAs printed by the audit.
+2. **Rotate** any credentials that were ever real.
+3. Decide remediation for forks/CI caches/mirrors of pre-clean history if needed.
 
 ## 4. Repository rename (optional)
 
-GitHub repository name may still be the historical scraper name. Product name is **Social Media Posts API**. Renaming the GitHub repo is optional and owner-only.
+GitHub repository name may still be historical. Product name is **Social Media Posts API**.
 
 ## 5. Live HTTPS & paid Apify acceptance
 
-- `LIVE_HTTPS_NOT_VERIFIED` until the owner points a real DNS name at a deployment and confirms certificates + Secure cookies (checklist in FINAL_ACCEPTANCE_REPORT).
-- Controlled live Apify runs remain optional acceptance, never part of default CI.
-- Browser acceptance established **MOCKED PROVIDER VERIFIED** only.
+- `LIVE_HTTPS_NOT_VERIFIED`
+- Controlled live Apify: optional; default CI remains mocked (**MOCKED PROVIDER VERIFIED** only)
 
 ## 6. Public GitHub Release / tag
 
-Do not publish `v0.1.0-beta.1` (or any tag) until items 1–3 are resolved to the owner’s satisfaction. Proposed version is a draft only.
+Do **not** publish `v0.1.0-beta.1` (or any tag) until remaining readiness items (security channel, privacy confirmation, and any owner-required acceptance) are resolved. License publication ≠ beta release.
+
+## 7. Publication gate summary
+
+| Gate | Status |
+| --- | --- |
+| Apache-2.0 selected + approved by owner | Yes |
+| LICENSE prepared / published on `main` | STEP 2B (verify after merge) |
+| NOTICE | NOT_NEEDED |
+| Owner personal ownership declaration recorded | Yes |
+| Named copyright line invented | No |
+| Docker image published | **No / BLOCKED** |
+| npm publish | **No** (`private: true`) |
+| Public beta tag/Release | **No** |
