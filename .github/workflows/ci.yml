@@ -94,6 +94,17 @@ jobs:
       - name: Isolated compose smoke
         run: npm run compose:smoke
 
+  license-pack:
+    name: dashboard LGPL license pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify license texts, pins, and non-publishing release workflow
+        run: node scripts/verify-docker-license-pack.mjs
+
   audit-dev:
     name: npm audit (informational)
     runs-on: ubuntu-latest

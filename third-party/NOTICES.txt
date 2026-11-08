@@ -1,0 +1,67 @@
+THIRD-PARTY NOTICES — Social Media Posts API dashboard image
+================================================================
+
+This project's own source is licensed under the Apache License 2.0
+(see /app/LICENSE if copied, or the Git repository LICENSE file).
+Apache-2.0 does not replace third-party terms for libraries shipped
+inside the dashboard container image.
+
+PROMINENT NOTICE — LGPL-3.0-or-later library
+---------------------------------------------
+The dashboard image includes a dynamically linked copy of libvips
+(and related native libraries) supplied by the npm package:
+
+  @img/sharp-libvips-linuxmusl-x64@1.3.4
+  SPDX: LGPL-3.0-or-later
+  libvips version recorded by that package: 8.18.7
+  (see third-party/sharp-libvips-linuxmusl-x64-1.3.4.versions.json)
+
+sharp@0.35.5 itself is Apache-2.0. It loads libvips at runtime from
+the shared library shipped beside it (typically libvips-cpp.so.8.18.7).
+
+License texts accompanying this image:
+  third-party/licenses/LGPL-3.0.txt
+  third-party/licenses/GPL-3.0.txt
+(LGPL-3.0 incorporates GPL-3.0 by reference; both are included.)
+
+CORRESPONDING SOURCE (version-matched)
+---------------------------------------
+libvips 8.18.7 source archive (upstream tag, verified reachable):
+  https://github.com/libvips/libvips/archive/refs/tags/v8.18.7.tar.gz
+
+Prebuilt binary package actually linked by this image (npm tarball):
+  https://registry.npmjs.org/@img/sharp-libvips-linuxmusl-x64/-/sharp-libvips-linuxmusl-x64-1.3.4.tgz
+
+The versions.json file lists additional native libraries bundled with
+that prebuilt (glib, png, webp, and others) and their upstream versions.
+Those components keep their own licenses. This notice is not a claim
+that every bundled library is LGPL, and it is not a relicensing of
+this project's source.
+
+REPLACING THE LGPL LIBRARY
+---------------------------
+libvips is used as a shared library, not statically linked into the
+project's JavaScript. A recipient may replace the shipped .so files
+under:
+
+  /app/node_modules/@img/sharp-libvips-linuxmusl-x64/lib
+
+with an interface-compatible build (same SONAME / libvips-cpp.so.8
+series) and rebuild or derive a new image. Example:
+
+  docker build -f apps/dashboard/Dockerfile -t my-dashboard .
+  # or, from a running derived image, replace the lib directory and
+  # restart the container as user nextjs.
+
+Source is conveyed only by the durable public URLs above for the exact
+versions named here.
+
+BASE IMAGES
+-----------
+This image is built FROM node:22-alpine. Node.js and Alpine Linux
+licenses apply to those layers and are not replaced by Apache-2.0.
+The Compose stack also runs upstream image caddy:2 (not republished
+by this project).
+
+This file is attribution and redistribution information. It is not
+legal advice.

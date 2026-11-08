@@ -8,7 +8,9 @@
 
 ## Verdict
 
-**CONDITIONAL GO** for owner-gated **source-only** open-source beta.
+**STEP 4A:** self-host docs, LGPL pack, and a tag-gated image workflow are prepared. Images, the git tag, and the GitHub Release are **not** published. Owner accepted residual historical PR-ref risk and declined GitHub Support.
+
+**CONDITIONAL GO** for owner-gated open-source beta (source build today; image push only after STEP 4B).
 
 Technical acceptance (including isolated Playwright browser journeys with mocked Apify) **passed**. License and private vulnerability reporting gates are **complete**. Remaining mandatory owner items: **accept or escalate residual GitHub PR-ref/cache privacy risk**, confirm security notification settings, then explicitly approve tag/Release.
 

@@ -1,43 +1,54 @@
-# Draft release notes — v0.1.0-beta.1
+# Release notes — v0.1.0-beta.1
 
-**Status:** Draft only. Do not publish a GitHub Release until owner checklist items are complete.  
-**Acceptance:** Phase 7F.2 **CONDITIONAL GO** — see [FINAL_ACCEPTANCE_REPORT.md](./FINAL_ACCEPTANCE_REPORT.md).
+**Status:** Prepared for owner review. **Not published.** No Git tag and no container images have been pushed.
 
-## Highlights
+## Overview
 
-Self-hosted **Social Media Posts API**: Node.js posts engine + Next.js admin dashboard + Caddy, started with Docker Compose after one-time secret initialization.
+Social Media Posts API is a self-hosted service that returns recent **public** Facebook page posts and Instagram profile posts as a stable JSON API, plus a Next.js admin dashboard. You run it with Docker Compose (API, dashboard, and Caddy). It is not a hosted SaaS and is not affiliated with Meta, Facebook, Instagram, or Apify.
 
-- Facebook & Instagram public posts API (`x-api-key`, stable JSON envelope)
-- Admin setup, sessions, optional SMTP email verification, TOTP MFA
-- Encrypted Apify credential storage + managed API keys
-- Interactive Playground (cache-only default; confirmed live refresh)
-- Settings, cache inspection/delete, local usage telemetry
-- Single-replica Compose stack with persistent `/data`
-- Isolated browser acceptance harness (`npm run browser:acceptance`) with mocked Apify for release QA
+License: **Apache-2.0** (this project’s source). The dashboard image also redistributes libvips under **LGPL-3.0-or-later**; see `third-party/NOTICES.txt`.
 
-## Install (Docker-first)
+## What you can do
+
+- `GET /api/v1/facebook/posts` and `GET /api/v1/instagram/posts` with an `x-api-key`
+- Create the first administrator with a one-time bootstrap token (no shared default password)
+- Optional email OTP (if you configure SMTP) and TOTP MFA
+- Store an Apify token encrypted at rest and create scoped API keys
+- Use Playground (cache-only unless you confirm a live refresh)
+- Inspect cache, settings, and local attempt telemetry
+- Exercise the contract with Postman offline (`npm run postman:offline`) without calling Apify
+
+## Install
+
+Build from source (images are not on a registry yet):
 
 ```bash
-git clone <repo-url>
-cd <repo>
-# Linux/macOS:
+git clone https://github.com/pitsssss/FB_-_IG_Scrapper_Tool.git
+cd FB_-_IG_Scrapper_Tool
+chmod +x scripts/init-selfhost.sh
 ./scripts/init-selfhost.sh
-# Windows PowerShell:
-#   .\scripts\init-selfhost.ps1
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
-Open `http://127.0.0.1:8080/setup`.
+Open `http://127.0.0.1:8080/setup`. Full steps: `docs/SELF_HOSTING_GUIDE.md`.
 
-## Known limitations
+Live fetches need your own Apify token and can spend Apify credits. Cache hits do not. Facebook and Instagram availability still depends on those providers and their terms.
 
-- Not affiliated with Meta; depends on Apify Actors (and optional Graph) for live data
-- Local attempt quota ≠ Apify dollar billing
-- Instagram carousel children often incomplete under `basicData`
-- Filesystem Apify quota: **one API replica only**
-- License: **pending owner decision**
-- Live public HTTPS: operator-verified
+## Security
 
-## Upgrade notes
+Report vulnerabilities privately via GitHub Security Advisories (see `SECURITY.md`). Do not commit `.env` or the management database.
 
-From earlier Compose layouts: ensure Caddy routes `/api/auth/*` and `/api/management/*` to the dashboard (not a catch-all to the API). Preserve `api_data` volume and the same `DATA_ENCRYPTION_KEY`.
+## Known beta limitations
+
+- Public HTTPS on a real domain is **operator-configured**, not pre-deployed by this project
+- No paid Apify acceptance was run for this release; default tests use mocks
+- Instagram carousel children are often incomplete under `basicData`; `stats.shares` is `0`
+- One API replica only (filesystem quota)
+- First published images, when they exist, are planned as `linux/amd64` only
+- Historical Git rewrite cleaned ordinary `main` history; pre-rewrite pull-request refs or external copies may still exist. That residual risk is accepted by the owner. It is not a claim of Internet-wide deletion
+
+## Not in this publication step
+
+- GitHub Release: not created
+- Git tag `v0.1.0-beta.1`: not created
+- GHCR images: not pushed

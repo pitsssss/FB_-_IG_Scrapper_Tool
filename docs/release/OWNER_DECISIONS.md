@@ -63,13 +63,14 @@ Distinguish:
 | `DATA_ENCRYPTION_KEY` | **Unchanged** — do not regenerate against existing encrypted management data without a migration plan |
 | Absolute exclusion of all exposure | **Not claimed** — checks cannot rule out every fork/cache/unknown copy |
 
-### Residual GitHub PR / cache risk — SEPARATE OWNER DECISION
+### Residual GitHub PR / cache risk — OWNER DECISION (STEP 4A)
 
 | Item | Status |
 | --- | --- |
-| Historical PR refs `#1–#7` / cached pre-rewrite commits | **RESIDUAL_RISK** (documented; not accepted by default) |
-| Owner acceptance of residual PR/cache risk | **NOT RECORDED** — still required before treating privacy as fully closed for public beta |
-| Optional Support escalation | Draft only: [GITHUB_SUPPORT_HISTORY_PURGE_DRAFT.md](./GITHUB_SUPPORT_HISTORY_PURGE_DRAFT.md) — do not submit automatically |
+| Historical PR refs `#1–#7` / cached pre-rewrite commits | **RESIDUAL_RISK remains** — rewrite did not erase GitHub caches, PR refs, or unknown external copies |
+| Owner acceptance | **ACCEPTED** for continuing a public project. Owner will **not** contact GitHub Support and will **not** pursue further historical purging |
+| Support draft | Kept in-repo for the record only. **Do not send.** Do not copy it into release notes |
+| Erasure claim | **Not made.** Old objects may still be accessible |
 
 ### Open Dependabot PRs `#8–#11` (hygiene)
 
@@ -100,7 +101,8 @@ Do **not** publish `v0.1.0-beta.1` (or any tag) until remaining readiness items 
 | Private vulnerability reporting enabled | Yes |
 | Owner credential declaration recorded | Yes (not a forensic guarantee) |
 | Privacy scanner synthetic classification | STEP 3C |
-| Residual PR/cache risk accepted by owner | **No / pending** |
+| Residual PR/cache risk accepted by owner | **Yes (STEP 4A)** — not an erasure claim |
+| GitHub Support contacted | **No** |
 | GitHub security notifications confirmed | **OWNER_NOTIFICATION_PENDING** |
 | Docker image published | **No / BLOCKED** (LGPL compliance open) |
 | npm publish | **No** (`private: true`) |

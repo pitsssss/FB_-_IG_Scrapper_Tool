@@ -38,7 +38,8 @@
     "release:acceptance": "node scripts/release-acceptance.mjs",
     "browser:acceptance": "node scripts/browser-acceptance.mjs",
     "docker:smoke": "bash scripts/docker-smoke.sh",
-    "privacy:history": "node scripts/privacy-history-audit.mjs"
+    "privacy:history": "node scripts/privacy-history-audit.mjs",
+    "license:docker": "node scripts/verify-docker-license-pack.mjs"
   },
   "devDependencies": {
     "newman": "6.2.3",

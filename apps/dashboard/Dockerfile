@@ -30,6 +30,8 @@ RUN addgroup -S nodejs && adduser -S -G nodejs nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# LGPL/GPL texts + version-matched libvips notices (not stripped by Next standalone tracing).
+COPY --chown=nextjs:nodejs third-party /app/third-party
 
 USER nextjs
 EXPOSE 3001

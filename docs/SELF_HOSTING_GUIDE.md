@@ -13,9 +13,11 @@ You do **not** need a host Node.js install for normal Docker operation. Initiali
 ## 1. Clone
 
 ```bash
-git clone <your-fork-or-repo-url>
-cd Facebook_Scrapper_Tool   # or your local folder name
+git clone https://github.com/pitsssss/FB_-_IG_Scrapper_Tool.git
+cd FB_-_IG_Scrapper_Tool
 ```
+
+Published container images are **not** part of this checkout yet. Install by building from source with Compose (below). A later release may document GHCR image names and digests; until then do not assume `docker pull` works.
 
 ## 2. Configure secrets (Docker-first)
 
@@ -76,11 +78,28 @@ Caddy obtains certificates automatically when the domain resolves publicly.
 4. After success, setup is closed for further takeovers
 5. Optionally enroll TOTP MFA under Settings
 
+## What you are configuring
+
+| Secret | Who uses it | Where it lives |
+| --- | --- | --- |
+| `BOOTSTRAP_SETUP_TOKEN` | First administrator only, once | `.env` (not the public API) |
+| Administrator password | Dashboard login | Hashed in SQLite on `api_data` |
+| `ADMIN_INTERNAL_SECRET` | Dashboard server talking to the API | `.env` on both services; never send it to browsers |
+| `DATA_ENCRYPTION_KEY` | Encrypts stored Apify tokens and TOTP secrets | `.env`; escrow it **outside** the database backup |
+| `x-api-key` | Your websites calling `/api/v1/...` | Created in the dashboard; shown once |
+| Apify token | Paid/credit upstream for live fetches | Entered in **Providers**; stored encrypted |
+
+`init-selfhost` generates bootstrap, internal, and encryption secrets when they are empty. It does not invent an admin password and does not overwrite keys you already set.
+
+An **Apify token** is an API token from your own [Apify](https://apify.com) account. Live Facebook/Instagram fetches use Apify Actors and can spend Apify usage credits. Cache hits do not. This project is not affiliated with Apify or Meta. Platform availability, permissions, and terms still apply. Optional Meta Graph tokens are only for Pages you administer.
+
 ## 6. Connect Apify & create an API key
 
 1. **Providers** → paste your Apify token → validate/connect  
 2. **API Keys** → create a key + Facebook/Instagram scopes  
 3. Copy the secret **once**
+
+Playground defaults to **cache-only**. A live refresh asks for confirmation and counts toward the local daily attempt limit (`APIFY_DAILY_RUN_LIMIT`), which is not an Apify dollar budget.
 
 ## 7. Test the public API
 
@@ -110,9 +129,18 @@ docker compose up -d --build # rebuild after git pull
 
 Local overlay: add `-f docker-compose.local.yml` to the same commands.
 
-## 10. Backup & restore
+## 10. Backup, restore, upgrade
 
-See [BACKUP_RESTORE.md](./BACKUP_RESTORE.md).
+See [BACKUP_RESTORE.md](./BACKUP_RESTORE.md). Keep `DATA_ENCRYPTION_KEY` with the backup or the database cannot be decrypted.
+
+Upgrade:
+
+```bash
+git pull
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+```
+
+Do not delete the `api_data` volume. Do not regenerate `DATA_ENCRYPTION_KEY` for an existing database. `docker compose down` keeps volumes; `down -v` deletes them.
 
 ## 11. Troubleshooting
 
