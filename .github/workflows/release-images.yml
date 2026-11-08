@@ -1,0 +1,76 @@
+# Explicit image publication for v0.1.0-beta.1.
+# Does NOT run on push or pull_request.
+# Does NOT run unless a maintainer dispatches it on the annotated tag
+# and types the confirmation string. STEP 4A does not invoke this workflow.
+name: Release images
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type PUBLISH-0.1.0-beta.1 to build and push GHCR images
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  guard:
+    name: publication guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse unless tag and confirmation match
+        run: |
+          echo "ref=$GITHUB_REF"
+          if [ "$GITHUB_REF" != "refs/tags/v0.1.0-beta.1" ]; then
+            echo "Refusing: publication is only allowed from tag v0.1.0-beta.1"
+            exit 1
+          fi
+          if [ "${{ github.event.inputs.confirm }}" != "PUBLISH-0.1.0-beta.1" ]; then
+            echo "Refusing: confirmation string did not match"
+            exit 1
+          fi
+
+  publish:
+    name: build and push
+    needs: guard
+    if: github.ref == 'refs/tags/v0.1.0-beta.1' && github.event.inputs.confirm == 'PUBLISH-0.1.0-beta.1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: License pack must pass before any push
+        run: node scripts/verify-docker-license-pack.mjs
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push API (linux/amd64, no latest tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/${{ github.repository_owner }}/social-media-posts-api:0.1.0-beta.1
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=0.1.0-beta.1
+            org.opencontainers.image.licenses=Apache-2.0
+      - name: Build and push dashboard (linux/amd64, no latest tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/dashboard/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/${{ github.repository_owner }}/social-media-posts-dashboard:0.1.0-beta.1
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=0.1.0-beta.1
+            org.opencontainers.image.licenses=Apache-2.0

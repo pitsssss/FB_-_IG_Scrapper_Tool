@@ -2,7 +2,7 @@
 
 Self-hosted platform that fetches and normalizes recent **public** Facebook page posts and Instagram profile posts for your backends — with API-key auth, durable cache, shared Apify attempt controls, and a Next.js administration dashboard.
 
-[![CI](https://github.com/pitsssss/Facebook_Scrapper_Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/pitsssss/Facebook_Scrapper_Tool/actions/workflows/ci.yml)
+[![CI](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/actions/workflows/ci.yml)
 ![Release candidate](https://img.shields.io/badge/status-0.1.0--beta.1%20RC-blue)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
@@ -25,8 +25,8 @@ Developers and operators who want a **private** posts API for websites and servi
 ## Quick start (Docker — no host Node required)
 
 ```bash
-git clone https://github.com/pitsssss/Facebook_Scrapper_Tool.git
-cd Facebook_Scrapper_Tool
+git clone https://github.com/pitsssss/FB_-_IG_Scrapper_Tool.git
+cd FB_-_IG_Scrapper_Tool
 
 # Linux / macOS
 chmod +x scripts/init-selfhost.sh

@@ -27,7 +27,8 @@
 - [x] Third-party inventory reviewed
 - [x] `package.json` / dashboard `"license": "Apache-2.0"` with `"private": true`
 - [x] Source license merged to GitHub `main` and verified (GitHub detects Apache-2.0)
-- [ ] Docker image publication — **BLOCKED** until [DOCKER_THIRD_PARTY_COMPLIANCE.md](./DOCKER_THIRD_PARTY_COMPLIANCE.md) implemented/verified
+- [x] Dashboard LGPL pack in-tree (`third-party/`, Dockerfile copy, `npm run license:docker`) — images **not published**
+- [ ] Docker image publication — only in STEP 4B after owner review (workflow is manual and tag-gated)
 
 ## Security reporting (STEP 3A)
 
@@ -42,7 +43,7 @@
 - [x] Owner credential declaration recorded (local `.env` kept private / not knowingly shared) — not a forensic guarantee
 - [x] No rotation evidenced; `DATA_ENCRYPTION_KEY` unchanged
 - [x] Privacy scanner targeted false-positive classification + regression tests (STEP 3C)
-- [ ] Owner **explicitly accepts** residual GitHub PR-ref / cached-commit risk (`#1–#7`) **or** pursues Support using [GITHUB_SUPPORT_HISTORY_PURGE_DRAFT.md](./GITHUB_SUPPORT_HISTORY_PURGE_DRAFT.md)
+- [x] Owner **accepted** residual GitHub PR-ref / cache risk and declined GitHub Support (STEP 4A). Not an erasure claim
 - [ ] Optional hygiene: review open Dependabot PRs `#8–#11` (post-rewrite dependency bumps)
 
 ## Remaining owner blockers (public source-only beta)

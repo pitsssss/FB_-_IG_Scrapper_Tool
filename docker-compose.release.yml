@@ -1,0 +1,109 @@
+# Operator Compose for *published* images.
+# Images are NOT published in the readiness phase.
+# Do not use this file until STEP 4B records real GHCR names and digests.
+#
+# Required environment (no defaults — Compose fails closed if unset):
+#   SMP_API_IMAGE=ghcr.io/<owner>/<api-image>@sha256:<digest>
+#   SMP_DASHBOARD_IMAGE=ghcr.io/<owner>/<dashboard-image>@sha256:<digest>
+#
+# Caddy stays on the official upstream image (not republished by this project).
+# Pin a digest at publication time; the floating tag below is only a placeholder
+# until that digest is recorded.
+#
+#   docker compose --env-file .env -f docker-compose.release.yml up -d
+#
+# This file does not build from source and does not reset volumes.
+
+services:
+  api:
+    image: ${SMP_API_IMAGE:?Set SMP_API_IMAGE to a published image reference}
+    restart: unless-stopped
+    env_file:
+      - ${COMPOSE_ENV_FILE:-.env}
+    environment:
+      CACHE_DIR: /data/cache
+      MANAGEMENT_DIR: /data/management
+      HOST: 0.0.0.0
+      PORT: "3000"
+      NODE_ENV: production
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    volumes:
+      - api_data:/data
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - smp_net
+
+  dashboard:
+    image: ${SMP_DASHBOARD_IMAGE:?Set SMP_DASHBOARD_IMAGE to a published image reference}
+    restart: unless-stopped
+    env_file:
+      - ${COMPOSE_ENV_FILE:-.env}
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: 0.0.0.0
+      API_INTERNAL_URL: http://api:3000
+      ADMIN_INTERNAL_SECRET: ${ADMIN_INTERNAL_SECRET:?Set ADMIN_INTERNAL_SECRET}
+      ADMIN_ALLOWED_ORIGINS: ${ADMIN_ALLOWED_ORIGINS:?Set ADMIN_ALLOWED_ORIGINS}
+      ADMIN_COOKIE_SECURE: ${ADMIN_COOKIE_SECURE:-1}
+    expose:
+      - "3001"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health',{redirect:'manual'}).then((r)=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - smp_net
+
+  caddy:
+    image: ${SMP_CADDY_IMAGE:-caddy:2}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      dashboard:
+        condition: service_healthy
+    networks:
+      - smp_net
+
+volumes:
+  api_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  smp_net:
+    driver: bridge
