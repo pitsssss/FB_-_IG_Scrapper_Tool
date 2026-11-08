@@ -13,10 +13,13 @@ This project is distributed as a **self-hosted** application. Security fixes tar
 
 **Do not open a public GitHub issue for security vulnerabilities that could enable unauthorized access, credential theft, or remote code execution.**
 
-Preferred private reporting (when available on this GitHub repository):
+Report privately through **GitHub Security Advisories** on this repository:
 
-1. Use **GitHub Security Advisories** → *Report a vulnerability* on the repository (if enabled by the owner).
-2. If advisories are not enabled yet, this is a **release blocker** for a fully public open-source launch until the owner enables private reporting or publishes an authorized contact path. See `docs/release/OWNER_DECISIONS.md`.
+1. Open [Security Advisories](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/security/advisories).
+2. Choose **Report a vulnerability**.
+3. Provide enough detail for maintainers to reproduce and assess the issue on a local disposable install.
+
+Private vulnerability reporting is enabled for this repository (verified via GitHub’s private-vulnerability-reporting API).
 
 Please include:
 
@@ -25,7 +28,7 @@ Please include:
 - Impact assessment
 - Whether you believe credentials in Git history are involved
 
-We will acknowledge reports as soon as the owner’s chosen channel is active.
+Do not expect guaranteed response times unless separately published by the owner.
 
 ## Out of scope
 

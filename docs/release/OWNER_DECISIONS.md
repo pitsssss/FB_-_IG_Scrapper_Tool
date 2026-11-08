@@ -25,11 +25,12 @@ These items **block** calling the project a completed public open-source **beta 
 
 ## 2. Security reporting channel
 
-`SECURITY.md` references GitHub Security Advisories. Owner must **enable private vulnerability reporting** on the GitHub repository (or publish an authorized contact).
+**Private vulnerability reporting:** **ENABLED** on `pitsssss/FB_-_IG_Scrapper_Tool` (STEP 3A).
 
-Acceptance status: **PRIVATE_REPORTING_NOT_VERIFIED**.
-
-Still required for a fully public launch readiness review.
+- Verified with `GET /repos/.../private-vulnerability-reporting` → `{ "enabled": true }` (no settings change was required; already enabled).
+- Advisories entry: https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/security/advisories
+- `SECURITY.md` instructs reporters to use **Report a vulnerability** (no public Issues for security bugs).
+- **Owner notification preferences:** not auto-changed. Owner should confirm GitHub account/org notification settings include security alerts / vulnerability reports (Watch → Custom, or Settings → Notifications → Security alerts). Status: **OWNER_NOTIFICATION_PENDING**.
 
 ## 3. Historical Git privacy
 
