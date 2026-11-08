@@ -65,6 +65,45 @@ req.end();
 http_code() { http_req code "$@"; }
 http_body() { http_req body "$@"; }
 
+# Assert the *running API process* (PID 1 after su-exec) is node as the non-root
+# node user. docker exec defaults to the image USER (root for volume init) and
+# must not be confused with the application effective UID.
+assert_api_process_non_root() {
+  local phase="$1"
+  local info
+  # shellcheck disable=SC2016
+  info="$(docker exec "$API_NAME" sh -c '
+    set -eu
+    CMD=$(tr "\0" " " </proc/1/cmdline)
+    echo "cmdline=$CMD"
+    # /proc/PID/status Uid: Real Effective Saved FS
+    EUID_NUM=$(sed -n "s/^Uid:[[:space:]]*[0-9][0-9]*[[:space:]]*\([0-9][0-9]*\).*/\1/p" /proc/1/status)
+    NODE_UID=$(id -u node)
+    echo "euid=$EUID_NUM"
+    echo "node_uid=$NODE_UID"
+    case "$CMD" in
+      *node*src/index.js*) ;;
+      *)
+        echo "FAIL: PID 1 is not node src/index.js"
+        exit 1
+        ;;
+    esac
+    if [ -z "$EUID_NUM" ] || [ "$EUID_NUM" = "0" ]; then
+      echo "FAIL: API process effective UID is root or missing"
+      exit 1
+    fi
+    if [ "$EUID_NUM" != "$NODE_UID" ]; then
+      echo "FAIL: API euid=$EUID_NUM does not match node uid=$NODE_UID"
+      exit 1
+    fi
+    echo "api_process_user=node"
+  ')"
+  echo "== API process identity ($phase) =="
+  echo "$info"
+  echo "$info" | grep -q 'api_process_user=node'
+  echo "$info" | grep -Eq 'euid=[1-9][0-9]*'
+}
+
 cleanup() {
   docker rm -f "$API_NAME" >/dev/null 2>&1 || true
   docker rm -f "$FAKE_NAME" >/dev/null 2>&1 || true
@@ -153,15 +192,11 @@ echo "$LIVE" | grep -q '"source":"live"'
 IDS="$(node -e "const j=JSON.parse(process.argv[1]); process.stdout.write(j.data.posts.map(p=>p.id).join(','))" "$LIVE")"
 test -n "$IDS"
 
-echo "== cache dir writable by runtime user =="
-docker exec "$API_NAME" sh -c 'touch /data/cache/.smoke-write && test -f /data/cache/.smoke-write'
-WRITE_USER="$(docker exec "$API_NAME" id -un)"
-echo "write_user=$WRITE_USER"
+echo "== cache dir writable by node user =="
+docker exec -u node "$API_NAME" sh -c 'touch /data/cache/.smoke-write && test -f /data/cache/.smoke-write'
+echo "cache_write_as_node=ok"
 
-echo "== effective user inside container =="
-EFFECTIVE_USER="$(docker exec "$API_NAME" id -un)"
-echo "effective_user=$EFFECTIVE_USER"
-test "$EFFECTIVE_USER" = "node"
+assert_api_process_non_root "initial"
 
 echo "== logs must not contain synthetic key =="
 LOGS="$(docker logs "$API_NAME" 2>&1 || true)"
@@ -199,6 +234,8 @@ if [ "$READY" != "1" ]; then
   docker logs "$API_NAME" >&2 || true
   exit 1
 fi
+
+assert_api_process_non_root "after-restart"
 
 CACHED="$(http_body "$BASE/api/v1/facebook/posts?page=cern&limit=3" "x-api-key" "$SMOKE_KEY")"
 echo "$CACHED" | grep -q '"success":true'
@@ -245,6 +282,8 @@ for i in $(seq 1 40); do
 done
 test "$READY" = "1"
 
+assert_api_process_non_root "unwritable-quota"
+
 # Existing cached posts should still be readable even when disk is unwritable
 STILL_CACHED="$(http_body "$BASE/api/v1/facebook/posts?page=cern&limit=3" "x-api-key" "$SMOKE_KEY")"
 echo "$STILL_CACHED" | grep -q '"success":true'
@@ -271,4 +310,4 @@ echo "image_has_no_dotenv=true required_src=present"
 # Confirm no leftover containers after trap (explicit stop for clarity)
 docker stop -t 5 "$API_NAME" >/dev/null 2>&1 || true
 
-echo "DOCKER_SMOKE: PASS effective_user=$EFFECTIVE_USER"
+echo "DOCKER_SMOKE: PASS api_process_user=node (PID 1 non-root verified)"

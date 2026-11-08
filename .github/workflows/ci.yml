@@ -89,8 +89,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Compose config
-        run: docker compose -f docker-compose.yml -f docker-compose.local.yml config -q
+      # compose:smoke creates a synthetic env file and runs `docker compose config -q`
+      # itself. Do not require a committed/.env here — the repo intentionally omits it.
       - name: Isolated compose smoke
         run: npm run compose:smoke
 

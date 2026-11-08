@@ -10,7 +10,8 @@ RUN apk add --no-cache su-exec \
 COPY package.json ./
 COPY src ./src
 COPY scripts/docker-entrypoint-api.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && chown node:node /entrypoint.sh
+# Strip CR so Windows autocrlf checkouts cannot break the Alpine shebang (`exec ... no such file`).
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh && chown node:node /entrypoint.sh
 
 ENV NODE_ENV=production \
     CACHE_DIR=/data/cache \

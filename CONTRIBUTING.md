@@ -26,7 +26,12 @@ npm run lint && npm run typecheck && npm run test && npm run build
 Docker (synthetic secrets; isolated smoke):
 
 ```bash
+# Full stack (api + dashboard + caddy). Creates a temporary .env — never commit one for CI.
 npm run compose:smoke
+
+# API image only: build, health/auth, volume persistence, non-root PID 1 check
+# (verifies /proc/1 after su-exec — not `docker exec id`, which follows image USER root).
+npm run docker:smoke
 ```
 
 Self-host init **without** host Node (Docker only):
