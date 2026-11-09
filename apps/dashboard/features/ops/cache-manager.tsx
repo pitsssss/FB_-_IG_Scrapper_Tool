@@ -6,7 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { getCsrfToken } from "@/lib/auth/client-csrf";
+
+const PLATFORM_OPTIONS = [
+  { value: "all", label: "All", description: "Facebook and Instagram" },
+  { value: "facebook", label: "Facebook", description: "Cached Facebook accounts" },
+  { value: "instagram", label: "Instagram", description: "Cached Instagram accounts" },
+] as const;
+
+const FRESHNESS_OPTIONS = [
+  { value: "all", label: "All", description: "Fresh and stale entries" },
+  { value: "fresh", label: "Fresh", description: "Still within TTL" },
+  { value: "stale", label: "Stale", description: "Past freshness window" },
+] as const;
 
 type CacheEntry = {
   id: string;
@@ -98,39 +111,39 @@ export function CacheManager({ initialEntries = [] }: { initialEntries?: CacheEn
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-3">
-            <div>
-              <Label htmlFor="plat">Platform</Label>
-              <select
-                id="plat"
-                className="mt-1 block min-h-11 w-full min-w-[8rem] rounded-md border border-[var(--border)] bg-transparent px-2 py-2 text-base sm:text-sm"
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value as typeof platform)}
-              >
-                <option value="all">All</option>
-                <option value="facebook">Facebook</option>
-                <option value="instagram">Instagram</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="fresh">Freshness</Label>
-              <select
-                id="fresh"
-                className="mt-1 block min-h-11 w-full min-w-[8rem] rounded-md border border-[var(--border)] bg-transparent px-2 py-2 text-base sm:text-sm"
-                value={freshness}
-                onChange={(e) => setFreshness(e.target.value as typeof freshness)}
-              >
-                <option value="all">All</option>
-                <option value="fresh">Fresh</option>
-                <option value="stale">Stale</option>
-              </select>
-            </div>
-            <div className="min-w-[12rem] flex-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(11rem,14rem)_minmax(11rem,14rem)_minmax(0,1fr)_auto] xl:items-end">
+            <Select
+              id="plat"
+              label="Platform"
+              value={platform}
+              options={PLATFORM_OPTIONS}
+              onChange={setPlatform}
+              className="min-w-0"
+            />
+            <Select
+              id="fresh"
+              label="Freshness"
+              value={freshness}
+              options={FRESHNESS_OPTIONS}
+              onChange={setFreshness}
+              className="min-w-0"
+            />
+            <div className="min-w-0 sm:col-span-2 xl:col-span-1">
               <Label htmlFor="q">Username</Label>
-              <Input id="q" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter…" />
+              <Input
+                id="q"
+                className="mt-1"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter…"
+              />
             </div>
-            <div className="flex items-end">
-              <Button variant="secondary" onClick={() => reload().catch((e) => setError(e.message))}>
+            <div className="flex items-end sm:col-span-2 xl:col-span-1">
+              <Button
+                className="w-full xl:w-auto"
+                variant="secondary"
+                onClick={() => reload().catch((e) => setError(e.message))}
+              >
                 Refresh list
               </Button>
             </div>

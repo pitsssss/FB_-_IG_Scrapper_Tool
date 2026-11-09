@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MobileNav } from "@/components/layout/mobile-nav";
+import { MobileBrandLink, MobileNav } from "@/components/layout/mobile-nav";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoutButton } from "@/features/auth/logout-button";
@@ -24,21 +24,23 @@ export function AppShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/90 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/75 sm:px-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <MobileNav />
-              <Link href="/overview" className="truncate text-sm font-semibold xl:hidden">
-                Posts API
-              </Link>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              {adminUsername ? (
-                <span className="hidden max-w-[14rem] truncate text-xs text-[var(--muted-foreground)] md:inline">
-                  Signed in as {adminUsername}
-                </span>
-              ) : null}
-              <LogoutButton />
-              <ThemeToggle />
+          <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/75">
+            <div className="flex min-h-14 items-center gap-2 px-3 py-2 sm:px-4">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <MobileNav adminUsername={adminUsername} />
+                <MobileBrandLink />
+              </div>
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                {adminUsername ? (
+                  <span className="hidden max-w-[14rem] truncate text-xs text-[var(--muted-foreground)] xl:inline">
+                    Signed in as {adminUsername}
+                  </span>
+                ) : null}
+                <div className="hidden xl:block">
+                  <LogoutButton />
+                </div>
+                <ThemeToggle />
+              </div>
             </div>
           </header>
           <main className="min-w-0 flex-1 px-3 py-5 sm:px-5 sm:py-6 xl:px-8">

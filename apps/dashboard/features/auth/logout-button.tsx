@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CSRF_COOKIE, CSRF_HEADER } from "@/lib/auth/constants";
+import { navigateAfterAuth } from "@/lib/auth/client-navigate";
 
 function readCookie(name: string): string {
   if (typeof document === "undefined") return "";
@@ -16,15 +16,16 @@ function readCookie(name: string): string {
 }
 
 export function LogoutButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function onClick() {
+    if (loading) return;
     setLoading(true);
     try {
       const csrf = readCookie(CSRF_COOKIE);
       await fetch("/api/auth/logout", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "content-type": "application/json",
           [CSRF_HEADER]: csrf,
@@ -32,9 +33,7 @@ export function LogoutButton() {
         body: "{}",
       });
     } finally {
-      router.replace("/login");
-      router.refresh();
-      setLoading(false);
+      navigateAfterAuth("/login");
     }
   }
 

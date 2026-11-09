@@ -1,27 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { getCsrfToken } from "@/lib/auth/client-csrf";
+import { navigateAfterAuth } from "@/lib/auth/client-navigate";
 
 export function MfaForm() {
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
     try {
       const csrf = getCsrfToken();
       const res = await fetch("/api/auth/mfa", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "content-type": "application/json",
           ...(csrf ? { "x-csrf-token": csrf } : {}),
@@ -31,13 +32,12 @@ export function MfaForm() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(body?.error?.message || "Verification failed");
+        setLoading(false);
         return;
       }
-      router.replace("/overview");
-      router.refresh();
+      navigateAfterAuth("/overview");
     } catch {
       setError("Unable to reach authentication service");
-    } finally {
       setLoading(false);
     }
   }

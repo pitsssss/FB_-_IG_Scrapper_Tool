@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { navigateAfterAuth } from "@/lib/auth/client-navigate";
 
 type Props = {
   setupAvailable: boolean;
@@ -15,7 +15,6 @@ type Props = {
 };
 
 export function SetupForm({ setupAvailable, setupRequired, message, smtpConfigured }: Props) {
-  const router = useRouter();
   const [setupToken, setSetupToken] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +41,7 @@ export function SetupForm({ setupAvailable, setupRequired, message, smtpConfigur
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -55,19 +55,19 @@ export function SetupForm({ setupAvailable, setupRequired, message, smtpConfigur
     try {
       const res = await fetch("/api/auth/setup", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ setupToken, email, password, confirmPassword }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(body?.error?.message || "Setup failed");
+        setLoading(false);
         return;
       }
-      router.replace("/overview");
-      router.refresh();
+      navigateAfterAuth("/overview");
     } catch {
       setError("Unable to reach authentication service");
-    } finally {
       setLoading(false);
     }
   }
