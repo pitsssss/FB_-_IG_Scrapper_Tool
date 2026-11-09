@@ -57,7 +57,11 @@ describe("Select", () => {
     trigger.focus();
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("listbox")).toBeInTheDocument();
-    await user.keyboard("{ArrowDown}{Enter}");
+    const firstOption = await screen.findByRole("option", { name: /^all$/i });
+    expect(firstOption).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("option", { name: /^facebook$/i })).toHaveFocus();
+    await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("facebook");
   });
 });

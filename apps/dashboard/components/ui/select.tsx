@@ -116,9 +116,26 @@ export function Select<T extends string = string>({
 
   function onTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
-    if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+    if (event.key === "ArrowDown") {
       event.preventDefault();
-      openList();
+      if (!open) openList();
+      else moveActive(1);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!open) openList();
+      else moveActive(-1);
+      return;
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (!open) {
+        openList();
+        return;
+      }
+      const option = options[activeIndexRef.current];
+      if (option) choose(option.value);
     }
   }
 
