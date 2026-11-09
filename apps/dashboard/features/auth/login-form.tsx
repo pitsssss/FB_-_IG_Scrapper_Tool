@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { navigateAfterAuth } from "@/lib/auth/client-navigate";
 
 export function LoginForm() {
-  const router = useRouter();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -16,29 +15,29 @@ export function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: login, username: login, password }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(body?.error?.message || "Sign in failed");
+        setLoading(false);
         return;
       }
       if (body?.data?.mfaRequired) {
-        router.replace("/mfa");
-        router.refresh();
+        navigateAfterAuth("/mfa");
         return;
       }
-      router.replace("/overview");
-      router.refresh();
+      navigateAfterAuth("/overview");
     } catch {
       setError("Unable to reach authentication service");
-    } finally {
       setLoading(false);
     }
   }
