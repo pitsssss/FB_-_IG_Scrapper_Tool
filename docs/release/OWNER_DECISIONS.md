@@ -87,9 +87,21 @@ GitHub repository name may still be historical. Product name is **Social Media P
 
 ## 6. Public GitHub Release / tag
 
-Do **not** publish `v0.1.0-beta.1` (or any tag) until remaining readiness items are resolved. License publication ≠ beta release.
+Owner intends to launch a **public GitHub Pre-release** `v0.1.0-beta.1` after Step **5E-1** preflight and Step **5E-2** publication.
+Do **not** create the tag or Release during 5E-1. License publication ≠ beta release.
 
-## 7. Publication gate summary
+## 7. External tester program (STEP 5D) — owner skip
+
+| Field | Status |
+| --- | --- |
+| Materials prepared | Yes — `docs/beta/` published on `main` (#21) |
+| Testers invited | **No** — owner explicit skip |
+| Independent external installs | **Not performed** |
+| Record | [BETA_PUBLICATION_EXCEPTION.md](./BETA_PUBLICATION_EXCEPTION.md) |
+
+This skip does **not** waive CI, license pack, secret hygiene, or isolated release-image smoke.
+
+## 8. Publication gate summary
 
 | Gate | Status |
 | --- | --- |
@@ -104,6 +116,8 @@ Do **not** publish `v0.1.0-beta.1` (or any tag) until remaining readiness items 
 | Residual PR/cache risk accepted by owner | **Yes (STEP 4A)** — not an erasure claim |
 | GitHub Support contacted | **No** |
 | GitHub security notifications confirmed | **OWNER_NOTIFICATION_PENDING** |
-| Docker image published | **No / BLOCKED** (LGPL compliance open) |
+| Dashboard LGPL pack in-tree + `license:docker` | Yes (pack pass; residual transitive notes remain) |
+| Docker image published | **No** (deferred to 5E-2) |
 | npm publish | **No** (`private: true`) |
-| Public beta tag/Release | **No** |
+| External tester invitations | **Skipped by owner** |
+| Public beta tag/Release | **No** (await 5E-2) |
