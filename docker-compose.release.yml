@@ -1,18 +1,23 @@
-# Operator Compose for *published* images.
-# Images are NOT published in the readiness phase.
-# Do not use this file until STEP 4B records real GHCR names and digests.
+# Operator Compose for *published* images (linux/amd64).
+# Do not use until Step 5E-2 publishes GHCR tags and records digests.
+#
+# Planned tag names:
+#   ghcr.io/pitsssss/social-media-posts-api:0.1.0-beta.1
+#   ghcr.io/pitsssss/social-media-posts-dashboard:0.1.0-beta.1
 #
 # Required environment (no defaults — Compose fails closed if unset):
-#   SMP_API_IMAGE=ghcr.io/<owner>/<api-image>@sha256:<digest>
-#   SMP_DASHBOARD_IMAGE=ghcr.io/<owner>/<dashboard-image>@sha256:<digest>
+#   SMP_API_IMAGE=ghcr.io/pitsssss/social-media-posts-api@sha256:<digest>
+#   SMP_DASHBOARD_IMAGE=ghcr.io/pitsssss/social-media-posts-dashboard@sha256:<digest>
 #
+# Prefer digest pins over floating tags in production operator docs.
 # Caddy stays on the official upstream image (not republished by this project).
-# Pin a digest at publication time; the floating tag below is only a placeholder
-# until that digest is recorded.
+# Pin SMP_CADDY_IMAGE to a digest at publication time when practical.
 #
 #   docker compose --env-file .env -f docker-compose.release.yml up -d
 #
 # This file does not build from source and does not reset volumes.
+# Local loopback testing of release images belongs in disposable smoke
+# (scripts/release-image-smoke.mjs), not as a weakened production contract.
 
 services:
   api:

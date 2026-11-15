@@ -36,6 +36,7 @@
     "compose:down": "docker compose -f docker-compose.yml -f docker-compose.local.yml down",
     "compose:smoke": "node scripts/compose-smoke.mjs",
     "release:acceptance": "node scripts/release-acceptance.mjs",
+    "release:image-smoke": "node scripts/release-image-smoke.mjs",
     "browser:acceptance": "node scripts/browser-acceptance.mjs",
     "docker:smoke": "bash scripts/docker-smoke.sh",
     "privacy:history": "node scripts/privacy-history-audit.mjs",

@@ -1,54 +1,94 @@
-# Release notes — v0.1.0-beta.1
+# Release notes — Social Media Posts API v0.1.0-beta.1
 
-**Status:** Prepared for owner review. **Not published.** No Git tag and no container images have been pushed.
+**Status:** Preflight-ready draft for a **GitHub Pre-release**.
+**Not published in Step 5E-1.** No Git tag and no GHCR images have been pushed by this phase.
 
-## Overview
+## Product
 
-Social Media Posts API is a self-hosted service that returns recent **public** Facebook page posts and Instagram profile posts as a stable JSON API, plus a Next.js admin dashboard. You run it with Docker Compose (API, dashboard, and Caddy). It is not a hosted SaaS and is not affiliated with Meta, Facebook, Instagram, or Apify.
+Social Media Posts API is a **self-hosted** platform that fetches and normalizes recent **public** Facebook page posts and Instagram profile posts for your backends. It provides:
 
-License: **Apache-2.0** (this project’s source). The dashboard image also redistributes libvips under **LGPL-3.0-or-later**; see `third-party/NOTICES.txt`.
+- A stable JSON public API (`x-api-key`)
+- A Next.js administration dashboard
+- Docker Compose deployment (API + dashboard + Caddy)
 
-## What you can do
+It is **not** a hosted SaaS and is **not** affiliated with Meta, Facebook, Instagram, or Apify.
 
-- `GET /api/v1/facebook/posts` and `GET /api/v1/instagram/posts` with an `x-api-key`
-- Create the first administrator with a one-time bootstrap token (no shared default password)
-- Optional email OTP (if you configure SMTP) and TOTP MFA
-- Store an Apify token encrypted at rest and create scoped API keys
-- Use Playground (cache-only unless you confirm a live refresh)
-- Inspect cache, settings, and local attempt telemetry
-- Exercise the contract with Postman offline (`npm run postman:offline`) without calling Apify
+License: **Apache-2.0** (project source). The dashboard container also redistributes libvips under **LGPL-3.0-or-later**; see `third-party/NOTICES.txt` and `docs/release/DOCKER_THIRD_PARTY_COMPLIANCE.md`.
 
-## Install
+## Features
 
-Build from source (images are not on a registry yet):
+- Facebook Posts API (`GET /api/v1/facebook/posts`)
+- Instagram Posts API (`GET /api/v1/instagram/posts`)
+- API-key authentication with platform/page authorization scopes
+- Encrypted provider token storage (`DATA_ENCRYPTION_KEY`)
+- Durable disk cache with stale-cache fallback (never wipe good cache on upstream failure)
+- Local Apify **attempt** controls (`APIFY_DAILY_RUN_LIMIT` — not a USD budget)
+- Responsive Next.js dashboard (desktop / tablet / mobile)
+- Administrator bootstrap, login, logout, optional TOTP MFA
+- Providers, API keys, Playground, Cache, Usage & Logs, Settings, API docs
+- Docker deployment (source-build today; image-based after GHCR publication)
+
+## Installation
+
+### Prerequisites
+
+- Docker Engine + Compose v2+
+- ~2 GB free disk for images/build cache
+- Loopback or DNS for your chosen deployment mode
+
+### Option A — Build from source (available now)
 
 ```bash
 git clone https://github.com/pitsssss/FB_-_IG_Scrapper_Tool.git
 cd FB_-_IG_Scrapper_Tool
-chmod +x scripts/init-selfhost.sh
-./scripts/init-selfhost.sh
+# Windows: .\scripts\init-selfhost.ps1
+chmod +x scripts/init-selfhost.sh && ./scripts/init-selfhost.sh
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
-Open `http://127.0.0.1:8080/setup`. Full steps: `docs/SELF_HOSTING_GUIDE.md`.
+Open `http://127.0.0.1:8080/setup`, paste `BOOTSTRAP_SETUP_TOKEN` from `.env`, create your administrator.
 
-Live fetches need your own Apify token and can spend Apify credits. Cache hits do not. Facebook and Instagram availability still depends on those providers and their terms.
+Full guide: `docs/SELF_HOSTING_GUIDE.md`.
+
+### Option B — Published images (only after Step 5E-2)
+
+Planned references (digests recorded at publication):
+
+- `ghcr.io/pitsssss/social-media-posts-api:0.1.0-beta.1`
+- `ghcr.io/pitsssss/social-media-posts-dashboard:0.1.0-beta.1`
+
+Use `docker-compose.release.yml` with `SMP_API_IMAGE` / `SMP_DASHBOARD_IMAGE` set to digest-pinned references.
+**Do not advertise Option B until images are public and a clean install using them has passed.**
+
+### Fresh setup requirements
+
+- Generate unique secrets (`init-selfhost` / `secrets:generate`)
+- Never reuse another operator’s `.env` or volumes
+- For cost-safe first boot: leave `APIFY_TOKEN` empty and set `APIFY_DAILY_RUN_LIMIT=0`
+- Escrow `DATA_ENCRYPTION_KEY` separately from database backups
+
+## Limitations (beta)
+
+- **Beta software** — experimental; not production-stable; no uptime or support SLA
+- Provider success is **not** guaranteed; Meta/Apify availability and terms apply
+- Live scraping may incur **Apify costs** on your account
+- Local quota is an **attempt counter**, not a USD spending cap
+- Empty cache with live fetch disabled/unavailable can return structured upstream errors
+- Instagram carousel children are often incomplete under `basicData`; `stats.shares` is always `0`
+- Requires appropriate provider accounts and compliance with platform terms
+- First published images target **linux/amd64** only (no verified arm64)
+- **No independent external tester program was completed** before this first public beta (owner exception — see `docs/release/BETA_PUBLICATION_EXCEPTION.md`)
+- One API replica only while filesystem quota is used
 
 ## Security
 
-Report vulnerabilities privately via GitHub Security Advisories (see `SECURITY.md`). Do not commit `.env` or the management database.
+- Do not publish tokens, `.env`, session cookies, or management databases
+- Use HTTPS (`ADMIN_COOKIE_SECURE=1`) for any remotely exposed instance
+- Safeguard backup and encryption keys
+- Report vulnerabilities privately via GitHub Security Advisories (`SECURITY.md`)
 
-## Known beta limitations
+## Verification performed before preflight close
 
-- Public HTTPS on a real domain is **operator-configured**, not pre-deployed by this project
-- No paid Apify acceptance was run for this release; default tests use mocks
-- Instagram carousel children are often incomplete under `basicData`; `stats.shares` is `0`
-- One API replica only (filesystem quota)
-- First published images, when they exist, are planned as `linux/amd64` only
-- Historical Git rewrite cleaned ordinary `main` history; pre-rewrite pull-request refs or external copies may still exist. That residual risk is accepted by the owner. It is not a claim of Internet-wide deletion
-
-## Not in this publication step
-
-- GitHub Release: not created
-- Git tag `v0.1.0-beta.1`: not created
-- GHCR images: not pushed
+Automated suites and isolated Docker smokes on the release-candidate commit (see preflight report).
+Owner previously verified real Facebook/Instagram scraping on their private install.
+Live Apify was **not** re-executed during Step 5E-1.
