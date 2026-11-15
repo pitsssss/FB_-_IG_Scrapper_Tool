@@ -49,6 +49,14 @@ Production HTTPS: set `API_DOMAIN`, `ADMIN_ALLOWED_ORIGINS=https://your.domain`,
 
 Full guide: [docs/SELF_HOSTING_GUIDE.md](docs/SELF_HOSTING_GUIDE.md) · Backup: [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)
 
+## Pre-release external testing instructions
+
+Materials for **invited** self-hosted testers (not a public SaaS beta, not a GitHub Release):
+
+- [docs/beta/README.md](docs/beta/README.md) — index, expectations, links
+- Build from source with Docker Compose; each tester creates their own credentials
+- No Apify token required initially; empty cache is expected; live scraping stays disabled (`APIFY_DAILY_RUN_LIMIT=0`) via `scripts/apply-beta-safe-defaults.*`
+
 ## Architecture
 
 ```mermaid
