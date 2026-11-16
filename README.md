@@ -132,6 +132,32 @@ Bare usernames only (no profile URLs). Contract: [docs/API_CONTRACT.md](docs/API
 
 After setup/login: Overview, Providers, API Keys, Playground (cache-only by default), Cache, Settings, Usage & Logs, and in-app API documentation. Responsive layouts cover mobile, tablet, and desktop.
 
+## Dashboard Preview
+
+Screenshots captured from the actual application using isolated demonstration data. No live Apify requests were made. Empty and cache-miss states are intentional — not live scrape results.
+
+<p align="center">
+  <img src="docs/assets/screenshots/overview.png" alt="Dashboard Overview" width="720" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/facebook-playground.png" alt="Facebook API Playground (Cache Only, CACHE_MISS)" width="48%" />
+  &nbsp;
+  <img src="docs/assets/screenshots/instagram-playground.png" alt="Instagram API Playground (Cache Only, CACHE_MISS)" width="48%" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/api-keys.png" alt="API Keys management" width="48%" />
+  &nbsp;
+  <img src="docs/assets/screenshots/api-documentation.png" alt="In-app API Documentation" width="48%" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/mobile-navigation.png" alt="Mobile navigation drawer" width="280" />
+</p>
+
+Full gallery (11 views, including providers, cache, usage, settings, and tablet): [docs/assets/screenshots/GALLERY_PREVIEW.md](docs/assets/screenshots/GALLERY_PREVIEW.md).
+
 ## Security and Apify cost safeguards
 
 - HttpOnly session cookies · CSRF + Origin allow-list · optional TOTP
