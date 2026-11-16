@@ -87,8 +87,8 @@ GitHub repository name may still be historical. Product name is **Social Media P
 
 ## 6. Public GitHub Release / tag
 
-Owner intends to launch a **public GitHub Pre-release** `v0.1.0-beta.1` after Step **5E-1** preflight and Step **5E-2** publication.
-Do **not** create the tag or Release during 5E-1. License publication ≠ beta release.
+**Published (STEP 5E-2):** GitHub Pre-release [`v0.1.0-beta.1`](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/releases/tag/v0.1.0-beta.1) on commit `81d4e608e2d2ed6aae9718c859d25b3e85a22879`.
+Do **not** move or recreate that tag. Post-release documentation may land on later `main` commits without retagging.
 
 ## 7. External tester program (STEP 5D) — owner skip
 
@@ -117,7 +117,7 @@ This skip does **not** waive CI, license pack, secret hygiene, or isolated relea
 | GitHub Support contacted | **No** |
 | GitHub security notifications confirmed | **OWNER_NOTIFICATION_PENDING** |
 | Dashboard LGPL pack in-tree + `license:docker` | Yes (pack pass; residual transitive notes remain) |
-| Docker image published | **No** (deferred to 5E-2) |
+| Docker image published | **Yes** — GHCR `…:0.1.0-beta.1` (linux/amd64); digests in release notes |
 | npm publish | **No** (`private: true`) |
 | External tester invitations | **Skipped by owner** |
-| Public beta tag/Release | **No** (await 5E-2) |
+| Public beta tag/Release | **Yes** — Pre-release `v0.1.0-beta.1` |

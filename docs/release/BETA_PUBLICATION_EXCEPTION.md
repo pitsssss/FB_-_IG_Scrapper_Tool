@@ -1,8 +1,8 @@
 # Public beta publication exception — external tester skip
 
 **Decision date:** 2026-11-15
-**Release candidate:** `v0.1.0-beta.1`
-**Source commit (preflight base):** `c7b0ac545da9b7a365e49a598b4a4690a9e7d43c`
+**Release:** `v0.1.0-beta.1` ([GitHub Pre-release](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/releases/tag/v0.1.0-beta.1))
+**Source commit (immutable tag target):** `81d4e608e2d2ed6aae9718c859d25b3e85a22879`
 **Decision maker:** Repository owner
 
 ## Decision

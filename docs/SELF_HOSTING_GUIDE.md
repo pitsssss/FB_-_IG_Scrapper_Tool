@@ -15,9 +15,13 @@ You do **not** need a host Node.js install for normal Docker operation. Initiali
 ```bash
 git clone https://github.com/pitsssss/FB_-_IG_Scrapper_Tool.git
 cd FB_-_IG_Scrapper_Tool
+git checkout v0.1.0-beta.1   # optional: pin to the published beta tag
 ```
 
-Published container images are **not** part of this checkout yet. Install by building from source with Compose (below). A later release may document GHCR image names and digests; until then do not assume `docker pull` works.
+Two install modes:
+
+1. **Source build (local HTTP)** — sections 2–3 below (`docker-compose.yml` + `docker-compose.local.yml` → `http://127.0.0.1:8080`).
+2. **Published GHCR images (production HTTPS)** — section 4b (`docker-compose.release.yml`, ports 80/443). Digests: [v0.1.0-beta.1 release](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/releases/tag/v0.1.0-beta.1).
 
 ## 2. Configure secrets (Docker-first)
 
@@ -57,7 +61,7 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 
 Open **http://127.0.0.1:8080**
 
-## 4. Start (production HTTPS)
+## 4. Start (production HTTPS — build from source)
 
 1. Set `API_DOMAIN` and `ADMIN_ALLOWED_ORIGINS=https://API_DOMAIN`.
 2. Set `ADMIN_COOKIE_SECURE=1`.
@@ -69,6 +73,19 @@ docker compose up -d --build
 ```
 
 Caddy obtains certificates automatically when the domain resolves publicly.
+
+## 4b. Start (production HTTPS — published images)
+
+Use `docker-compose.release.yml` with digest-pinned GHCR images (**linux/amd64**). This binds **80/443**, not loopback 8080.
+
+```bash
+export SMP_API_IMAGE='ghcr.io/pitsssss/social-media-posts-api@sha256:c57bdb5dab3250eafd557e9bb596a46eb8e5096b70ad787abe5128cc573a8903'
+export SMP_DASHBOARD_IMAGE='ghcr.io/pitsssss/social-media-posts-dashboard@sha256:90acd28bd9078c56e78eed15e307fe5bbc730f7cd9d54a1166251bc3b02ec182'
+# .env must also set ADMIN_INTERNAL_SECRET, ADMIN_ALLOWED_ORIGINS, API_DOMAIN, ADMIN_COOKIE_SECURE=1, TRUST_PROXY=1
+docker compose --env-file .env -f docker-compose.release.yml up -d
+```
+
+See comments in `docker-compose.release.yml` and the [GitHub Release](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/releases/tag/v0.1.0-beta.1).
 
 ## 5. First administrator
 
@@ -95,8 +112,8 @@ An **Apify token** is an API token from your own [Apify](https://apify.com) acco
 
 ## 6. Connect Apify & create an API key
 
-1. **Providers** → paste your Apify token → validate/connect  
-2. **API Keys** → create a key + Facebook/Instagram scopes  
+1. **Providers** → paste your Apify token → validate/connect
+2. **API Keys** → create a key + Facebook/Instagram scopes
 3. Copy the secret **once**
 
 Playground defaults to **cache-only**. A live refresh asks for confirmation and counts toward the local daily attempt limit (`APIFY_DAILY_RUN_LIMIT`), which is not an Apify dollar budget.

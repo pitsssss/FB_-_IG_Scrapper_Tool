@@ -1,23 +1,28 @@
-# Operator Compose for *published* images (linux/amd64).
-# Do not use until Step 5E-2 publishes GHCR tags and records digests.
+# Operator Compose for *published* GHCR images (linux/amd64).
+# Public beta v0.1.0-beta.1 images are published. Prefer digest pins:
 #
-# Planned tag names:
-#   ghcr.io/pitsssss/social-media-posts-api:0.1.0-beta.1
-#   ghcr.io/pitsssss/social-media-posts-dashboard:0.1.0-beta.1
+#   ghcr.io/pitsssss/social-media-posts-api@sha256:c57bdb5dab3250eafd557e9bb596a46eb8e5096b70ad787abe5128cc573a8903
+#   ghcr.io/pitsssss/social-media-posts-dashboard@sha256:90acd28bd9078c56e78eed15e307fe5bbc730f7cd9d54a1166251bc3b02ec182
+#
+# Floating tags (same builds): …:0.1.0-beta.1
+# Release: https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/releases/tag/v0.1.0-beta.1
 #
 # Required environment (no defaults — Compose fails closed if unset):
-#   SMP_API_IMAGE=ghcr.io/pitsssss/social-media-posts-api@sha256:<digest>
-#   SMP_DASHBOARD_IMAGE=ghcr.io/pitsssss/social-media-posts-dashboard@sha256:<digest>
+#   SMP_API_IMAGE=…@sha256:<digest>
+#   SMP_DASHBOARD_IMAGE=…@sha256:<digest>
+#   ADMIN_INTERNAL_SECRET, ADMIN_ALLOWED_ORIGINS, API_DOMAIN
 #
-# Prefer digest pins over floating tags in production operator docs.
+# This file binds production ports 80/443 (HTTPS via Caddy). It is NOT the
+# loopback http://127.0.0.1:8080 path — use docker-compose.yml +
+# docker-compose.local.yml for local HTTP development.
+#
 # Caddy stays on the official upstream image (not republished by this project).
-# Pin SMP_CADDY_IMAGE to a digest at publication time when practical.
+# Optionally pin: SMP_CADDY_IMAGE=caddy@sha256:<digest>
 #
 #   docker compose --env-file .env -f docker-compose.release.yml up -d
 #
-# This file does not build from source and does not reset volumes.
-# Local loopback testing of release images belongs in disposable smoke
-# (scripts/release-image-smoke.mjs), not as a weakened production contract.
+# Does not build from source and does not reset volumes.
+# Disposable loopback smoke of release images: scripts/release-image-smoke.mjs
 
 services:
   api:

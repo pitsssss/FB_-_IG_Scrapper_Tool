@@ -1,7 +1,7 @@
 # Docker third-party compliance checklist (dashboard image)
 
-**Status:** STEP 4A pack implemented in-tree (not legal advice). Dashboard images are **not published** yet.  
-**Verified against:** production multi-stage `apps/dashboard/Dockerfile` build on linux/amd64 Alpine (`node:22-alpine`), image tag used for audit: `smp-dash-license-audit:local`
+**Status:** Pack implemented in-tree (not legal advice). Dashboard image **published** as `ghcr.io/pitsssss/social-media-posts-dashboard:0.1.0-beta.1` (linux/amd64).
+**Verified against:** production multi-stage `apps/dashboard/Dockerfile` build on linux/amd64 Alpine (`node:22-alpine`); local audit tag historically `smp-dash-license-audit:local`
 
 ## Why this exists
 

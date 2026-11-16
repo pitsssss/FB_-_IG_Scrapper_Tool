@@ -6,32 +6,21 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/). Versioning f
 
 ## [Unreleased]
 
-### Added
-
-- Docker-first self-host initialization (`scripts/init-selfhost.sh`, `scripts/init-selfhost.ps1`) without requiring host Node.js.
-- Consistent management DB backup via SQLite `VACUUM INTO` (`scripts/backup-management.mjs`).
-- Release acceptance script (`npm run release:acceptance`) and sanitized historical privacy audit (`npm run privacy:history`).
-- Isolated Playwright browser acceptance (`npm run browser:acceptance`) with mocked Apify Compose overlay.
-- Open-source project docs: `CONTRIBUTING.md`, `SECURITY.md`, `docs/release/*` including `FINAL_ACCEPTANCE_REPORT.md`.
-
-### Security
-
-- Prefer `X-Real-IP` / right-most `X-Forwarded-For` hop when `TRUST_PROXY=1` (avoid trusting client-spoofable left-most values).
-- Dashboard Sign-out sends CSRF header on `/api/auth/logout` (matches BFF CSRF enforcement).
-- Optional `APIFY_VERIFY_BASE_URL` for isolated acceptance only (never set in production).
-
 ### Changed
 
-- Package metadata: name `social-media-posts-api`, version `0.1.0-beta.1` (release candidate).
-- Newman pinned to `6.2.3` (devDependency / CI only).
-- Playwright `1.65.0` added as a root devDependency for browser acceptance.
+- Public repository polish after `v0.1.0-beta.1` publication (README, self-hosting, release docs). Does not change the immutable release tag.
 
-## [0.1.0-beta.1] — release candidate (proposed)
+## [0.1.0-beta.1] — 2026-11-15
 
-First coordinated release-candidate line covering:
+First public **GitHub Pre-release** and GHCR images (linux/amd64).
 
-- Posts API (Facebook + Instagram)
-- Next.js admin dashboard (auth, MFA, providers, API keys, playground, settings)
-- Three-service Docker Compose (Caddy + API + dashboard)
+### Added
 
-See `docs/release/RELEASE_NOTES_DRAFT.md`.
+- Facebook + Instagram posts API, Next.js admin dashboard, Compose stack (Caddy + API + dashboard).
+- Published images: `ghcr.io/pitsssss/social-media-posts-api:0.1.0-beta.1`, `ghcr.io/pitsssss/social-media-posts-dashboard:0.1.0-beta.1`.
+- Docker-first self-host init, release acceptance / image smoke scripts, privacy history audit, browser acceptance.
+
+### Notes
+
+- Experimental beta; independent external tester invitations were skipped by owner decision.
+- Canonical notes: [GitHub Release](https://github.com/pitsssss/FB_-_IG_Scrapper_Tool/releases/tag/v0.1.0-beta.1) · [GITHUB_RELEASE_NOTES_v0.1.0-beta.1.md](docs/release/GITHUB_RELEASE_NOTES_v0.1.0-beta.1.md)
