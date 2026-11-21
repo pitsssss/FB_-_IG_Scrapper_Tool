@@ -44,6 +44,6 @@
   },
   "devDependencies": {
     "newman": "6.2.3",
-    "playwright": "1.65.0"
+    "playwright": "1.65.1"
   }
 }
